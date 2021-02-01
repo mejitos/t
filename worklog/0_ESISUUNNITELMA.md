@@ -8,7 +8,8 @@ ohjelman.
 
 Tavotteina on lisäksi syventää ymmärrystä C-ohjelmointikielestä sekä saavuttaa perusymmärrys 
 x86-arkkitehtuurin assembly-kielestä. Näin ollen luotavan ohjelmointikielen isäntäkielenä on C ja
-kohdekielenä x86 assembly. Tuotettu assembly käännetään NASM:lla objektitiedostoksi ja linkitetään
+kohdekielenä x86 assembly. Lähdekieli käännetään ensin välikielelle, jonka pohjalta generoidaan
+rekisterikoneen konekieli. Tuotettu assembly käännetään NASM:lla objektitiedostoksi ja linkitetään
 ld:llä suoritettavksi ohjelmaksi. Testaus toteutetaan itsekirjoitetuilla testeillä ja testejä
 kirjoitetaan sitä mukaan, kun ominaisuuksia lisätään. Jokainen lisätty ominaisuus testataan samalla
 kun se lisätään. Kuten tulkkiprojektissa, myös tässä projektissa kaikki kirjoitetaan käsin, eli
@@ -16,28 +17,22 @@ mitään ulkopuolisia koodigeneraattoreita ei käytetä.
 
 Toteutettavalla kielellä on vähintään seuraavat ominaisuudet:
 
+* vähintään kaksi eri tietotyyppiä (kokonaisluvut ja boolean)
+* staattinen tyypintarkastus
 * kokonaislukuaritmetiikka (infix-syntaksilla)
 * valintojen tekeminen (if - lauseet)
 * toisto (while - silmukat)
 * muuttujat
 * syötteen välitys vähintään ohjelman alussa
 * pääohjelman paluuarvon tulostus ruudulle
-* staattinen tyypintarkastus
+* parametrisoitavat aliohjelmat
 
-Jos jää aikaa, toteutetaan lisäksi yksi tai useampi seuraavista:
 
-* merkkijonosyöte ja -tulostus
-* taulukot
-* yksinkertainen merkkijonojen formatointi
+Tähtään kaiken kaikkiaan 5 op suoritukseen, josta 3 op koostuu ns. vähimmäisvaatimuksista, 
+1 op välikielen generoinnista ja 1 op kohdekielen valinnasta (rekisterikoneen konekieli). 
 
 Toteutettava lähdekieli muistuttaa syntaksiltaan JavaScriptiä/TypeScriptiä, pienellä mausteella
-C:tä ja Pascalia. Kieli tulee olemaan staattisesti tyypitetty. Vaikka tuo tyypintarkastus on
-ikäänkuin "ekstraominaisuuksissa", tulen alusta alkaen luomaan kielen sillä ajatuksella, että
-se on staattisesti tyypitetty. Näin ollen tähtään kaiken kaikkiaan vähintään 7op suoritukseen,
-jossa 3 op koostuu ns. vähimmäisvaatimuksista, 3 op kohdekielen valinnasta (rekisterikoneen
-konekieli) ja 1 op staattisesta tyypityksestä.
-
-Esimerkki lähdekielen syntaksista
+C:tä ja Pascalia. Esimerkki lähdekielen syntaksista:
 
 ```
 # Program to calculate fibonacci numbers
@@ -69,12 +64,14 @@ main: int = (argc: int, argv: int) => {
 
 # Yleinen suunnitelma 
 
-Karkeasti suunnitelma jakautuu ensimmäisen puoliskon aikana noin viikon mittaisiin 
-sprintteihin ja toisen puoliskon aikana noin kahden viikon mittaisiin sprintteihin,
-jolloinka projektin kokonaiskestoksi tulee noin 12 viikkoa. Tavoitteena on silti
-tehdä projekti valmiiksi niin nopeasti kuin mahdollista, mutta edellisen kurssin tulkin
-kanssa opin sen, että monta asiaa voi mennä pieleen ja vaikka tässä ollaan tietyllä
-tapaa vanhan asian äärellä, on tässä silti yhtä iso määrä tuntematonta kuin syksylläkin.
+Karkeasti suunnitelma jakautuu yhden (1) ja kahden (2) viikon mittaisiin sprintteihin
+joista kahden viikon jaksot ovat kovaa työskentelyä ja aina välillä on viikon mittaisia
+hengenvetoja, joiden aikana keskitytään lähinnä testailemaan, tarkastelemaan kokonaisuutta
+ja suunnittelemaan tulevaa. projektin kokonaiskestoksi tulee noin 16 viikkoa (valmiina 
+toukokuun loppuun mennessä). Tavoitteena on silti tehdä projekti valmiiksi niin nopeasti 
+kuin mahdollista, mutta edellisen kurssin tulkin kanssa opin sen, että monta asiaa voi 
+mennä pieleen ja vaikka tässä ollaan tietyllä tapaa vanhan asian äärellä, on tässä 
+silti yhtä iso määrä tuntematonta kuin syksylläkin.
 
 
 ## Vaihe 0 - Alustava suunnitelma
@@ -88,26 +85,41 @@ keskittyminen pitää vanhan opin kertaamisessa ja hiomisessa, mutta ennen kaikk
 uuden asian oppimisessa.
 
 
-## Vaihe 1 - Alkusysäys
+## Vaihe 1 - Alkusysäys (1-2 viikkoa)
 
 Ensimmäinen askel on puskea kääntäjän peruspalikat nopealla aikataululla. Luodaan selaajan
 ja parsijan toiminnallisuudet seuraten samaa periaatetta kuin tulkin kanssa. Lisäksi luodaan
 alustava testisysteemi näiden osien testaamiselle. Tehdään alustava tarkastaja, joka tekee
-hyvin pintapuolista tarkastelua ja luo symbolitaulun. Symbolitauluja tulee olemaan vain
-yksi globaali symbolitaulu. Lopuksi luodaan jonkinnäköinen tulkki/evaluoija, jonka avulla
-voidaan testata kieltä ja käyttää kyseistä rakennetta koodigeneraattorin luomiseen. Tämä
-osa tulee olemaan todella suoraviivainen.
+tässä vaiheessa hyvin pintapuolista tarkastelua ja luo symbolitaulun. Tämä osa tulee olemaan 
+todella suoraviivainen.
 
 
-## Vaihe 2 - Vedetään happea ja mietitään
+## Vaihe 2 - Vedetään happea ja mietitään (1 viikko)
 
 Aikaisemmassa projektissa opin, että pitäisi useammin pysähtyä tarkastelemaan tehtyä työtä
 ja miettimään tarkemmin tulevia liikkeitä. Annetaan oikeasti yhden sprintin ajan pääasiassa
-vain ajatusta tulevalle, eli koodin generoinnille. Ohessa voidaan tehdä esimerkiksi testien
-luomista edellisen vaiheen asioille, mutta pääpaino on koodigeneroinnin suunnittelussa.
+vain ajatusta tulevalle, eli välikielen generoinnille. Ohessa voidaan tehdä esimerkiksi testien
+luomista ja täydentämistä edellisen vaiheen asioille, mutta pääpaino on välikielen generoinnin 
+suunnittelussa.
 
 
-## Vaihe 3 - Toimiva käännös
+## Vaihe 3 - Välikielen generointi (2 viikkoa)
+
+Generoidaan ohjelmalle välikieli 3AC-notaatiolla. En vielä tiedä, millä tapaa tämä toteutetaan,
+mutta todennäköisesti jonkinsorttinen pinototeutus varmaan tulee luotua, jolloinka voin luoda
+tavallaan virtuaalikoneen myös halutessani. Tämä toimii varmasti hyvänä työkaluna välikielen
+generoinnissa.
+
+
+## Vaihe 4 - Hengenveto ja testausta (1 viikko)
+
+Aika hengähtää ja tarkastella mitä on saanut aikaiseksi sekä valmistautua symbolisen konekielen
+generointia varten. Tämä kyllä helpottui toisaalta jonkin verran, koska konekielen generointi
+yksinkertaistetusta välikielestä on varmasti helpompaa, kuin syntaksipuuta ajamalla generoiminen.
+Ainakin näin ajatuksena. 
+
+
+## Vaihe 5 - Toimiva käännös (2 viikkoa)
 
 Tavoitteena saada ohjelma tuottamaan toimivia x86-arkkitehtuurin mukaisia komentoja ja 
 saada ohjelma oikeasti kääntymään lähdekoodista ajettavaksi ohjelmaksi asti. Alustava
@@ -128,18 +140,6 @@ vaiheessa on kaksi tavoitetta:
 ohjelmaksi. Tämä tarkoittaa lähdekooditiedoston muuntamista syntaksipuuksi, x86 komentojen
 generointi, generoidun assembly tiedoston kokoaminen objektitiedostoksi ja lopuksi
 objektitiedoston linkittäminen ajettavaksi ohjelmaksi.
-
-
-## Vaihe 4 - Komentoriviargumentit
-
-Parametrien tai yleensäkin syötteen välittäminen ohjelmille tulee alustavasti olemaan mahdollista
-vain komentoriviargumenttien kautta, joten haluan saadan sen toimimaan alusta lähtien. Tästä
-syystä se otetaan työn alle heti, kun ensimmäiset onnistuneet käännökset on saatu luotua. Tämä
-on myöskin oikein hyvä johdanto esimerkiksi muuttujien lisäämiselle, kun joudutaan luomaan asioita
-jotka ohjelman tulee pystyä muistamaan.
-
-
-## Vaihe 5 - Kääntämistä, kääntämistä 
 
 Kaikki tähän asti tehty työ mahdollistaa nyt sen, että voimme alkaa tehtaan lailla testaamaan
 erinäisiä lausekkeita, niiden generointia ja kääntämistä.
@@ -190,22 +190,40 @@ sen sijaan jää ainakin tässä kohtaa käsityöksi, mutta se on hyväksyttäv�
 myös vahvistettua tuntumaa ja intuitiota assemblyn kanssa.
 
 
-## Vaihe 6 - Muuttujat 
+# Vaihe 6 - Hengenveto (1 viikko)
+
+Aika vetää happea ennen valtavaa loppukiriä, jolloinka käytännössä kaikki iso toiminnallisuus 
+toteutetaan. Tässä kohtaa pitäisi kuitenkin sen runko olla olemassa niin hyvin, että viimeisten 
+osien toteuttaminen on lähinnä pienen koodin lisäilyä olemassa oleviin funktioihin.
+
+
+# Vaihe 7 - Komentoriviargumentit ja muuttujat (2 viikkoa)
 
 Aika lisätä muuttujat mukaan, jotta ohjelmamme pystyy muistamaan jotain ja niistä saadaan
 heti vähän hyödyllisempiä. Tämä on todennäköisesti melko helppo osuus sen jälkeen, kun on
 saatu kohtuullinen pohja luotua.
 
+Parametrien tai yleensäkin syötteen välittäminen ohjelmille tulee alustavasti olemaan mahdollista
+vain komentoriviargumenttien kautta, joten haluan saadan sen toimimaan alusta lähtien. Tästä
+syystä se otetaan työn alle heti, kun ensimmäiset onnistuneet käännökset on saatu luotua. 
 
-## Vaihe 7 - Toisto ja valintojen tekeminen 
+
+## Vaihe 8 - Toisto ja valintojen tekeminen  (2 viikkoa)
 
 Tässä kohtaa asiat muuttuvat taas mielenkiintoiseksi. Vaikka näiden rakenteiden tekeminen
 onnistuu käsin myös assemblyllä (hyvin yksinkertaisissa tapauksissa), tulee näiden luominen
 täysin vapaamielisestä lähdekoodista olemaan varmasti melko haasteellinen. 
 
 
-## Vaihe 8 - Kiilloitusta
+## Vaihe 9 - Aliohjelmat (2 viikkoa)
+
+Isoin pala jätetään viimeiseksi. Tähän mennessä kaikki toiminnallisuus on toteutettu toimimaan
+ainoastaan pääohjelman sisällä, mutta nyt on aika lisätä parametrisoitujen aliohjelmien
+käyttäminen kieleen. Mikäli edelliset kohdat ovat menneet edes osittain suunnitelmien mukaan,
+ei tämän pitäisi olla kovinkaan iso ongelma. 
+
+
+## Vaihe 10 - Kiilloitusta (1-2 viikkoa tai mitä jää jäljelle)
 
 Lopuksi voimme vain keskittyä testitapausten luomiseen ja kääntäjän lujittamiseen niin paljon
 kuin se on mahdollista rajoitetussa aikaikkunassa ja ennen kaikkea rajoitetulla ymmärryksellä.
-Lisäksi alussa mainittujen lisäominaisuuksien lisäämistä voidaan harkita.
