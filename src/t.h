@@ -89,7 +89,7 @@ typedef struct Token
  *
  *  File: token.c
  */
-Token* token_basic(Token_Kind kind);
+Token* token_base(Token_Kind kind);
 
 
 /*

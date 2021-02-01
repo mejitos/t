@@ -47,14 +47,45 @@ static inline bool is_whitespace(const char ch)
 
 void lex(Lexer* lexer)
 {
-    // Handle whitespace
-    while (is_whitespace(*lexer->stream)) advance(lexer);
-
-    // Handle comments
-    if (*lexer->stream == '#')
-        while (*lexer->stream != '\n') advance(lexer);
-
-
+    while (*lexer->stream != '\0')
+    {
+        switch (*lexer->stream)
+        {
+            case ' ':
+            case '\t':
+            case '\n':
+            case '\r':
+                while (is_whitespace(*lexer->stream) && *lexer->stream != '\0')
+                    advance(lexer);
+                continue;
+            case '#':
+                while (*lexer->stream != '\n' && *lexer->stream != '\0')
+                    advance(lexer);
+                continue;
+            case '+':
+                advance(lexer);
+                lexer_push_token(lexer, token_base(TOKEN_PLUS));
+                continue;
+            case '-':
+                advance(lexer);
+                lexer_push_token(lexer, token_base(TOKEN_MINUS));
+                continue;
+            case '*':
+                advance(lexer);
+                lexer_push_token(lexer, token_base(TOKEN_MULTIPLY));
+                continue;
+            case '/':
+                advance(lexer);
+                lexer_push_token(lexer, token_base(TOKEN_DIVIDE));
+                continue;
+            default:
+                printf("[LEXER] - SyntaxError: Invalid character '%c'", *lexer->stream);
+                // TODO(timo): Maybe exit is too harsh, so create solution where we can
+                // actually lex the whole file. Not absolutely necessary though
+                exit(1);
+        }
+    }
+    
     // Add the end of file token
-    lexer_push_token(lexer, token_basic(TOKEN_EOF));    
+    lexer_push_token(lexer, token_base(TOKEN_EOF));    
 }

@@ -3,7 +3,7 @@
 
 int main(int argc, char** argv)
 {
-    const char* source = "# + - / *";
+    const char* source = "+ - / *";
 
     compile(source);
 

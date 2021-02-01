@@ -8,8 +8,6 @@ void compile(const char* source)
     // lexer_init(lexer, source);
     lex(&lexer);
 
-    assert(lexer.tokens_length == 1);
-
     // Print the tokens
     
     // Free the lexer data

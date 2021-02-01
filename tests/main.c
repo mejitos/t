@@ -47,6 +47,22 @@ int main(int argc, char** argv)
     free(*(lexer.tokens));
     free(lexer.tokens);
 
+    // Test for basic arithmetic operators
+    lexer = (Lexer){ .stream = "+ - * /" };
+    lex(&lexer);
+
+    assert(lexer.tokens_length == 5);
+    assert_token(*(lexer.tokens), TOKEN_PLUS);
+    free(*(lexer.tokens++));
+    assert_token(*(lexer.tokens), TOKEN_MINUS);
+    free(*(lexer.tokens++));
+    assert_token(*(lexer.tokens), TOKEN_MULTIPLY);
+    free(*(lexer.tokens++));
+    assert_token(*(lexer.tokens), TOKEN_DIVIDE);
+    free(*(lexer.tokens++));
+    assert_token(*(lexer.tokens), TOKEN_EOF);
+    free(*(lexer.tokens));
+    free(lexer.tokens - 4);
 
     if (not_error) printf("OK\n");
     else printf("\n");
