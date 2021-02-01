@@ -3,5 +3,11 @@
 
 void compile(const char* source)
 {
-    printf("%s\n", source);
+    // Lexing part
+    Lexer* lexer = lexer_init(source);
+    lex(lexer);
+
+    assert(lexer->tokens_length == 1);
+
+    // Print the tokens
 }

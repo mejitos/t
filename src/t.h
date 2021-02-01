@@ -1,12 +1,34 @@
 #ifndef t_header
 #define t_header
 
-#include <stdio.h>
+#include <stdio.h>      // for printing and stuff
+#include <stdlib.h>     // for allocs, exit
+#include <assert.h>     // for assertions
+#include <stdbool.h>    // for bool data type
 
 
+/*
+ *  Memory allocators à la K & R. Therefore code is borrowed from the book The C Programming
+ *  Language by Brian Kernighan and Dennis Ritchie. General opinion though is that this kind
+ *  of allocation of memory is pretty bad practice in prodcution, but luckily we ain't in 
+ *  production...at least yet.
+ *
+ *  The memory is being alllocated like it normally would with these C functions, but the
+ *  success of this allocation will be checked and if it failed -> program will exit.
+ *
+ *  File: memory.c
+ */
+void* xmalloc(size_t bytes);
+void* xcalloc(size_t length, size_t size);
+void* xrealloc(void* pointer, size_t bytes);
+
+
+/*
+ *  The main routine of the compiler called from the entry point main.c
+ *
+ *  File: t.c
+ */
 void compile(const char* source);
-
-
 
 
 /*
@@ -60,6 +82,35 @@ typedef struct Token
         bool boolean_value;
     };  
 } Token;
+
+
+/*
+ *  Allocator for basic token
+ *
+ *  File: token.c
+ */
+Token* token_basic(Token_Kind kind);
+
+
+/*
+ *  Lexer stuff
+ */
+typedef struct Lexer
+{
+    const char* stream;
+
+    Token** tokens;
+    int tokens_length;
+    int tokens_capacity;
+} Lexer;
+
+
+/*
+ *  File: lexer.c
+ */
+Lexer* lexer_init(const char* source);
+void lex(Lexer* lexer);
+
 
 
 #endif
