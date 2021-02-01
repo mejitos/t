@@ -7,8 +7,6 @@ void* xmalloc(size_t bytes)
 
     if (pointer == NULL)
     {
-        // NOTE(timo): We could also just free the pointer and return null.
-        // That way we can do some more graceful handling later on.
         printf("Error: xmalloc failed.\n");
         exit(1);
     }
@@ -23,9 +21,6 @@ void* xrealloc(void* pointer, size_t bytes)
 
     if (pointer == NULL)
     {
-        // NOTE(timo): We could also just free the pointer and return null.
-        // That way we can do some more graceful handling later on.
-        // Seems that the realloc frees the pointer automatically.
         printf("Error: xrealloc failed.\n");
         exit(1);
     }

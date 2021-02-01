@@ -108,7 +108,7 @@ typedef struct Lexer
 /*
  *  File: lexer.c
  */
-Lexer* lexer_init(const char* source);
+void lexer_init(Lexer* lexer, const char* source);
 void lex(Lexer* lexer);
 
 

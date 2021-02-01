@@ -1,13 +1,15 @@
 #include "t.h"
 
-
-Lexer* lexer_init(const char* source)
+/*
+TODO(timo): Decide if we want to use this or not. There is probably
+no need for this since we can just create the one Lexer at the main
+compile function so there is no need for some general pointer type
+void lexer_init(Lexer* lexer, const char* source)
 {
-    Lexer* lexer = xcalloc(1, sizeof (Lexer));
+    lexer = xcalloc(1, sizeof (Lexer));
     lexer->stream = source;
-
-    return lexer;
 }
+*/
 
 
 static void lexer_push_token(Lexer* lexer, Token* token)
