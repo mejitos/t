@@ -9,7 +9,19 @@ void assert_token(Token* token, Token_Kind kind)
     if (token->kind == kind) return;
     else 
     {
-        printf("\n\tInvalid token kind '%d'", kind);
+        printf("\n\tInvalid token kind '%d', expected '%d'", token->kind, kind);
+        not_error = false;
+    }
+}
+
+void assert_token_integer(Token* token, int value)
+{
+    assert_token(token, TOKEN_INTEGER_LITERAL);
+
+    if(token->integer_value == value) return;
+    else 
+    {
+        printf("\n\tInvalid integer value '%d', expected '%d'", token->integer_value, value);
         not_error = false;
     }
 }
@@ -135,6 +147,19 @@ int main(int argc, char** argv)
     assert_token(*(lexer.tokens), TOKEN_EOF);
     free(*(lexer.tokens));
     free(lexer.tokens - 1);
+
+    // Test for lexing integer literals
+    lexer = (Lexer){ .stream = "7 42" };
+    lex(&lexer);
+
+    assert(lexer.tokens_length == 3);
+    assert_token_integer(*(lexer.tokens), 7);
+    free(*(lexer.tokens++));
+    assert_token_integer(*(lexer.tokens), 42);
+    free(*(lexer.tokens++));
+    assert_token(*(lexer.tokens), TOKEN_EOF);
+    free(*(lexer.tokens));
+    free(lexer.tokens - 2);
 
     if (not_error) printf("OK\n");
     else printf("\n");

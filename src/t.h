@@ -5,6 +5,7 @@
 #include <stdlib.h>     // for allocs, exit
 #include <assert.h>     // for assertions
 #include <stdbool.h>    // for bool data type
+#include <limits.h>     // for integer overflow check
 
 
 /*
@@ -94,6 +95,7 @@ typedef struct Token
  *  File: token.c
  */
 Token* token_base(Token_Kind kind);
+Token* token_integer(int value);
 
 
 /*

@@ -33,6 +33,11 @@ static inline bool is_whitespace(const char ch)
     return ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r';
 }
 
+static inline bool is_digit(const char ch)
+{
+    return '0' <= ch && ch <= '9';
+}
+
 
 void lex(Lexer* lexer)
 {
@@ -51,6 +56,33 @@ void lex(Lexer* lexer)
                 while (*lexer->stream != '\n' && *lexer->stream != '\0')
                     advance(lexer, 1);
                 continue;
+            case '0': case '1': case '2': case '3': case '4': 
+            case '5': case '6': case '7': case '8': case '9':
+            {
+                int value = 0;
+
+                while (is_digit(*lexer->stream)) 
+                {   
+                    // Converts ascii digit to corresponding number
+                    int digit = *lexer->stream - '0';
+
+                    // Check for integer overflow in integer literal
+                    if (value > (INT_MAX - digit) / 10) 
+                    {   
+                        printf("[LEXER] - Error: Integer overflow in integer literal\n");
+                        // TODO(timo): Maybe just iterate through the literal, dont add token
+                        // add continue the lexing normally from there
+                        exit(1);
+                    }
+
+                    value *= 10; 
+                    value += digit; 
+                    advance(lexer, 1);
+                }   
+                    
+                lexer_push_token(lexer, token_integer(value));
+                continue;
+            }
             case '+':
                 advance(lexer, 1);
                 lexer_push_token(lexer, token_base(TOKEN_PLUS));
