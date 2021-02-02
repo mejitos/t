@@ -50,11 +50,15 @@ typedef enum Token_Kind
     TOKEN_LEFT_CURLYBRACE, TOKEN_RIGHT_CURLYBRACE,
     TOKEN_COLON, TOKEN_SEMICOLON, TOKEN_COMMA,
 
-    // Operators
+    // Assignment
     TOKEN_COLON_ASSIGN, 
+
+    // Equality and comparison operators
     TOKEN_IS_EQUAL, TOKEN_NOT_EQUAL,
     TOKEN_LESS_THAN, TOKEN_LESS_THAN_EQUAL,
     TOKEN_GREATER_THAN, TOKEN_GREATER_THAN_EQUAL,
+
+    // Arithmetic operators
     TOKEN_PLUS, TOKEN_MINUS, TOKEN_MULTIPLY, TOKEN_DIVIDE,
 
     // Keywords / reserved words

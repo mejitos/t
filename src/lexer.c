@@ -1,16 +1,5 @@
 #include "t.h"
 
-/*
-TODO(timo): Decide if we want to use this or not. There is probably
-no need for this since we can just create the one Lexer at the main
-compile function so there is no need for some general pointer type
-void lexer_init(Lexer* lexer, const char* source)
-{
-    lexer = xcalloc(1, sizeof (Lexer));
-    lexer->stream = source;
-}
-*/
-
 
 static void lexer_push_token(Lexer* lexer, Token* token)
 {
@@ -33,9 +22,9 @@ static void lexer_push_token(Lexer* lexer, Token* token)
 }
 
 
-static inline void advance(Lexer* lexer)
+static inline void advance(Lexer* lexer, int n)
 {
-    lexer->stream++;
+    lexer->stream += n;
 }
 
 
@@ -56,27 +45,77 @@ void lex(Lexer* lexer)
             case '\n':
             case '\r':
                 while (is_whitespace(*lexer->stream) && *lexer->stream != '\0')
-                    advance(lexer);
+                    advance(lexer, 1);
                 continue;
             case '#':
                 while (*lexer->stream != '\n' && *lexer->stream != '\0')
-                    advance(lexer);
+                    advance(lexer, 1);
                 continue;
             case '+':
-                advance(lexer);
+                advance(lexer, 1);
                 lexer_push_token(lexer, token_base(TOKEN_PLUS));
                 continue;
             case '-':
-                advance(lexer);
+                advance(lexer, 1);
                 lexer_push_token(lexer, token_base(TOKEN_MINUS));
                 continue;
             case '*':
-                advance(lexer);
+                advance(lexer, 1);
                 lexer_push_token(lexer, token_base(TOKEN_MULTIPLY));
                 continue;
             case '/':
-                advance(lexer);
+                advance(lexer, 1);
                 lexer_push_token(lexer, token_base(TOKEN_DIVIDE));
+                continue;
+            case ':':
+                if (*(lexer->stream + 1) == '=')
+                {
+                    advance(lexer, 2);
+                    lexer_push_token(lexer, token_base(TOKEN_COLON_ASSIGN));
+                    continue;
+                }
+                advance(lexer, 1);
+                lexer_push_token(lexer, token_base(TOKEN_COLON));
+                continue;
+            case '=':
+                if (*(lexer->stream + 1) == '=')
+                {
+                    advance(lexer, 2);
+                    lexer_push_token(lexer, token_base(TOKEN_IS_EQUAL));
+                    continue;
+                }
+                advance(lexer, 1);
+                lexer_push_token(lexer, token_base(TOKEN_EQUAL));
+                continue;
+            case '!':
+                if (*(lexer->stream + 1) == '=')
+                {
+                    advance(lexer, 2);
+                    lexer_push_token(lexer, token_base(TOKEN_NOT_EQUAL));
+                    continue;
+                }
+                // NOTE(timo): If there is no equal symbol, let it go down to default and error
+                // TODO(timo): We should actually notify the user about this one and not
+                // let it flush down to the default.
+            case '<':
+                if (*(lexer->stream + 1) == '=')
+                {
+                    advance(lexer, 2);
+                    lexer_push_token(lexer, token_base(TOKEN_LESS_THAN_EQUAL));
+                    continue;
+                }
+                advance(lexer, 1);
+                lexer_push_token(lexer, token_base(TOKEN_LESS_THAN));
+                continue;
+            case '>':
+                if (*(lexer->stream + 1) == '=')
+                {
+                    advance(lexer, 2);
+                    lexer_push_token(lexer, token_base(TOKEN_GREATER_THAN_EQUAL));
+                    continue;
+                }
+                advance(lexer, 1);
+                lexer_push_token(lexer, token_base(TOKEN_GREATER_THAN));
                 continue;
             default:
                 printf("[LEXER] - SyntaxError: Invalid character '%c'", *lexer->stream);

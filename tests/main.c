@@ -9,7 +9,7 @@ void assert_token(Token* token, Token_Kind kind)
     if (token->kind == kind) return;
     else 
     {
-        printf("\tInvalid token kind\n");
+        printf("\n\tInvalid token kind\n");
         not_error = false;
     }
 }
@@ -63,6 +63,42 @@ int main(int argc, char** argv)
     assert_token(*(lexer.tokens), TOKEN_EOF);
     free(*(lexer.tokens));
     free(lexer.tokens - 4);
+
+    // Test for equality and comparison operators
+    lexer = (Lexer){ .stream = "== != < <= > >=" };
+    lex(&lexer);
+
+    assert(lexer.tokens_length == 7);
+    assert_token(*(lexer.tokens), TOKEN_IS_EQUAL);
+    free(*(lexer.tokens++));
+    assert_token(*(lexer.tokens), TOKEN_NOT_EQUAL);
+    free(*(lexer.tokens++));
+    assert_token(*(lexer.tokens), TOKEN_LESS_THAN);
+    free(*(lexer.tokens++));
+    assert_token(*(lexer.tokens), TOKEN_LESS_THAN_EQUAL);
+    free(*(lexer.tokens++));
+    assert_token(*(lexer.tokens), TOKEN_GREATER_THAN);
+    free(*(lexer.tokens++));
+    assert_token(*(lexer.tokens), TOKEN_GREATER_THAN_EQUAL);
+    free(*(lexer.tokens++));
+    assert_token(*(lexer.tokens), TOKEN_EOF);
+    free(*(lexer.tokens));
+    free(lexer.tokens - 6);
+
+    // Test for assignment operators and related symbols
+    lexer = (Lexer){ .stream = ": = :=" };
+    lex(&lexer);
+
+    assert(lexer.tokens_length == 4);
+    assert_token(*(lexer.tokens), TOKEN_COLON);
+    free(*(lexer.tokens++));
+    assert_token(*(lexer.tokens), TOKEN_EQUAL);
+    free(*(lexer.tokens++));
+    assert_token(*(lexer.tokens), TOKEN_COLON_ASSIGN);
+    free(*(lexer.tokens++));
+    assert_token(*(lexer.tokens), TOKEN_EOF);
+    free(*(lexer.tokens));
+    free(lexer.tokens - 3);
 
     if (not_error) printf("OK\n");
     else printf("\n");
