@@ -54,6 +54,10 @@ void assert_token_identifier(Token* token, const char* identifier)
 }
 
 
+// TODO(timo): This should actually take the token as an argument so we can
+// give better information about WHAT is being positioned wrong when testing.
+// Though this means that there should be position assertions for everything
+// that has positions but so be it.
 void assert_position(Position position, int line_start, int column_start, int line_end, int column_end)
 {
     if (line_start)
