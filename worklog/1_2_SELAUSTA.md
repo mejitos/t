@@ -80,3 +80,14 @@ tekee tällä hetkellä oletuksen siitä, että kyseinen taulukko on "kelattu" a
 taulukko voidaan sitten iteroida alusta loppuun. Toistaiseksi se nyt on helppo laittaa tämä
 "kelausvastuu" kutsujalle, mutta varmaan aika pian tilanne voi muuttua karvaiseksi. Täytyy siis
 harkita linkitettyä listaa, ensimmäisen osoittimen tallentamista erikseen tai vastaavaa ratkaisua.
+
+
+## Sijaintitiedot
+
+Alkuun tuntui hieman overkilliltä testata jokainen testattu sananen ja sen positio, mutta kyllähän 
+sieltä alkoi löytymään, jos nyt ei virheitä, niin ainakain jotain mitä ajatella. Eli onko lekseemin
+sijainnin viimeinen merkki inclusive vai exclusive? Tämä on todennäköisesti asia, joka on täysin
+minun päätettävissäni, mutta tämä on asia joka tulee päättää, koska se taas vaikuttaa melko olennaisesti
+selaajan toimintaan. Tällä hetkellä viimeinen merkki on inclusive, mutta ainakin tällä hetkellä se
+aiheuttaa aika ruman workaround ratkaisun kokonaislukujen ja tunnisteiden kanssa. Pitääpä laittaa
+tämäkin pohdintalistalle myöhempää varten.

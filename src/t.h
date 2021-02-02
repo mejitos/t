@@ -111,10 +111,10 @@ typedef struct Token
  *
  *  File: token.c
  */
-Token* token_base(Token_Kind kind);
-Token* token_integer(int value);
-Token* token_boolean(bool value);
-Token* token_identifier(Token_Kind kind, const char* identifier);
+Token* token_base(Token_Kind kind, Position position);
+Token* token_integer(int value, Position position);
+Token* token_boolean(bool value, Position position);
+Token* token_identifier(const char* identifier, Position position);
 
 
 /*

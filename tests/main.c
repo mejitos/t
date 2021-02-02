@@ -49,6 +49,44 @@ void assert_token_identifier(Token* token, const char* identifier)
     else
     {
         printf("\n\tInvalid identifier '%s', expected '%s'", token->identifier, identifier);
+        not_error = false;
+    }
+}
+
+
+void assert_position(Position position, int line_start, int column_start, int line_end, int column_end)
+{
+    if (line_start)
+    {
+        if (position.line_start != line_start)
+        {
+            printf("\n\tInvalid starting line '%d', expected '%d'", position.line_start, line_start);
+            not_error = false;
+        }
+    }
+    if (column_start)
+    {
+        if (position.column_start != column_start)
+        {
+            printf("\n\tInvalid starting column '%d', expected '%d'", position.column_start, column_start);
+            not_error = false;
+        }
+    }
+    if (line_end)
+    {
+        if (position.line_end != line_end)
+        {
+            printf("\n\tInvalid ending line '%d', expected '%d'", position.line_end, line_end);
+            not_error = false;
+        }
+    }
+    if (column_end)
+    {
+        if (position.column_end != column_end)
+        {
+            printf("\n\tInvalid ending column '%d', expected '%d'", position.column_end, column_end);
+            not_error = false;
+        }
     }
 }
 
@@ -60,11 +98,12 @@ int main(int argc, char** argv)
     Lexer lexer;
 
     // Test for white space
-    lexer_init(&lexer, "  \n    \t   \n\r    ");
+    lexer_init(&lexer, "  \n    \t   \n    ");
     lex(&lexer);
 
     assert(lexer.tokens_length == 1);
-    assert_token(*(lexer.tokens), TOKEN_EOF);
+    assert_position((*lexer.tokens)->position, 3, 5, 3, 5);
+    assert_token(*lexer.tokens, TOKEN_EOF);
 
     lexer_free(&lexer);
 
@@ -73,13 +112,15 @@ int main(int argc, char** argv)
     lex(&lexer);
 
     assert(lexer.tokens_length == 1);
-    assert_token(*(lexer.tokens), TOKEN_EOF);
+    assert_position((*lexer.tokens)->position, 1, 18, 1, 18);
+    assert_token(*lexer.tokens, TOKEN_EOF);
     lexer_free(&lexer);
 
     lexer_init(&lexer, "# asdasdasdasdasd\n   \t \n");
     lex(&lexer);
 
     assert(lexer.tokens_length == 1);
+    assert_position((*lexer.tokens)->position, 3, 1, 3, 1);
     assert_token(*(lexer.tokens), TOKEN_EOF);
     lexer_free(&lexer);
 
@@ -88,10 +129,15 @@ int main(int argc, char** argv)
     lex(&lexer);
 
     assert(lexer.tokens_length == 5);
+    assert_position((*lexer.tokens)->position, 1, 1, 1, 1);
     assert_token(*lexer.tokens++, TOKEN_PLUS);
+    assert_position((*lexer.tokens)->position, 1, 3, 1, 3);
     assert_token(*lexer.tokens++, TOKEN_MINUS);
+    assert_position((*lexer.tokens)->position, 1, 5, 1, 5);
     assert_token(*lexer.tokens++, TOKEN_MULTIPLY);
+    assert_position((*lexer.tokens)->position, 1, 7, 1, 7);
     assert_token(*lexer.tokens++, TOKEN_DIVIDE);
+    assert_position((*lexer.tokens)->position, 1, 8, 1, 8);
     assert_token(*lexer.tokens, TOKEN_EOF);
 
     lexer.tokens -= 4; // "unwinding" of the array
@@ -102,12 +148,19 @@ int main(int argc, char** argv)
     lex(&lexer);
 
     assert(lexer.tokens_length == 7);
+    assert_position((*lexer.tokens)->position, 1, 1, 1, 2);
     assert_token(*lexer.tokens++, TOKEN_IS_EQUAL);
+    assert_position((*lexer.tokens)->position, 1, 4, 1, 5);
     assert_token(*lexer.tokens++, TOKEN_NOT_EQUAL);
+    assert_position((*lexer.tokens)->position, 1, 7, 1, 7);
     assert_token(*lexer.tokens++, TOKEN_LESS_THAN);
+    assert_position((*lexer.tokens)->position, 1, 9, 1, 10);
     assert_token(*lexer.tokens++, TOKEN_LESS_THAN_EQUAL);
+    assert_position((*lexer.tokens)->position, 1, 12, 1, 12);
     assert_token(*lexer.tokens++, TOKEN_GREATER_THAN);
+    assert_position((*lexer.tokens)->position, 1, 14, 1, 15);
     assert_token(*lexer.tokens++, TOKEN_GREATER_THAN_EQUAL);
+    assert_position((*lexer.tokens)->position, 1, 16, 1, 16);
     assert_token(*lexer.tokens, TOKEN_EOF);
 
     lexer.tokens -= 6; // unwinding of the array
@@ -118,12 +171,16 @@ int main(int argc, char** argv)
     lex(&lexer);
 
     assert(lexer.tokens_length == 4);
+    assert_position((*lexer.tokens)->position, 1, 1, 1, 1);
     assert_token(*lexer.tokens++, TOKEN_COLON);
+    assert_position((*lexer.tokens)->position, 1, 3, 1, 3);
     assert_token(*lexer.tokens++, TOKEN_EQUAL);
+    assert_position((*lexer.tokens)->position, 1, 5, 1, 6);
     assert_token(*lexer.tokens++, TOKEN_COLON_ASSIGN);
+    assert_position((*lexer.tokens)->position, 1, 7, 1, 7);
     assert_token(*lexer.tokens, TOKEN_EOF);
 
-    lexer.tokens -= 3;
+    lexer.tokens -= 3; // unwinding of the array
     lexer_free(&lexer);
 
     // Test for grouping / separators
@@ -131,17 +188,26 @@ int main(int argc, char** argv)
     lex(&lexer);
 
     assert(lexer.tokens_length == 9);
+    assert_position((*lexer.tokens)->position, 1, 1, 1, 1);
     assert_token(*lexer.tokens++, TOKEN_LEFT_PARENTHESIS);
+    assert_position((*lexer.tokens)->position, 1, 3, 1, 3);
     assert_token(*lexer.tokens++, TOKEN_RIGHT_PARENTHESIS);
+    assert_position((*lexer.tokens)->position, 1, 5, 1, 5);
     assert_token(*lexer.tokens++, TOKEN_LEFT_BRACKET);
+    assert_position((*lexer.tokens)->position, 1, 7, 1, 7);
     assert_token(*lexer.tokens++, TOKEN_RIGHT_BRACKET);
+    assert_position((*lexer.tokens)->position, 1, 9, 1, 9);
     assert_token(*lexer.tokens++, TOKEN_LEFT_CURLYBRACE);
+    assert_position((*lexer.tokens)->position, 1, 11, 1, 11);
     assert_token(*lexer.tokens++, TOKEN_RIGHT_CURLYBRACE);
+    assert_position((*lexer.tokens)->position, 1, 13, 1, 13);
     assert_token(*lexer.tokens++, TOKEN_COMMA);
+    assert_position((*lexer.tokens)->position, 1, 15, 1, 15);
     assert_token(*lexer.tokens++, TOKEN_SEMICOLON);
+    assert_position((*lexer.tokens)->position, 1, 16, 1, 16);
     assert_token(*lexer.tokens, TOKEN_EOF);
 
-    lexer.tokens -= 8;
+    lexer.tokens -= 8; // unwinding of the array
     lexer_free(&lexer);
 
     // Test for misc operators
@@ -152,7 +218,7 @@ int main(int argc, char** argv)
     assert_token(*lexer.tokens++, TOKEN_ARROW);
     assert_token(*lexer.tokens, TOKEN_EOF);
 
-    lexer.tokens -= 1;
+    lexer.tokens -= 1; // unwinding of the array
     lexer_free(&lexer);
 
     // Test for lexing integer literals
@@ -160,11 +226,14 @@ int main(int argc, char** argv)
     lex(&lexer);
 
     assert(lexer.tokens_length == 3);
+    assert_position((*lexer.tokens)->position, 1, 1, 1, 1);
     assert_token_integer(*lexer.tokens++, 7);
+    assert_position((*lexer.tokens)->position, 1, 3, 1, 4);
     assert_token_integer(*lexer.tokens++, 42);
+    assert_position((*lexer.tokens)->position, 1, 5, 1, 5);
     assert_token(*lexer.tokens, TOKEN_EOF);
 
-    lexer.tokens -= 2;
+    lexer.tokens -= 2; // unwinding of the array
     lexer_free(&lexer);
 
     // Test for boolean literals
@@ -172,11 +241,14 @@ int main(int argc, char** argv)
     lex(&lexer);
 
     assert(lexer.tokens_length == 3);
+    assert_position((*lexer.tokens)->position, 1, 1, 1, 4);
     assert_token_boolean(*lexer.tokens++, true);
+    assert_position((*lexer.tokens)->position, 1, 6, 1, 10);
     assert_token_boolean(*lexer.tokens++, false);
+    assert_position((*lexer.tokens)->position, 1, 11, 1, 11);
     assert_token(*lexer.tokens, TOKEN_EOF);
 
-    lexer.tokens -= 2;
+    lexer.tokens -= 2; // unwinding of the array
     lexer_free(&lexer);
 
     // Test for keywords / reserved words
@@ -184,22 +256,36 @@ int main(int argc, char** argv)
     lex(&lexer);
 
     assert(lexer.tokens_length == 14);
+    assert_position((*lexer.tokens)->position, 1, 1, 1, 2);
     assert_token(*lexer.tokens++, TOKEN_IF);
+    assert_position((*lexer.tokens)->position, 1, 4, 1, 7);
     assert_token(*lexer.tokens++, TOKEN_THEN);
+    assert_position((*lexer.tokens)->position, 1, 9, 1, 12);
     assert_token(*lexer.tokens++, TOKEN_ELSE);
+    assert_position((*lexer.tokens)->position, 1, 14, 1, 18);
     assert_token(*lexer.tokens++, TOKEN_WHILE);
+    assert_position((*lexer.tokens)->position, 1, 20, 1, 21);
     assert_token(*lexer.tokens++, TOKEN_DO);
+    assert_position((*lexer.tokens)->position, 1, 23, 1, 27);
     assert_token(*lexer.tokens++, TOKEN_BREAK);
+    assert_position((*lexer.tokens)->position, 1, 29, 1, 36);
     assert_token(*lexer.tokens++, TOKEN_CONTINUE);
+    assert_position((*lexer.tokens)->position, 1, 38, 1, 43);
     assert_token(*lexer.tokens++, TOKEN_RETURN);
+    assert_position((*lexer.tokens)->position, 1, 45, 1, 47);
     assert_token(*lexer.tokens++, TOKEN_AND);
+    assert_position((*lexer.tokens)->position, 1, 49, 1, 50);
     assert_token(*lexer.tokens++, TOKEN_OR);
+    assert_position((*lexer.tokens)->position, 1, 52, 1, 54);
     assert_token(*lexer.tokens++, TOKEN_NOT);
+    assert_position((*lexer.tokens)->position, 1, 56, 1, 58);
     assert_token(*lexer.tokens++, TOKEN_INT);
+    assert_position((*lexer.tokens)->position, 1, 60, 1, 63);
     assert_token(*lexer.tokens++, TOKEN_BOOL);
+    assert_position((*lexer.tokens)->position, 1, 64, 1, 64);
     assert_token(*lexer.tokens, TOKEN_EOF);
 
-    lexer.tokens -= 13;
+    lexer.tokens -= 13; // unwinding of the array
     lexer_free(&lexer);
 
     // Test for identifiers
@@ -207,12 +293,16 @@ int main(int argc, char** argv)
     lex(&lexer);
 
     assert(lexer.tokens_length == 4);
+    assert_position((*lexer.tokens)->position, 1, 1, 1, 3);
     assert_token_identifier(*lexer.tokens++, "foo");
+    assert_position((*lexer.tokens)->position, 1, 5, 1, 8);
     assert_token_identifier(*lexer.tokens++, "_bar");
+    assert_position((*lexer.tokens)->position, 1, 10, 1, 15);
     assert_token_identifier(*lexer.tokens++, "FOOBAR");
+    assert_position((*lexer.tokens)->position, 1, 16, 1, 16);
     assert_token(*lexer.tokens, TOKEN_EOF);
 
-    lexer.tokens -= 3;
+    lexer.tokens -= 3; // unwinding of the array
     lexer_free(&lexer);
 
     // TODO(timo): Test case for sequencial operators. Do we allow them
