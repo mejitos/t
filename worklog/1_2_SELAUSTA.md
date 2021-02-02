@@ -102,3 +102,26 @@ minun päätettävissäni, mutta tämä on asia joka tulee päättää, koska se
 selaajan toimintaan. Tällä hetkellä viimeinen merkki on inclusive, mutta ainakin tällä hetkellä se
 aiheuttaa aika ruman workaround ratkaisun kokonaislukujen ja tunnisteiden kanssa. Pitääpä laittaa
 tämäkin pohdintalistalle myöhempää varten.
+
+
+## Virheiden testauksesta
+
+Totesin, että jätän nyt tuon pipelinen tekemättä virheiden testaamiselle siitä syystä, että se ei ole
+juuri nyt niin kriittinen asia ja lisäksi selaajassa on tällä hetkellä vain kaksi kohtaa, josta virhe
+voidaan nostaa, joten en vaivautunut tekemään tätä nyt. Mieluummin odotan jäsentäjän valmistumista,
+jolloinka testitapauksia tulee heti runsaasti -> voin tehdä suoraan vaikka kokonaisen testimoduulin
+virheiden diagnosoinnille tai vaihtoehtoisesti testata jokaisen moduulin virheet yhtä kyytiä, jolloinka
+se tapahtuu verkkaisesti isommalla volyymillä. Virheilmoitukset sen sijaan käsipelillä testattuna 
+(sekä tietenkin aikaisemmin sanasten sijaintien testaamisen jälkeen) virheilmoitukset ainakin toistaiseksi
+näyttävät oikean rivin ja sarakkeen virheen sijainnille.
+
+
+## Eteenpäin
+
+Kuten jo eilen kirjoittelin lopuksi jäsentäjästä, niin mikään ei toistaiseksi sen suhteen ole muuttunut.
+Mielestäni saavutin riittävällä tasolla ne tavoitteet joita asetin selaajan "viimeistelylle", jotta voi
+siirtyä rauhallisemmin mielin jäsentäjän tekemiseen ilman, että tarvitsee ainakaan ihan hirveästi palata
+selaajan pariin. Nyt täytyy ainakin seuraava vuorokausi tehdä matematiikkaa hirveää vauhtia, joten 
+jäsentäjä on ehkä vuorossa vasta lähempänä viikonloppua. Uskon kuitenkin syntaksipuun sekä jäsentäjän
+olevan viikon loppuun mennessä samanlaisessa valmiudessa, kuin selaaja on nyt eli hyvä perustoiminnallisuus,
+jolloinka minun ei tarvitse tarkastajaa kirjoittaessa miettiä tuottaako jäsentäjä oikeanlaista tietoa.

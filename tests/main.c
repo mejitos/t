@@ -308,20 +308,12 @@ int main(int argc, char** argv)
 
     lexer.tokens -= 3; // unwinding of the array
     lexer_free(&lexer);
-
-    // TODO(timo): Test case for sequencial operators. Do we allow them
-    // of give error from them. e.g. is '<<' allowed and we just scan two
-    // less than tokens, or do we give error for that? Probably we should
-    // just allow that, since it isn't really lexers job to differentiate
-    // these things. Parser checks for the correct syntax
-    
     
     // Test case for correctly scanning identifiers
     lexer_init(&lexer, "_while doo integer 17if");
     lex(&lexer);
 
     assert(lexer.tokens_length == 6);
-
     assert_position((*lexer.tokens)->position, 1, 1, 1, 6);
     assert_token_identifier(*lexer.tokens++, "_while");
     assert_position((*lexer.tokens)->position, 1, 8, 1, 10);
@@ -336,6 +328,56 @@ int main(int argc, char** argv)
     assert_token(*lexer.tokens, TOKEN_EOF);
 
     lexer.tokens -= 5;
+    lexer_free(&lexer);
+    
+    // Test case for sequencial arithmetic operators
+    // TODO(timo): These tests show that with the operators, the lexer doesn't 
+    // actually follow the maximum munching rule when it comes to operators.
+    lexer_init(&lexer, "++ -- ** // +-*/");
+    lex(&lexer);
+
+    assert(lexer.tokens_length == 13);
+    assert_token(*lexer.tokens++, TOKEN_PLUS);
+    assert_token(*lexer.tokens++, TOKEN_PLUS);
+    assert_token(*lexer.tokens++, TOKEN_MINUS);
+    assert_token(*lexer.tokens++, TOKEN_MINUS);
+    assert_token(*lexer.tokens++, TOKEN_MULTIPLY);
+    assert_token(*lexer.tokens++, TOKEN_MULTIPLY);
+    assert_token(*lexer.tokens++, TOKEN_DIVIDE);
+    assert_token(*lexer.tokens++, TOKEN_DIVIDE);
+    assert_token(*lexer.tokens++, TOKEN_PLUS);
+    assert_token(*lexer.tokens++, TOKEN_MINUS);
+    assert_token(*lexer.tokens++, TOKEN_MULTIPLY);
+    assert_token(*lexer.tokens++, TOKEN_DIVIDE);
+    assert_token(*lexer.tokens, TOKEN_EOF);
+
+    lexer.tokens -= 12;
+    lexer_free(&lexer);
+
+    // Test case for sequencial comparison operators
+    // TODO(timo): These tests show that with the operators, the lexer doesn't 
+    // actually follow the maximum munching rule when it comes to operators.
+    lexer_init(&lexer, "=== ==== << >> <== ==> =!=");
+    lex(&lexer);
+
+    assert(lexer.tokens_length == 15);
+    assert_token(*lexer.tokens++, TOKEN_IS_EQUAL);
+    assert_token(*lexer.tokens++, TOKEN_EQUAL);
+    assert_token(*lexer.tokens++, TOKEN_IS_EQUAL);
+    assert_token(*lexer.tokens++, TOKEN_IS_EQUAL);
+    assert_token(*lexer.tokens++, TOKEN_LESS_THAN);
+    assert_token(*lexer.tokens++, TOKEN_LESS_THAN);
+    assert_token(*lexer.tokens++, TOKEN_GREATER_THAN);
+    assert_token(*lexer.tokens++, TOKEN_GREATER_THAN);
+    assert_token(*lexer.tokens++, TOKEN_LESS_THAN_EQUAL);
+    assert_token(*lexer.tokens++, TOKEN_EQUAL);
+    assert_token(*lexer.tokens++, TOKEN_IS_EQUAL);
+    assert_token(*lexer.tokens++, TOKEN_GREATER_THAN);
+    assert_token(*lexer.tokens++, TOKEN_EQUAL);
+    assert_token(*lexer.tokens++, TOKEN_NOT_EQUAL);
+    assert_token(*lexer.tokens, TOKEN_EOF);
+
+    lexer.tokens -= 14;
     lexer_free(&lexer);
 
     // TODO(timo): Testing of error diagnosing
