@@ -34,6 +34,21 @@ void compile(const char* source);
 
 
 /*
+ *  General position struct for everyone to use
+ *
+ *  Since for now we will only support compiling of single file, there is no need to add the
+ *  file attribute for the position at this stage. Maybe later.
+ */
+typedef struct Position
+{
+    int line_start;
+    int column_start;
+    int line_end;
+    int column_end;
+} Position;
+
+
+/*
  *  Token related stuff
  */
 typedef enum Token_Kind
@@ -82,6 +97,7 @@ typedef enum Token_Kind
 typedef struct Token 
 {
     Token_Kind kind;
+    Position position;
     union {
         const char* identifier;
         int integer_value;
@@ -107,6 +123,7 @@ Token* token_identifier(Token_Kind kind, const char* identifier);
 typedef struct Lexer
 {
     const char* stream;
+    Position position;
 
     Token** tokens;
     int tokens_length;
@@ -118,6 +135,7 @@ typedef struct Lexer
  *  File: lexer.c
  */
 void lexer_init(Lexer* lexer, const char* source);
+void lexer_free(Lexer* lexer);
 void lex(Lexer* lexer);
 
 

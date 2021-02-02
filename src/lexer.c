@@ -1,6 +1,35 @@
 #include "t.h"
 
 
+void lexer_init(Lexer* lexer, const char* source)
+{
+    *lexer = (Lexer){ .stream = source, 
+                      .position.line_end = 1, 
+                      .position.column_end = 1 };
+}
+
+
+void lexer_free(Lexer* lexer)
+{
+    // TODO(timo): We should take into account the "unwindind" of the tokens
+    // so we can actually iterate them from the beginning. As of now, this
+    // has to be handled by the caller before calling, but this is something
+    // that should be thinked through
+    for (Token** it = lexer->tokens; it != lexer->tokens + lexer->tokens_length; it++)
+    {
+        if ((*it)->kind == TOKEN_IDENTIFIER) 
+        {
+            printf("%d\n", (*it)->kind);
+            free((char*)(*it)->identifier);
+        }
+
+        free(*it);
+    }
+
+    free(lexer->tokens);
+}
+
+
 static void lexer_push_token(Lexer* lexer, Token* token)
 {
     if (! lexer->tokens)
@@ -24,7 +53,17 @@ static void lexer_push_token(Lexer* lexer, Token* token)
 
 static inline void advance(Lexer* lexer, int n)
 {
-    lexer->stream += n;
+    if (*lexer->stream == '\n')
+    {
+        lexer->position.line_end++;
+        lexer->position.column_end = 1;
+        lexer->stream += n;
+    }
+    else
+    {
+        lexer->position.column_end++;
+        lexer->stream += n;
+    }
 }
 
 
@@ -61,6 +100,9 @@ void lex(Lexer* lexer)
 {
     while (*lexer->stream != '\0')
     {
+        lexer->position.line_start = lexer->position.line_end;
+        lexer->position.column_start = lexer->position.column_end;
+
         switch (*lexer->stream)
         {
             case ' ':

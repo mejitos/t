@@ -60,3 +60,23 @@ ala luomaan ratkaisua, jossa keräisin diagnostiikkaa kootusti yhteen paikkaan j
 ajoin tulostelisin niitä sieltä. Ehkä sitten myöhemmässä vaiheessa.
 
 
+## Selaustekniikka
+
+Tulipa mieleen tapa, jolla ehkä pystyn ratkaisemaan nykysen avainsanojen ja tunnisteiden ruman
+toteutuksen. Voisin aina heti iteraation alkuun vain etsiä kokonaisen lekseemin, ja sitten tätä
+lekseemiä ajetaan tuon valtavan switch-casen läpi, joka sitten päättää, että mistä sanasesta
+onkaan tosiasiassa kyse. Tässä voidaan kuitenkin pitkälti ajella osoittimia, eikä tarvitse 
+tehdä mitään muistivertailuja tai muutakaan. Lekseemi kuitenkin katkaistaan aina tyhjän tilan tai
+kommentin kohdalta, joten voimme ihan yhtälailla myös vertailla vain lekseemin osoittimien rajoja 
+ilman, että tarvitsee puskea osamarkkijonoja erillisiin funktioihin ja tehdä muistivertailuja.
+Tämä vaatii kuitenkin aika ison refaktoroinnin, joten tämä jää nyt ainoastaan idealaatikkoon.
+
+
+## Muistinhallintaa
+
+Kirjoittaessani tuota selaajan muistinvapautustekniikkaa, tuli vastaan taas pieni ongelma siinä,
+että kuinka tuo sanaset nyt sitten vapautetaan, koska tuo malli jossa ne vapautetaan vain lopuksi,
+tekee tällä hetkellä oletuksen siitä, että kyseinen taulukko on "kelattu" alkuun, jotta kyseinen
+taulukko voidaan sitten iteroida alusta loppuun. Toistaiseksi se nyt on helppo laittaa tämä
+"kelausvastuu" kutsujalle, mutta varmaan aika pian tilanne voi muuttua karvaiseksi. Täytyy siis
+harkita linkitettyä listaa, ensimmäisen osoittimen tallentamista erikseen tai vastaavaa ratkaisua.

@@ -4,17 +4,13 @@
 void compile(const char* source)
 {
     // Lexing part
-    Lexer lexer = { .stream = source };
-    // lexer_init(lexer, source);
+    Lexer lexer;
+
+    lexer_init(&lexer, source);
     lex(&lexer);
 
     // Print the tokens
     
-    // Free the lexer data
-    for (Token** it = lexer.tokens; it != lexer.tokens + lexer.tokens_length; it++)
-    {
-        free(*it);
-    }
-
-    free(lexer.tokens);
+    // Free the lexers allocated data
+    lexer_free(&lexer);
 }
