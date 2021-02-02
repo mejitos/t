@@ -9,7 +9,7 @@ void assert_token(Token* token, Token_Kind kind)
     if (token->kind == kind) return;
     else 
     {
-        printf("\n\tInvalid token kind\n");
+        printf("\n\tInvalid token kind '%d'", kind);
         not_error = false;
     }
 }
@@ -99,6 +99,42 @@ int main(int argc, char** argv)
     assert_token(*(lexer.tokens), TOKEN_EOF);
     free(*(lexer.tokens));
     free(lexer.tokens - 3);
+
+    // Test for grouping / separators
+    lexer = (Lexer){ .stream = "( ) [ ] { } , ;" };
+    lex(&lexer);
+
+    assert(lexer.tokens_length == 9);
+    assert_token(*(lexer.tokens), TOKEN_LEFT_PARENTHESIS);
+    free(*(lexer.tokens++));
+    assert_token(*(lexer.tokens), TOKEN_RIGHT_PARENTHESIS);
+    free(*(lexer.tokens++));
+    assert_token(*(lexer.tokens), TOKEN_LEFT_BRACKET);
+    free(*(lexer.tokens++));
+    assert_token(*(lexer.tokens), TOKEN_RIGHT_BRACKET);
+    free(*(lexer.tokens++));
+    assert_token(*(lexer.tokens), TOKEN_LEFT_CURLYBRACE);
+    free(*(lexer.tokens++));
+    assert_token(*(lexer.tokens), TOKEN_RIGHT_CURLYBRACE);
+    free(*(lexer.tokens++));
+    assert_token(*(lexer.tokens), TOKEN_COMMA);
+    free(*(lexer.tokens++));
+    assert_token(*(lexer.tokens), TOKEN_SEMICOLON);
+    free(*(lexer.tokens++));
+    assert_token(*(lexer.tokens), TOKEN_EOF);
+    free(*(lexer.tokens));
+    free(lexer.tokens - 8);
+
+    // Test for misc operators
+    lexer = (Lexer){ .stream = "=>" };
+    lex(&lexer);
+
+    assert(lexer.tokens_length == 2);
+    assert_token(*(lexer.tokens), TOKEN_ARROW);
+    free(*(lexer.tokens++));
+    assert_token(*(lexer.tokens), TOKEN_EOF);
+    free(*(lexer.tokens));
+    free(lexer.tokens - 1);
 
     if (not_error) printf("OK\n");
     else printf("\n");

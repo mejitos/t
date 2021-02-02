@@ -67,6 +67,38 @@ void lex(Lexer* lexer)
                 advance(lexer, 1);
                 lexer_push_token(lexer, token_base(TOKEN_DIVIDE));
                 continue;
+            case '(':
+                advance(lexer, 1);
+                lexer_push_token(lexer, token_base(TOKEN_LEFT_PARENTHESIS));
+                continue;
+            case ')':
+                advance(lexer, 1);
+                lexer_push_token(lexer, token_base(TOKEN_RIGHT_PARENTHESIS));
+                continue;
+            case '[':
+                advance(lexer, 1);
+                lexer_push_token(lexer, token_base(TOKEN_LEFT_BRACKET));
+                continue;
+            case ']':
+                advance(lexer, 1);
+                lexer_push_token(lexer, token_base(TOKEN_RIGHT_BRACKET));
+                continue;
+            case '{':
+                advance(lexer, 1);
+                lexer_push_token(lexer, token_base(TOKEN_LEFT_CURLYBRACE));
+                continue;
+            case '}':
+                advance(lexer, 1);
+                lexer_push_token(lexer, token_base(TOKEN_RIGHT_CURLYBRACE));
+                continue;
+            case ',':
+                advance(lexer, 1);
+                lexer_push_token(lexer, token_base(TOKEN_COMMA));
+                continue;
+            case ';':
+                advance(lexer, 1);
+                lexer_push_token(lexer, token_base(TOKEN_SEMICOLON));
+                continue;
             case ':':
                 if (*(lexer->stream + 1) == '=')
                 {
@@ -82,6 +114,12 @@ void lex(Lexer* lexer)
                 {
                     advance(lexer, 2);
                     lexer_push_token(lexer, token_base(TOKEN_IS_EQUAL));
+                    continue;
+                }
+                if (*(lexer->stream + 1) == '>')
+                {
+                    advance(lexer, 2);
+                    lexer_push_token(lexer, token_base(TOKEN_ARROW));
                     continue;
                 }
                 advance(lexer, 1);
