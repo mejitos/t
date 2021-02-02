@@ -181,6 +181,10 @@ void lex(Lexer* lexer)
                         kind = check_keyword(1, 4, lexer->stream, lexeme_start, "hile", TOKEN_WHILE);
                         break;
                 }
+               
+                // NOTE(timo): Since we don't use the lexeme for the keywords
+                // we will have to free the memory
+                if (kind != TOKEN_IDENTIFIER) free(lexeme);
 
                 if (kind == TOKEN_TRUE) lexer_push_token(lexer, token_boolean(true));
                 else if (kind == TOKEN_FALSE) lexer_push_token(lexer, token_boolean(false));

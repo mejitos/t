@@ -241,13 +241,16 @@ int main(int argc, char** argv)
 
     assert(lexer.tokens_length == 4);
     assert_token_identifier(*(lexer.tokens), "foo");
-    free(*(lexer.tokens++));
+    free((char*)(*lexer.tokens)->identifier);
+    free(*lexer.tokens++);
     assert_token_identifier(*(lexer.tokens), "_bar");
-    free(*(lexer.tokens++));
+    free((char*)(*lexer.tokens)->identifier);
+    free(*lexer.tokens++);
     assert_token_identifier(*(lexer.tokens), "FOOBAR");
-    free(*(lexer.tokens++));
+    free((char*)(*lexer.tokens)->identifier);
+    free(*lexer.tokens++);
     assert_token(*(lexer.tokens), TOKEN_EOF);
-    free(*(lexer.tokens));
+    free(*lexer.tokens);
     free(lexer.tokens - 3);
 
     if (not_error) printf("OK\n");
