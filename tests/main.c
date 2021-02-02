@@ -315,10 +315,32 @@ int main(int argc, char** argv)
     // just allow that, since it isn't really lexers job to differentiate
     // these things. Parser checks for the correct syntax
     
-    // TODO(timo): Test case for correctly scanning identifiers e.g. "_while"
-    // and "integer" are both allowed identifiers according to maximum munch rule
+    
+    // Test case for correctly scanning identifiers
+    lexer_init(&lexer, "_while doo integer 17if");
+    lex(&lexer);
 
-    // TODO(timo): Testing of error 
+    assert(lexer.tokens_length == 6);
+
+    assert_position((*lexer.tokens)->position, 1, 1, 1, 6);
+    assert_token_identifier(*lexer.tokens++, "_while");
+    assert_position((*lexer.tokens)->position, 1, 8, 1, 10);
+    assert_token_identifier(*lexer.tokens++, "doo");
+    assert_position((*lexer.tokens)->position, 1, 12, 1, 18);
+    assert_token_identifier(*lexer.tokens++, "integer");
+    assert_position((*lexer.tokens)->position, 1, 20, 1, 21);
+    assert_token_integer(*lexer.tokens++, 17);
+    assert_position((*lexer.tokens)->position, 1, 22, 1, 23);
+    assert_token(*lexer.tokens++, TOKEN_IF);
+    assert_position((*lexer.tokens)->position, 1, 24, 1, 24);
+    assert_token(*lexer.tokens, TOKEN_EOF);
+
+    lexer.tokens -= 5;
+    lexer_free(&lexer);
+
+    // TODO(timo): Testing of error diagnosing
+    //      - unknown character
+    //      - integer overflow
 
     if (not_error) printf("OK\n");
     else printf("\n");
