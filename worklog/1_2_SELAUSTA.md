@@ -71,6 +71,17 @@ kommentin kohdalta, joten voimme ihan yhtälailla myös vertailla vain lekseemin
 ilman, että tarvitsee puskea osamarkkijonoja erillisiin funktioihin ja tehdä muistivertailuja.
 Tämä vaatii kuitenkin aika ison refaktoroinnin, joten tämä jää nyt ainoastaan idealaatikkoon.
 
+### Päivitystä
+
+Kyllähän sitä tuli lennosta keksittyä "siisti" tapa tuon toteuttamiseksi. Siisti siinä mielessä,
+että sai poistaa yhden melko turhalta tuntuneen funktion. Vaikka onhan se tietyllä tapaa aika rumaa
+tehdä käsin merkki merkiltä vertailua, mutta se on ainakin selvä ja suoraviivainen. Tässä kohtaa
+varmaan moni eristäisi mokoman trie-hirvityksen omaksi funktiokseen, mutta minä en oikein ymmärrä
+miksi siirtää tällaisia asioita omaksi funktiokseen, jos niitä käytetään vain kyseisessä kohdassa.
+Onhan tuo switch-case aika hirviö, mutta se on silti yksittäinen kokonaisuutensa. Kyllähän tuossa
+on silti niin paljon turhaa toistoa, että eiköhän se siitä siistitä. Nyt se kuitenkin toistaiseksi
+ajaa asiansa todella hyvin.
+
 
 ## Muistinhallintaa
 

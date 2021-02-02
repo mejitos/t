@@ -100,7 +100,6 @@ void lex(Lexer* lexer)
             case ' ':
             case '\t':
             case '\n':
-            case '\r':
                 while (is_whitespace(*lexer->stream) && *lexer->stream != '\0')
                     advance(lexer, 1);
                 continue;
@@ -121,7 +120,7 @@ void lex(Lexer* lexer)
                     // Check for integer overflow in integer literal
                     if (value > (INT_MAX - digit) / 10) 
                     {   
-                        printf("[LEXER] - Error: Integer overflow in integer literal\n");
+                        error(lexer->position, "[LEXER] - Error: Integer overflow in integer literal\n");
                         // TODO(timo): Maybe just iterate through the literal, dont add token
                         // add continue the lexing normally from there
                         exit(1);
@@ -147,12 +146,11 @@ void lex(Lexer* lexer)
             case 'A': case 'B': case 'C': case 'D': case 'E': case 'F': case 'G': case 'H': case 'I': case 'J': case 'K': case 'L': case 'M':
             case 'N': case 'O': case 'P': case 'Q': case 'R': case 'S': case 'T': case 'U': case 'V': case 'W': case 'X': case 'Y': case 'Z':
             {
-                const char* lexeme_start = lexer->stream;
-
                 while (is_alpha(*lexer->stream) || is_digit(*lexer->stream)) advance(lexer, 1);
-    
-                char* lexeme = xcalloc((lexer->stream - lexeme_start + 1), sizeof (char));
-                memcpy(lexeme, lexeme_start, lexer->stream - lexeme_start);
+
+                int length = lexer->position.column_end - lexer->position.column_start;
+                char* lexeme = xcalloc(length + 1, sizeof (char));
+                memcpy(lexeme, lexer->stream - length, length);
 
                 Token_Kind kind = TOKEN_IDENTIFIER;
 
@@ -243,10 +241,15 @@ void lex(Lexer* lexer)
                 // lexeme of the identifier, so this is quick and dirty way to fix it for now. 
                 lexer->position.column_end -= 1;
 
-                if (kind == TOKEN_TRUE || kind == TOKEN_FALSE)
-                    lexer_push_token(lexer, token_boolean((bool)(kind == TOKEN_TRUE), lexer->position));
-                else if (kind == TOKEN_IDENTIFIER) 
+                if (kind == TOKEN_IDENTIFIER) 
                     lexer_push_token(lexer, token_identifier(lexeme, lexer->position));
+                else if (kind == TOKEN_TRUE || kind == TOKEN_FALSE)
+                {
+                    // NOTE(timo): Since we don't use the lexeme for the keywords
+                    // we will have to free the memory allocated for the lexeme
+                    free(lexeme);
+                    lexer_push_token(lexer, token_boolean((bool)(kind == TOKEN_TRUE), lexer->position));
+                }
                 else 
                 {
                     // NOTE(timo): Since we don't use the lexeme for the keywords
@@ -369,7 +372,7 @@ void lex(Lexer* lexer)
                 advance(lexer, 1);
                 continue;
             default:
-                printf("[LEXER] - SyntaxError: Invalid character '%c'", *lexer->stream);
+                error(lexer->position, "[LEXER] - SyntaxError: Invalid character '%c'", *lexer->stream);
                 // TODO(timo): Maybe exit is too harsh, so create solution where we can
                 // actually lex the whole file. Not absolutely necessary though
                 exit(1);

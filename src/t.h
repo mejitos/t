@@ -7,6 +7,13 @@
 #include <stdbool.h>    // for bool data type
 #include <limits.h>     // for integer overflow check
 #include <string.h>     // for memcpy, memcmp etc
+#include <stdarg.h>    // for varargs
+
+
+/*
+ *  Type definitions
+ */
+typedef struct Position Position;
 
 
 /*
@@ -26,6 +33,14 @@ void* xrealloc(void* pointer, size_t bytes);
 
 
 /*
+ *  Errors used in the compiler
+ *
+ */
+
+void error(Position position, const char* fmt, ...);
+
+
+/*
  *  The main routine of the compiler called from the entry point main.c
  *
  *  File: t.c
@@ -39,13 +54,13 @@ void compile(const char* source);
  *  Since for now we will only support compiling of single file, there is no need to add the
  *  file attribute for the position at this stage. Maybe later.
  */
-typedef struct Position
+struct Position
 {
     int line_start;
     int column_start;
     int line_end;
     int column_end;
-} Position;
+};
 
 
 /*
