@@ -38,13 +38,23 @@ build () {
 # TODO(timo): Add command for valgrind analysis
 case $COMMAND in
     "test" )
-        build "$TEST_BUILD_DIR" "tests/main.c" "$TEST_BUILD_DIR/$TEST_EXECUTABLE" "tests/*.c src/lexer.c src/token.c src/memory.c" &&
-        $TEST_BUILD_DIR/$TEST_EXECUTABLE && exit 0;;
+        build "$TEST_BUILD_DIR" "tests/main.c" "$TEST_BUILD_DIR/$TEST_EXECUTABLE" "tests/*.c src/lexer.c src/token.c src/memory.c error.c"
+        $TEST_BUILD_DIR/$TEST_EXECUTABLE
+        exit 0;;
     "run" )
-        build "$BUILD_DIR" "$SRC_DIR/main.c" "$BUILD_DIR/$EXECUTABLE" "$SRC_DIR/*.c" &&
-        $BUILD_DIR/$EXECUTABLE && exit 0;;
+        build "$BUILD_DIR" "$SRC_DIR/main.c" "$BUILD_DIR/$EXECUTABLE" "$SRC_DIR/*.c"
+        $BUILD_DIR/$EXECUTABLE
+        exit 0;;
     "build" )
-        build "$BUILD_DIR" "$SRC_DIR/main.c" "$BUILD_DIR/$EXECUTABLE" "$SRC_DIR/*.c" &&
+        build "$BUILD_DIR" "$SRC_DIR/main.c" "$BUILD_DIR/$EXECUTABLE" "$SRC_DIR/*.c"
+        exit 0;;
+    "vgrun" )
+        build "$BUILD_DIR" "$SRC_DIR/main.c" "$BUILD_DIR/$EXECUTABLE" "$SRC_DIR/*.c"
+        valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --verbose $BUILD_DIR/$EXECUTABLE
+        exit 0;;
+    "vgtest" )
+        build "$TEST_BUILD_DIR" "tests/main.c" "$TEST_BUILD_DIR/$TEST_EXECUTABLE" "tests/*.c src/lexer.c src/token.c src/memory.c error.c"
+        valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --verbose $TEST_BUILD_DIR/$TEST_EXECUTABLE
         exit 0;;
 esac
 
