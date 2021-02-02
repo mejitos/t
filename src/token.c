@@ -18,3 +18,23 @@ Token* token_integer(int value)
 
     return token;
 }
+
+
+Token* token_boolean(bool value)
+{
+    Token* token = xcalloc(1, sizeof (Token));
+    token->kind = TOKEN_BOOLEAN_LITERAL;
+    token->boolean_value = value;
+
+    return token;
+}
+
+
+Token* token_identifier(Token_Kind kind, const char* identifier)
+{
+    Token* token = xcalloc(1, sizeof (Token));
+    token->kind = kind;
+    token->identifier = identifier;
+
+    return token;
+}

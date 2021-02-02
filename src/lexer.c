@@ -28,14 +28,32 @@ static inline void advance(Lexer* lexer, int n)
 }
 
 
+static inline Token_Kind check_keyword(int start, int length, const char* current, const char* lexeme_start, const char* rest, Token_Kind kind)
+{
+    if (current - lexeme_start == start + length && memcmp(lexeme_start + start, rest, length) == 0)
+    {
+        return kind;
+    }
+
+    return TOKEN_IDENTIFIER;
+}
+
+
 static inline bool is_whitespace(const char ch)
 {
     return ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r';
 }
 
+
 static inline bool is_digit(const char ch)
 {
     return '0' <= ch && ch <= '9';
+}
+
+
+static inline bool is_alpha(const char ch)
+{
+    return ('a' <= ch && ch <= 'z') || ('A' <= ch && ch <= 'Z') || ch == '_';
 }
 
 
@@ -81,6 +99,93 @@ void lex(Lexer* lexer)
                 }   
                     
                 lexer_push_token(lexer, token_integer(value));
+                continue;
+            }
+            case '_':
+            case 'a': case 'b': case 'c': case 'd': case 'e': case 'f': case 'g': case 'h': case 'i': case 'j': case 'k': case 'l': case 'm':
+            case 'n': case 'o': case 'p': case 'q': case 'r': case 's': case 't': case 'u': case 'v': case 'w': case 'x': case 'y': case 'z':
+            case 'A': case 'B': case 'C': case 'D': case 'E': case 'F': case 'G': case 'H': case 'I': case 'J': case 'K': case 'L': case 'M':
+            case 'N': case 'O': case 'P': case 'Q': case 'R': case 'S': case 'T': case 'U': case 'V': case 'W': case 'X': case 'Y': case 'Z':
+            {
+                const char* lexeme_start = lexer->stream;
+
+                while (is_alpha(*lexer->stream) || is_digit(*lexer->stream)) advance(lexer, 1);
+    
+                char* lexeme = xcalloc((lexer->stream - lexeme_start + 1), sizeof (char));
+                memcpy(lexeme, lexeme_start, lexer->stream - lexeme_start);
+
+                Token_Kind kind;
+
+                switch (*lexeme)
+                {
+                    case 'a':
+                        kind = check_keyword(1, 2, lexer->stream, lexeme_start, "nd", TOKEN_AND);
+                        break;
+                    case 'b':
+                        switch (*(lexeme + 1))
+                        {
+                            case 'o': 
+                                kind = check_keyword(2, 2, lexer->stream, lexeme_start, "ol", TOKEN_BOOL);
+                                break;
+                            case 'r': 
+                                kind = check_keyword(2, 3, lexer->stream, lexeme_start, "eak", TOKEN_BREAK);
+                                break;
+                        }
+                        break;
+                    case 'c':
+                        kind = check_keyword(1, 7, lexer->stream, lexeme_start, "ontinue", TOKEN_CONTINUE);
+                        break;
+                    case 'd':
+                        kind = check_keyword(1, 1, lexer->stream, lexeme_start, "o", TOKEN_DO);
+                        break;
+                    case 'e': 
+                        kind = check_keyword(1, 3, lexer->stream, lexeme_start, "lse", TOKEN_ELSE);
+                        break;
+                    case 'f': 
+                        kind = check_keyword(1, 4, lexer->stream, lexeme_start, "alse", TOKEN_FALSE);
+                        break;
+                    case 'i':
+                    {
+                        switch (*(lexeme + 1))
+                        {
+                            case 'f': 
+                                kind = check_keyword(2, 0, lexer->stream, lexeme_start, "", TOKEN_IF);
+                                break;
+                            case 'n': 
+                                kind = check_keyword(2, 1, lexer->stream, lexeme_start, "t", TOKEN_INT);
+                                break;
+                        }
+                        break;
+                    }
+                    case 'n':
+                        kind = check_keyword(1, 2, lexer->stream, lexeme_start, "ot", TOKEN_NOT);
+                        break;
+                    case 'o': 
+                        kind = check_keyword(1, 1, lexer->stream, lexeme_start, "r", TOKEN_OR);
+                        break;
+                    case 'r': 
+                        kind = check_keyword(1, 5, lexer->stream, lexeme_start, "eturn", TOKEN_RETURN);
+                        break;
+                    case 't':
+                        switch (*(lexeme + 1))
+                        {
+                            case 'h': 
+                                kind = check_keyword(2, 2, lexer->stream, lexeme_start, "en", TOKEN_THEN);
+                                break;
+                            case 'r': 
+                                kind = check_keyword(2, 2, lexer->stream, lexeme_start, "ue", TOKEN_TRUE);
+                                break;
+                        }
+                        break;
+                    case 'w': 
+                        kind = check_keyword(1, 4, lexer->stream, lexeme_start, "hile", TOKEN_WHILE);
+                        break;
+                }
+
+                if (kind == TOKEN_TRUE) lexer_push_token(lexer, token_boolean(true));
+                else if (kind == TOKEN_FALSE) lexer_push_token(lexer, token_boolean(false));
+                else lexer_push_token(lexer, token_identifier(kind, lexeme));
+
                 continue;
             }
             case '+':

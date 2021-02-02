@@ -6,6 +6,7 @@
 #include <assert.h>     // for assertions
 #include <stdbool.h>    // for bool data type
 #include <limits.h>     // for integer overflow check
+#include <string.h>     // for memcpy, memcmp etc
 
 
 /*
@@ -96,6 +97,8 @@ typedef struct Token
  */
 Token* token_base(Token_Kind kind);
 Token* token_integer(int value);
+Token* token_boolean(bool value);
+Token* token_identifier(Token_Kind kind, const char* identifier);
 
 
 /*
