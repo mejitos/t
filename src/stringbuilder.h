@@ -15,5 +15,6 @@ typedef struct stringbuilder
 stringbuilder* sb_init();
 void sb_append(stringbuilder* sb, const char* string);
 void sb_free(stringbuilder* sb);
+char* sb_to_string(stringbuilder* sb);
 
 #endif

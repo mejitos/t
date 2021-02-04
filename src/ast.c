@@ -44,6 +44,30 @@ AST_Expression* literal_expression(Token* literal)
 }
 
 
+
+AST_Expression* unary_expression(Token* _operator, AST_Expression* operand)
+{
+    AST_Expression* expression = xcalloc(1, sizeof (AST_Expression));
+    expression->kind = EXPRESSION_UNARY;
+    expression->unary._operator = _operator;
+    expression->unary.operand = operand;
+
+    return expression;
+}
+
+
+AST_Expression* binary_expression(AST_Expression* left, Token* _operator, AST_Expression* right)
+{
+    AST_Expression* expression = xcalloc(1, sizeof (AST_Expression));
+    expression->kind = EXPRESSION_BINARY;
+    expression->binary.left = left;
+    expression->binary._operator = _operator;
+    expression->binary.right = right;
+
+    return expression;
+}
+
+
 Parameter* function_parameter(Token* identifier, Type_Specifier specifier)
 {
     Parameter* parameter = xcalloc(1, sizeof (Parameter));

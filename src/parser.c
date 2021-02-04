@@ -103,6 +103,7 @@ static AST_Expression* primary(Parser* parser)
     switch ((*parser->tokens)->kind)
     {
         case TOKEN_INTEGER_LITERAL:
+        case TOKEN_BOOLEAN_LITERAL:
         {
             AST_Expression* expression = literal_expression(*parser->tokens);
             parser->tokens++;
@@ -137,9 +138,13 @@ static AST_Expression* primary(Parser* parser)
             }
             else
             {
-                printf("Parsing parenthesized expression\n");
+                AST_Expression* expression = parse_expression(parser);
+
+                expect_token(*parser->tokens, TOKEN_RIGHT_PARENTHESIS);
+                parser->tokens++;
+
+                return expression;
             }
-            return NULL;
         default:
             printf("Invalid token in primary()\n");
             exit(1);
@@ -149,15 +154,30 @@ static AST_Expression* primary(Parser* parser)
 
 static AST_Expression* unary(Parser* parser)
 {
-    AST_Expression* expression = primary(parser);
+    // TODO(timo): Add the logical and
+    if ((*parser->tokens)->kind == TOKEN_MINUS || (*parser->tokens)->kind == TOKEN_PLUS)
+    {
+        Token* _operator = *parser->tokens;
+        parser->tokens++;
+        AST_Expression* operand = unary(parser);
+        return unary_expression(_operator, operand);
+    }
 
-    return expression;
+    return primary(parser);
 }
 
 
 static AST_Expression* factor(Parser* parser)
 {
     AST_Expression* expression = unary(parser);
+
+    while ((*parser->tokens)->kind == TOKEN_MULTIPLY || (*parser->tokens)->kind == TOKEN_DIVIDE)
+    {
+        Token* _operator = *parser->tokens;
+        parser->tokens++;
+        AST_Expression* right = unary(parser);
+        expression = binary_expression(expression, _operator, right);
+    }
 
     return expression;
 }
@@ -167,6 +187,14 @@ static AST_Expression* term(Parser* parser)
 {
     AST_Expression* expression = factor(parser);
 
+    while ((*parser->tokens)->kind == TOKEN_PLUS || (*parser->tokens)->kind == TOKEN_MINUS)
+    {
+        Token* _operator = *parser->tokens;
+        parser->tokens++;
+        AST_Expression* right = factor(parser);
+        expression = binary_expression(expression, _operator, right);
+    }
+
     return expression;
 }
 
@@ -175,6 +203,15 @@ static AST_Expression* ordering(Parser* parser)
 {
     AST_Expression* expression = term(parser);
 
+    while ((*parser->tokens)->kind == TOKEN_LESS_THAN || (*parser->tokens)->kind == TOKEN_LESS_THAN_EQUAL ||
+           (*parser->tokens)->kind == TOKEN_GREATER_THAN || (*parser->tokens)->kind == TOKEN_GREATER_THAN_EQUAL)
+    {
+        Token* _operator = *parser->tokens;
+        parser->tokens++;
+        AST_Expression* right = term(parser);
+        expression = binary_expression(expression, _operator, right);
+    }
+
     return expression;
 }
 
@@ -182,6 +219,14 @@ static AST_Expression* ordering(Parser* parser)
 static AST_Expression* equality(Parser* parser)
 {
     AST_Expression* expression = ordering(parser);
+
+    while ((*parser->tokens)->kind == TOKEN_IS_EQUAL || (*parser->tokens)->kind == TOKEN_NOT_EQUAL)
+    {
+        Token* _operator = *parser->tokens;
+        parser->tokens++;
+        AST_Expression* right = ordering(parser);
+        expression = binary_expression(expression, _operator, right);
+    }
 
     return expression;
 }

@@ -253,6 +253,8 @@ AST_Declaration* function_declaration(Token* identifier, Type_Specifier specifie
 AST_Statement* block_statement(array* statements, int statements_length);
 AST_Statement* return_statement(AST_Expression* value);
 AST_Expression* literal_expression(Token* literal);
+AST_Expression* unary_expression(Token* _operator, AST_Expression* operand);
+AST_Expression* binary_expression(AST_Expression* left, Token* _operator, AST_Expression* right);
 Parameter* function_parameter(Token* identifier, Type_Specifier specifier);
 AST_Expression* function_expression(array* parameters, int arity, AST_Statement* body);
 
