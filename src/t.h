@@ -14,6 +14,9 @@
  *  Type definitions
  */
 typedef struct Position Position;
+typedef struct AST_Declaration AST_Declaration;
+typedef struct AST_Statement AST_Statement;
+typedef struct AST_Expression AST_Expression;
 
 
 /*
@@ -153,6 +156,112 @@ void lexer_init(Lexer* lexer, const char* source);
 void lexer_free(Lexer* lexer);
 void lex(Lexer* lexer);
 
+
+/*
+ *  AST stuff
+ *
+ *  File: ast.c
+ */
+typedef enum Declaration_Kind
+{
+    DECLARATION_NONE,
+    DECLARATION_VARIABLE,
+    DECLARATION_FUNCTION,
+} Declaration_Kind;
+
+
+typedef enum Type_Specifier
+{
+    TYPE_SPECIFIER_NONE,
+    TYPE_SPECIFIER_INT,
+    TYPE_SPECIFIER_BOOL,
+} Type_Specifier;
+
+
+struct AST_Declaration
+{
+    Declaration_Kind kind;
+    Type_Specifier specifier;
+    Token* identifier;
+    AST_Expression* initializer;
+};
+
+
+typedef enum Statement_Kind
+{
+    STATEMENT_NONE,
+    STATEMENT_EXPRESSION,
+    STATEMENT_BLOCK,
+    STATEMENT_IF,
+    STATEMENT_WHILE,
+    STATEMENT_RETURN,
+} Statement_Kind;
+
+
+struct AST_Statement
+{
+    Statement_Kind kind;
+    union {
+        AST_Expression* expression;
+        struct {
+            AST_Statement** statements;
+            int statements_length;
+            int statements_capacity;
+        } block;
+        struct {
+            AST_Expression* value;
+        } _return;
+    };
+};
+
+
+typedef struct Parameter
+{
+    Token* identifier;
+    Type_Specifier type;
+} Parameter;
+
+
+typedef enum Expression_Kind
+{
+    EXPRESSION_NONE,
+    EXPRESSION_LITERAL,
+    EXPRESSION_VARIABLE,
+    EXPRESSION_UNARY,
+    EXPRESSION_BINARY,
+    EXPRESSION_ASSIGNMENT,
+    EXPRESSION_FUNCTION,
+} Expression_Kind;
+
+
+struct AST_Expression
+{
+    Expression_Kind kind;
+    union {
+        Token* literal;
+        Token* identifier;
+        struct {
+            Token* _operator;
+            AST_Expression* operand;
+        } unary;
+        struct {
+            Token* _operator;
+            AST_Expression* left;
+            AST_Expression* right;
+        } binary;
+        struct {
+            AST_Expression* variable;
+            AST_Expression* value;
+        } assignment;
+        struct {
+            Token* identifier;
+            Parameter** parameters;
+            int arity;
+            int parameters_capacity;
+            AST_Statement* body;
+        } function;
+    };
+};
 
 
 #endif
