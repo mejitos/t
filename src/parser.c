@@ -11,7 +11,8 @@ static AST_Expression* parse_expression(Parser* parser);
 
 void parser_init(Parser* parser, Token** tokens)
 {
-    *parser = (Parser){ .tokens = tokens };
+    *parser = (Parser){ .tokens = tokens,
+                        .declarations = array_init(sizeof (AST_Declaration*)) };
 }
 
 
@@ -26,12 +27,6 @@ void expect_token(Token* token, Token_Kind kind)
 }
 
 
-static void parser_push_declaration(Parser* parser, AST_Declaration* declaration)
-{
-    printf("Pushed declaration to list\n");
-}
-
-
 static Type_Specifier parse_type_specifier(Parser* parser)
 {
     switch ((*parser->tokens)->kind)
@@ -40,7 +35,6 @@ static Type_Specifier parse_type_specifier(Parser* parser)
             parser->tokens++;
             return TYPE_SPECIFIER_INT;
         case TOKEN_BOOL:
-            printf("Got type specifier\n");
             parser->tokens++;
             return TYPE_SPECIFIER_BOOL;
         default:
@@ -59,9 +53,7 @@ static AST_Statement* parse_return_statement(Parser* parser)
     expect_token((*parser->tokens), TOKEN_SEMICOLON);
     parser->tokens++;
 
-    printf("Parsed return statement\n");
-
-    return NULL;
+    return return_statement(value);
 }
 
 
@@ -69,12 +61,11 @@ static AST_Statement* parse_block_statement(Parser* parser)
 {
     parser->tokens++;
 
-    // TODO(timo): Statement list
+    array* statements = array_init(sizeof (AST_Statement*));
+
     while ((*parser->tokens)->kind != TOKEN_RIGHT_CURLYBRACE && (*parser->tokens)->kind != TOKEN_EOF)
     {
-        parse_statement(parser);
-        printf("Pushing statement to list\n");
-        // TODO(timo): Create statement and push to list
+        array_push(statements, parse_statement(parser));
     }
 
     expect_token((*parser->tokens), TOKEN_RIGHT_CURLYBRACE);
@@ -112,14 +103,17 @@ static AST_Expression* primary(Parser* parser)
     switch ((*parser->tokens)->kind)
     {
         case TOKEN_INTEGER_LITERAL:
-            printf("found integer literal %d\n", (*parser->tokens)->integer_value);
+        {
+            AST_Expression* expression = literal_expression(*parser->tokens);
             parser->tokens++;
-            return NULL;
+            return expression;
+        }
         case TOKEN_LEFT_PARENTHESIS:
             parser->tokens++;
             if ((*parser->tokens)->kind == TOKEN_IDENTIFIER)
             {
-                // TODO(timo): Parameter list
+                array* parameters = array_init(sizeof (Parameter*));
+
                 do {
                     if ((*parser->tokens)->kind == TOKEN_COMMA) parser->tokens++;
                     
@@ -129,8 +123,7 @@ static AST_Expression* primary(Parser* parser)
                     parser->tokens++;
                     Type_Specifier specifier = parse_type_specifier(parser);
 
-                    // TODO(timo): Create parameter and push to parameter list
-                    printf("Added parameter '%s'\n", identifier->identifier);
+                    array_push(parameters, function_parameter(identifier, specifier));
                 } while ((*parser->tokens)->kind == TOKEN_COMMA);
                 
                 expect_token((*parser->tokens), TOKEN_RIGHT_PARENTHESIS);
@@ -139,7 +132,8 @@ static AST_Expression* primary(Parser* parser)
                 parser->tokens++;
 
                 AST_Statement* body = parse_statement(parser);
-                // NOTE(timo): The closing semicolon is handled at declaration
+
+                return function_expression(parameters, parameters->length, body);
             }
             else
             {
@@ -239,18 +233,13 @@ static AST_Declaration* parse_declaration(Parser* parser)
     parser->tokens++;
 
     AST_Expression* initializer = parse_expression(parser);
-
     expect_token((*parser->tokens), TOKEN_SEMICOLON);
     parser->tokens++;
 
-    AST_Declaration* declaration;
-    
-    /* TODO(timo): We are not returning anything yet
     if (initializer->kind == EXPRESSION_FUNCTION)
-        printf("Created function declaration\n");
+        return function_declaration(identifier, specifier, initializer);
     else
         printf("Created variable declaration\n");
-    */
     
     // TODO(timo): Create declaration and return it
     return NULL;
@@ -259,11 +248,10 @@ static AST_Declaration* parse_declaration(Parser* parser)
 
 void parse(Parser* parser)
 {
-
     while ((*parser->tokens)->kind != TOKEN_EOF)
     {
-        parser_push_declaration(parser, parse_declaration(parser));
-        // printf("%d\n", (*parser->tokens)->kind);
-        // parser->tokens++;
+        array_push(parser->declarations, parse_declaration(parser));
     }
+
+    assert(parser->declarations->length == 1);
 }

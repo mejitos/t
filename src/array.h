@@ -1,3 +1,10 @@
+#ifndef t_array_h
+#define t_array_h
+
+
+#include <stddef.h>     // for size_t
+#include "memory.h"     // for x-allocators
+
 /*
  *  General use dynamic array
  *
@@ -14,3 +21,5 @@ typedef struct array
 array* array_init(size_t item_size);
 void array_init2(array* arr, size_t item_size);
 void array_push(array* arr, void* item);
+
+#endif

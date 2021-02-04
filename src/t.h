@@ -7,7 +7,10 @@
 #include <stdbool.h>    // for bool data type
 #include <limits.h>     // for integer overflow check
 #include <string.h>     // for memcpy, memcmp etc
-#include <stdarg.h>    // for varargs
+#include <stdarg.h>     // for varargs
+
+#include "array.h"      // for my dynamic arrays
+#include "memory.h"     // for custom x-allocators
 
 
 /*
@@ -17,22 +20,6 @@ typedef struct Position Position;
 typedef struct AST_Declaration AST_Declaration;
 typedef struct AST_Statement AST_Statement;
 typedef struct AST_Expression AST_Expression;
-
-
-/*
- *  Memory allocators à la K & R. Therefore code is borrowed from the book The C Programming
- *  Language by Brian Kernighan and Dennis Ritchie. General opinion though is that this kind
- *  of allocation of memory is pretty bad practice in prodcution, but luckily we ain't in 
- *  production...at least yet.
- *
- *  The memory is being alllocated like it normally would with these C functions, but the
- *  success of this allocation will be checked and if it failed -> program will exit.
- *
- *  File: memory.c
- */
-void* xmalloc(size_t bytes);
-void* xcalloc(size_t length, size_t size);
-void* xrealloc(void* pointer, size_t bytes);
 
 
 /*
@@ -204,9 +191,8 @@ struct AST_Statement
     union {
         AST_Expression* expression;
         struct {
-            AST_Statement** statements;
+            array* statements;
             int statements_length;
-            int statements_capacity;
         } block;
         struct {
             AST_Expression* value;
@@ -218,7 +204,7 @@ struct AST_Statement
 typedef struct Parameter
 {
     Token* identifier;
-    Type_Specifier type;
+    Type_Specifier specifier;
 } Parameter;
 
 
@@ -254,14 +240,21 @@ struct AST_Expression
             AST_Expression* value;
         } assignment;
         struct {
-            Token* identifier;
-            Parameter** parameters;
+            array* parameters;
             int arity;
             int parameters_capacity;
             AST_Statement* body;
         } function;
     };
 };
+
+
+AST_Declaration* function_declaration(Token* identifier, Type_Specifier specifier, AST_Expression* initializer);
+AST_Statement* block_statement(array* statements, int statements_length);
+AST_Statement* return_statement(AST_Expression* value);
+AST_Expression* literal_expression(Token* literal);
+Parameter* function_parameter(Token* identifier, Type_Specifier specifier);
+AST_Expression* function_expression(array* parameters, int arity, AST_Statement* body);
 
 
 /*
@@ -272,7 +265,7 @@ struct AST_Expression
 typedef struct Parser
 {
     Token** tokens;
-    AST_Declaration** declarations;
+    array* declarations;
     int declarations_length;
     int declarations_capacity;
 } Parser;

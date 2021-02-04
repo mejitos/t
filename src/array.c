@@ -10,13 +10,6 @@ array* array_init(size_t item_size)
 }
 
 
-void array_init2(array* arr, size_t item_size)
-{
-    *arr = xcalloc(1, sizeof (array));
-    arr->item_size = item_size;
-}
-
-
 void array_push(array* arr, void* item)
 {
     if (! arr->items)
