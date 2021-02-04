@@ -9,8 +9,13 @@ void compile(const char* source)
     lexer_init(&lexer, source);
     lex(&lexer);
 
-    // Print the tokens
-    
+    // Parsing part
+    Parser parser;
+
+    parser_init(&parser, lexer.tokens);
+    parse(&parser);
+
+
     // Free the lexers allocated data
-    lexer_free(&lexer);
+    // lexer_free(&lexer);
 }

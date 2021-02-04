@@ -264,4 +264,20 @@ struct AST_Expression
 };
 
 
+/*
+ *  Parser
+ *  
+ *  File: parser.c
+ */
+typedef struct Parser
+{
+    Token** tokens;
+    AST_Declaration** declarations;
+    int declarations_length;
+    int declarations_capacity;
+} Parser;
+
+void parser_init(Parser* parser, Token** tokens);
+void parse(Parser* parser);
+
 #endif
