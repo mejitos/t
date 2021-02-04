@@ -88,3 +88,31 @@ Ensimmäinen tavoite olisi saada jäsenneltyä ns. pääohjelma oikein. Tosin si
 (näin alkuun) että pääohjelman komentoriviargumentteihin ei laiteta taulukkoa argv muuttujaan,
 vaan siihen tulee ihan yksittäinen kokonaisluku. En vielä tiedä kuinka käsittelen taulukkoita,
 mutta eiköhän sekin aukene tässä jäsennellessä.
+
+
+### Ongelmia
+
+Tai ei nyt varsinaisesti ongelmia, mutta ensimmäiset ajatuksia herättävät asiat nousivat esiin,
+kun raavin kasaan ensimmäistä osaa jäsentäjästä. Tarvitsen kyllä kipeästi jonkun yleisemmän
+tietorakenteen dynaamisille taulukoille. Sellaisen tekee aika nopeasti tällaiseen tarkoitukseen,
+mihin sitä tällä hetkellä tarvitsen. Sekin on parempi tehdä nyt tässä kohtaa, kun ei varsinaista
+koodia ole vielä niin paljoa.
+
+Merkittävämpi vastaan tullut asia on muistinhallinta. Nyt tosiaan koko selaajan vapautusfunktio
+muuttui käytännössä turhaksi, koska nyt myös jäsentäjä käyttää näitä sanasia. Sen sijaan selaajan
+testejä varten mokoma funktio on aivan hyvä olla olemassa, joten jos ei muuta, niin sen voi siirtää
+selaajan testimoduuliin jahka testejä alkaa moduuleihin jakamaan. En tässä kohtaa kuitenkaan tee
+asialle mitään, vaan teen rauhassa jäsentäjän loppuun ja mietin sen jälkeen taas, että kuinka
+muistia saadaan vapauteltua nätisti, kun on isompi kokonaisuus kasassa. Täytyy kuitenkin muistaa 
+myös se, että tässä on monta palikkaa tekemättä, jotka käyttävät näitä tietoja.
+
+
+## Jäsentäjän testaaminen
+
+Tämä onkin asia, jolle en toistaiseksi tiedä kunnon ratkaisua. Aikaisemmin Pythonilla tein rekursiivisesti
+sellaisen Scheme-tyylisen merkkijonon joka edusti jäsennyspuuta ja sitten pystyi vain vertailemaan
+merkkijonoja. Minulla ei ole aavistustakaan kuinka C:llä voisi rakentaa tuollaisia merkkijonoja
+kätevästi, mutta empä kyllä tiedä parempaakaan tapaa testata jäsentäjää kuin tuo. Siinä tulee
+testattua sitä rakennetta mitä se tuottaa, todella kätevällä tavalla. Muussa tapauksessa täytyisi
+käsin käydä läpi jokainen luodun puun solmu ja se ei kyllä tule kuuloonkaan. Tässä kyllä tekemistä riittää,
+enkä tosiaan ajatellut, että sitä ihan näin paljoa on. 
