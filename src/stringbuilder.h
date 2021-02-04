@@ -13,7 +13,7 @@ typedef struct stringbuilder
 
 
 stringbuilder* sb_init();
-void sb_append(stringbuilder sb, const char* string, int strlen);
-void sb_free(stringbuilder sb);
+void sb_append(stringbuilder* sb, const char* string);
+void sb_free(stringbuilder* sb);
 
 #endif

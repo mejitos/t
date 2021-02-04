@@ -266,11 +266,12 @@ typedef struct Parser
 {
     Token** tokens;
     array* declarations;
-    int declarations_length;
-    int declarations_capacity;
 } Parser;
 
 void parser_init(Parser* parser, Token** tokens);
 void parse(Parser* parser);
+// Public functions to make testing easier
+AST_Expression* parse_expression(Parser* parser);
+AST_Statement* parse_statement(Parser* parser);
 
 #endif

@@ -3,10 +3,10 @@
 
 static Type_Specifier parse_type_specifier(Parser* parser);
 static AST_Declaration* parse_declaration(Parser* parser);
-static AST_Statement* parse_statement(Parser* parser);
+// static AST_Statement* parse_statement(Parser* parser);
 static AST_Statement* parse_block_statement(Parser* parser);
 static AST_Statement* parse_return_statement(Parser* parser);
-static AST_Expression* parse_expression(Parser* parser);
+// static AST_Expression* parse_expression(Parser* parser);
 
 
 void parser_init(Parser* parser, Token** tokens)
@@ -81,7 +81,7 @@ static AST_Statement* parse_expression_statement(Parser* parser)
 }
 
 
-static AST_Statement* parse_statement(Parser* parser)
+AST_Statement* parse_statement(Parser* parser)
 {
     switch((*parser->tokens)->kind)
     {
@@ -211,7 +211,7 @@ static AST_Expression* assignment(Parser* parser)
 }
 
 
-static AST_Expression* parse_expression(Parser* parser)
+AST_Expression* parse_expression(Parser* parser)
 {
     return assignment(parser);
 }
@@ -253,5 +253,5 @@ void parse(Parser* parser)
         array_push(parser->declarations, parse_declaration(parser));
     }
 
-    assert(parser->declarations->length == 1);
+    // assert(parser->declarations->length == 1);
 }
