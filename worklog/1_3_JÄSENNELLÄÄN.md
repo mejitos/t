@@ -116,3 +116,16 @@ kätevästi, mutta empä kyllä tiedä parempaakaan tapaa testata jäsentäjää
 testattua sitä rakennetta mitä se tuottaa, todella kätevällä tavalla. Muussa tapauksessa täytyisi
 käsin käydä läpi jokainen luodun puun solmu ja se ei kyllä tule kuuloonkaan. Tässä kyllä tekemistä riittää,
 enkä tosiaan ajatellut, että sitä ihan näin paljoa on. 
+
+
+### Stringbuilder
+
+Mietin tuossa, että testaamista varten varmaan olisi hyvä tehä jonkinsorttinen stringbuilder-systeemi,
+jonka avulla voi rakentaa noita parsimistapuita (?), parsintapuita (?) merkkijonoksi testaamista
+varten. Kuten edellä totesin, niin tällä tapaa se testaaminen käy huomattavasti kätevämmin, kun 
+voidaan muuttaa esimerkiksi lauseke `1 + 2 * 3` muotoon `(1 + (2 * 3))` ja sitä kautta sitten
+tarkastella jäsentääkö jäsentäjämme oikein vai ei. En ole aikaisemmin tehnyt mitään stringbuilderin
+tyylistäkään, mutta mietin sellaista (yllättäen) suoraviivaista ratkaisua siihenkin. Käytännössä
+lähes identtinen toteutus tuon dynaamisen taulukon kanssa, mutta asioiden lisääminen tapahtuu 
+muistia/puskureita kopioimalla. Tämä onnistuisi ehkä nytkin ovelalla `snprintf` käytöllä, mutta
+uskon tämän olevan parempi vaihtoehto.
