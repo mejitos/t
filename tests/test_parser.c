@@ -199,6 +199,7 @@ void test_parser()
 
 
     // Base cases for expression statements
+    // ---- binary arithmetics
     lexer_init(&lexer, "1 + 1;");
     lex(&lexer);
 
@@ -238,6 +239,21 @@ void test_parser()
     statement_free(statement);
     parser_free(&parser);
     lexer_free(&lexer);
+
+    // Base case for declaration statement
+    lexer_init(&lexer, "BAR: int = 0;");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    statement = parse_statement(&parser);
+
+    assert(statement->kind == STATEMENT_DECLARATION);
+    assert(statement->declaration->kind == DECLARATION_VARIABLE);
+
+    statement_free(statement);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
 
     // Base case for variable delcaration
     source = "foo: int = 42;";

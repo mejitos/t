@@ -182,6 +182,7 @@ typedef enum Statement_Kind
     STATEMENT_IF,
     STATEMENT_WHILE,
     STATEMENT_RETURN,
+    STATEMENT_DECLARATION,
 } Statement_Kind;
 
 
@@ -190,6 +191,7 @@ struct AST_Statement
     Statement_Kind kind;
     union {
         AST_Expression* expression;
+        AST_Declaration* declaration;
         struct {
             array* statements;
             int statements_length;
@@ -253,6 +255,7 @@ AST_Declaration* variable_declaration(Token* identifier, Type_Specifier specifie
 AST_Statement* expression_statement(AST_Expression* expression);
 AST_Statement* block_statement(array* statements, int statements_length);
 AST_Statement* return_statement(AST_Expression* value);
+AST_Statement* declaration_statement(AST_Declaration* declaration);
 AST_Expression* literal_expression(Token* literal);
 AST_Expression* unary_expression(Token* _operator, AST_Expression* operand);
 AST_Expression* binary_expression(AST_Expression* left, Token* _operator, AST_Expression* right);

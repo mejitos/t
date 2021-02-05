@@ -56,6 +56,16 @@ AST_Statement* return_statement(AST_Expression* value)
 }
 
 
+AST_Statement* declaration_statement(AST_Declaration* declaration)
+{
+    AST_Statement* statement = xcalloc(1, sizeof (AST_Statement));
+    statement->kind = STATEMENT_DECLARATION;
+    statement->declaration = declaration;
+
+    return statement;
+}
+
+
 AST_Expression* literal_expression(Token* literal)
 {
     AST_Expression* expression = xcalloc(1, sizeof (AST_Expression));
@@ -189,6 +199,9 @@ void statement_free(AST_Statement* statement)
             break;
         case STATEMENT_RETURN:
             expression_free(statement->_return.value);
+            break;
+        case STATEMENT_DECLARATION:
+            declaration_free(statement->declaration);
             break;
     }
 

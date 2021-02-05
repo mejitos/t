@@ -101,6 +101,15 @@ static AST_Statement* parse_expression_statement(Parser* parser)
 }
 
 
+static AST_Statement* parse_declaration_statement(Parser* parser)
+{
+    AST_Declaration* declaration = parse_declaration(parser);
+    // NOTE(timo): The closing semicolon is handled while parsing the declaration
+    
+    return declaration_statement(declaration);
+}
+
+
 AST_Statement* parse_statement(Parser* parser)
 {
     switch((*parser->tokens)->kind)
@@ -109,6 +118,8 @@ AST_Statement* parse_statement(Parser* parser)
             return parse_block_statement(parser);
         case TOKEN_RETURN:
             return parse_return_statement(parser);
+        case TOKEN_IDENTIFIER:
+            return parse_declaration_statement(parser);
         default:
             return parse_expression_statement(parser);
     }
