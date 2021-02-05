@@ -16,6 +16,7 @@ void compile(const char* source)
     parse(&parser);
 
 
-    // Free the lexers allocated data
-    // lexer_free(&lexer);
+    // Teardown
+    parser_free(&parser);
+    lexer_free(&lexer);
 }

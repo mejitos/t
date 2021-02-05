@@ -24,12 +24,18 @@ void lexer_free(Lexer* lexer)
         if ((*it)->kind == TOKEN_IDENTIFIER) 
         {
             free((char*)(*it)->identifier);
+            (*it)->identifier = NULL;
         }
 
         free(*it);
+        *it = NULL;
     }
 
     free(lexer->tokens);
+    lexer->tokens = NULL;
+
+    // NOTE(timo); The lexer itself is not freed, since it being 
+    // initialized in the stack at the top level function.
 }
 
 

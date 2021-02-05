@@ -10,6 +10,27 @@ array* array_init(size_t item_size)
 }
 
 
+void array_free(array* arr)
+{
+    if (arr->items)
+    {
+        for (int i = arr->length - 1; i < arr->capacity; i++)
+        // for (int i = 0; i < arr->capacity; i++)
+        {
+            // if (arr->items[i] == NULL) continue;
+            free(arr->items[i]);
+            arr->items[i] = NULL;
+        }
+
+        free(arr->items);
+        arr->items = NULL;
+    }
+
+    free(arr);
+    arr = NULL;
+}
+
+
 void array_push(array* arr, void* item)
 {
     if (! arr->items)

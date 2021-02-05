@@ -19,7 +19,7 @@ typedef struct array
 } array;
 
 array* array_init(size_t item_size);
-void array_init2(array* arr, size_t item_size);
+void array_free(array* arr);
 void array_push(array* arr, void* item);
 
 #endif

@@ -6,10 +6,19 @@
 static bool not_error = true;
 const char* lexemes[] = 
 {
-    [TOKEN_PLUS] = "+",
-    [TOKEN_MINUS] = "-",
-    [TOKEN_MULTIPLY] = "*",
-    [TOKEN_DIVIDE] = "/",
+    [TOKEN_PLUS]                = "+",
+    [TOKEN_MINUS]               = "-",
+    [TOKEN_MULTIPLY]            = "*",
+    [TOKEN_DIVIDE]              = "/",
+    [TOKEN_IS_EQUAL]            = "==",
+    [TOKEN_NOT_EQUAL]           = "!=",
+    [TOKEN_LESS_THAN]           = "<",
+    [TOKEN_LESS_THAN_EQUAL]     = "<=",
+    [TOKEN_GREATER_THAN]        = ">",
+    [TOKEN_GREATER_THAN_EQUAL]  = ">=",
+    [TOKEN_AND]                 = "and",
+    [TOKEN_OR]                  = "or",
+    [TOKEN_NOT]                 = "not",
 };
 
 
@@ -134,9 +143,37 @@ void test_parser()
     Parser parser;
     AST_Expression* expression;
     AST_Statement* statement;
-    // stringbuilder is used to test out more complex cases
+    AST_Declaration* declaration;
     stringbuilder* sb;
 
+
+    // Base cases for expression statements
+    lexer_init(&lexer, "1 + 1;");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    statement = parse_statement(&parser);
+
+    assert(statement->kind == STATEMENT_EXPRESSION);
+
+    statement_free(statement);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    // Base case for block statement
+    lexer_init(&lexer, "{ 1 + 2;\n 3 * 4;\nreturn 0; }");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    statement = parse_statement(&parser);
+
+    assert(statement->kind == STATEMENT_BLOCK);
+    assert(statement->block.statements_length == 3);
+
+    statement_free(statement);
+    parser_free(&parser);
+    lexer_free(&lexer);
+    
     // Base case for return statement
     lexer_init(&lexer, "return 0;");
     lex(&lexer);
@@ -147,6 +184,27 @@ void test_parser()
     assert(statement->kind == STATEMENT_RETURN);
     assert(statement->_return.value->literal->integer_value == 0);
 
+    statement_free(statement);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    // Base case for main program
+    const char* source = "main: int = (argc: int, argv: int) => {"
+                         "    return 0;"
+                         "};";
+
+    lexer_init(&lexer, source); 
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    declaration = parse_declaration(&parser);
+
+    assert(declaration->kind == DECLARATION_FUNCTION);
+
+    declaration_free(declaration);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
     // Integer literal expression
     lexer_init(&lexer, "767");
     lex(&lexer);
@@ -155,6 +213,9 @@ void test_parser()
     expression = parse_expression(&parser);
     
     assert_literal_expression_integer(expression, 767);
+    expression_free(expression);
+    parser_free(&parser);
+    lexer_free(&lexer);
 
     // Boolean literal expression
     lexer_init(&lexer, "true");
@@ -164,6 +225,9 @@ void test_parser()
     expression = parse_expression(&parser);
 
     assert_literal_expression_boolean(expression, true);
+    expression_free(expression);
+    parser_free(&parser);
+    lexer_free(&lexer);
 
     // Boolean literal expression
     lexer_init(&lexer, "false");
@@ -171,9 +235,13 @@ void test_parser()
 
     parser_init(&parser, lexer.tokens);
     expression = parse_expression(&parser);
-
+    
     assert_literal_expression_boolean(expression, false);
 
+    expression_free(expression);
+    parser_free(&parser);
+    lexer_free(&lexer);
+    
     // Binary plus expression
     lexer_init(&lexer, "1 + 2");
     lex(&lexer);
@@ -182,6 +250,10 @@ void test_parser()
     expression = parse_expression(&parser);
     
     assert_binary_expression_integer(expression, TOKEN_PLUS, 1, 2);
+
+    expression_free(expression);
+    parser_free(&parser);
+    lexer_free(&lexer);
         
     // Binary minus expression
     lexer_init(&lexer, "3 - 4");
@@ -192,6 +264,10 @@ void test_parser()
 
     assert_binary_expression_integer(expression, TOKEN_MINUS, 3, 4);
 
+    expression_free(expression);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
     // Binary multiply expression
     lexer_init(&lexer, "5 * 6");
     lex(&lexer);
@@ -200,6 +276,10 @@ void test_parser()
     expression = parse_expression(&parser);
 
     assert_binary_expression_integer(expression, TOKEN_MULTIPLY, 5, 6);
+
+    expression_free(expression);
+    parser_free(&parser);
+    lexer_free(&lexer);
 
     // Binary division expression
     lexer_init(&lexer, "7 / 8");
@@ -210,6 +290,10 @@ void test_parser()
 
     assert_binary_expression_integer(expression, TOKEN_DIVIDE, 7, 8);
 
+    expression_free(expression);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
     // Unary minus expression
     lexer_init(&lexer, "-42");
     lex(&lexer);
@@ -218,6 +302,10 @@ void test_parser()
     expression = parse_expression(&parser);
     
     assert_unary_expression_integer(expression, TOKEN_MINUS, 42);
+
+    expression_free(expression);
+    parser_free(&parser);
+    lexer_free(&lexer);
 
     // Unary plus expression
     lexer_init(&lexer, "+42");
@@ -228,6 +316,10 @@ void test_parser()
 
     assert_unary_expression_integer(expression, TOKEN_PLUS, 42);
 
+    expression_free(expression);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
     // Equality expression
     lexer_init(&lexer, "1 == 2");
     lex(&lexer);
@@ -237,6 +329,11 @@ void test_parser()
     
     assert_binary_expression_integer(expression, TOKEN_IS_EQUAL, 1, 2);
 
+    expression_free(expression);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    // ----
     lexer_init(&lexer, "1 != 2");
     lex(&lexer);
 
@@ -245,6 +342,10 @@ void test_parser()
 
     assert_binary_expression_integer(expression, TOKEN_NOT_EQUAL, 1, 2);
 
+    expression_free(expression);
+    parser_free(&parser);
+    lexer_free(&lexer);
+    
     // Ordering expression
     lexer_init(&lexer, "1 < 2");
     lex(&lexer);
@@ -254,6 +355,11 @@ void test_parser()
 
     assert_binary_expression_integer(expression, TOKEN_LESS_THAN, 1, 2);
 
+    expression_free(expression);
+    parser_free(&parser);
+    lexer_free(&lexer);
+    
+    // ----
     lexer_init(&lexer, "1 <= 2");
     lex(&lexer);
 
@@ -262,6 +368,11 @@ void test_parser()
 
     assert_binary_expression_integer(expression, TOKEN_LESS_THAN_EQUAL, 1, 2);
 
+    expression_free(expression);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    // ----
     lexer_init(&lexer, "1 > 2");
     lex(&lexer);
 
@@ -270,6 +381,11 @@ void test_parser()
 
     assert_binary_expression_integer(expression, TOKEN_GREATER_THAN, 1, 2);
 
+    expression_free(expression);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    // ----
     lexer_init(&lexer, "1 >= 2");
     lex(&lexer);
 
@@ -277,6 +393,10 @@ void test_parser()
     expression = parse_expression(&parser);
 
     assert_binary_expression_integer(expression, TOKEN_GREATER_THAN_EQUAL, 1, 2);
+    
+    expression_free(expression);
+    parser_free(&parser);
+    lexer_free(&lexer);
 
     // Test for correct order of operations with arithmetics 
     sb = sb_init();
@@ -290,6 +410,9 @@ void test_parser()
     assert_expression_str(sb_to_string(sb), "(1+(2*3))");
 
     sb_free(sb);
+    expression_free(expression);
+    parser_free(&parser);
+    lexer_free(&lexer);
     
     // Test for correct order of operations with parenthesized expressions
     sb = sb_init();
@@ -303,6 +426,9 @@ void test_parser()
     assert_expression_str(sb_to_string(sb), "((1+2)*3)");
 
     sb_free(sb);
+    expression_free(expression);
+    parser_free(&parser);
+    lexer_free(&lexer);
 
     // Sequencial unary operators
     sb = sb_init();
@@ -316,6 +442,9 @@ void test_parser()
     assert_expression_str(sb_to_string(sb), "(-(-(-(-7))))");
 
     sb_free(sb);
+    expression_free(expression);
+    parser_free(&parser);
+    lexer_free(&lexer);
 
     // 10 - -7
     sb = sb_init();
@@ -329,6 +458,9 @@ void test_parser()
     assert_expression_str(sb_to_string(sb), "(10-(-7))");
 
     sb_free(sb);
+    expression_free(expression);
+    parser_free(&parser);
+    lexer_free(&lexer);
 
     if (not_error) printf("OK\n");
     else printf("\n");

@@ -242,7 +242,6 @@ struct AST_Expression
         struct {
             array* parameters;
             int arity;
-            int parameters_capacity;
             AST_Statement* body;
         } function;
     };
@@ -250,6 +249,7 @@ struct AST_Expression
 
 
 AST_Declaration* function_declaration(Token* identifier, Type_Specifier specifier, AST_Expression* initializer);
+AST_Statement* expression_statement(AST_Expression* expression);
 AST_Statement* block_statement(array* statements, int statements_length);
 AST_Statement* return_statement(AST_Expression* value);
 AST_Expression* literal_expression(Token* literal);
@@ -257,6 +257,9 @@ AST_Expression* unary_expression(Token* _operator, AST_Expression* operand);
 AST_Expression* binary_expression(AST_Expression* left, Token* _operator, AST_Expression* right);
 Parameter* function_parameter(Token* identifier, Type_Specifier specifier);
 AST_Expression* function_expression(array* parameters, int arity, AST_Statement* body);
+void declaration_free(AST_Declaration* declaration);
+void statement_free(AST_Statement* statement);
+void expression_free(AST_Expression* expression);
 
 
 /*
@@ -271,9 +274,11 @@ typedef struct Parser
 } Parser;
 
 void parser_init(Parser* parser, Token** tokens);
+void parser_free(Parser* parser);
 void parse(Parser* parser);
 // Public functions to make testing easier
 AST_Expression* parse_expression(Parser* parser);
 AST_Statement* parse_statement(Parser* parser);
+AST_Declaration* parse_declaration(Parser* parser);
 
 #endif
