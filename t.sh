@@ -10,9 +10,12 @@ USAGE="
 Usage: t.sh [COMMAND]
 
 Commands:
-    build: Builds the compiler in the build directory
-    run: Builds the compiler and runs the created executable
-    test: Builds the compiler in the tests directory and runs the tests
+    help:       Show the help/usage message
+    build:      Builds the compiler in the build directory
+    run:        Builds the compiler and runs the created executable
+    test:       Builds the compiler in the tests directory and runs the tests
+    vgrun:      Builds the compiler and runs the program with Valgrind analysis
+    vgtest:     Builds the compiler in the testst directory and runs the tests with Valgrind analysis
 "
 
 if [ $# -ne 1 ]; then
@@ -37,22 +40,25 @@ build () {
 # Run different commands based on passed argument
 # TODO(timo): Add command for valgrind analysis
 case $COMMAND in
-    "test" )
+    help )
+        echo -e "$USAGE"
+        exit 0;;
+    test )
         build "$TEST_BUILD_DIR" "tests/main.c" "$TEST_BUILD_DIR/$TEST_EXECUTABLE" "tests/*.c src/lexer.c src/array.c src/parser.c src/stringbuilder.c src/ast.c src/token.c src/memory.c src/error.c"
         $TEST_BUILD_DIR/$TEST_EXECUTABLE
         exit 0;;
-    "run" )
+    run )
         build "$BUILD_DIR" "$SRC_DIR/main.c" "$BUILD_DIR/$EXECUTABLE" "$SRC_DIR/*.c"
         $BUILD_DIR/$EXECUTABLE
         exit 0;;
-    "build" )
+    build )
         build "$BUILD_DIR" "$SRC_DIR/main.c" "$BUILD_DIR/$EXECUTABLE" "$SRC_DIR/*.c"
         exit 0;;
-    "vgrun" )
+    vgrun )
         build "$BUILD_DIR" "$SRC_DIR/main.c" "$BUILD_DIR/$EXECUTABLE" "$SRC_DIR/*.c"
         valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --verbose $BUILD_DIR/$EXECUTABLE
         exit 0;;
-    "vgtest" )
+    vgtest )
         build "$TEST_BUILD_DIR" "tests/main.c" "$TEST_BUILD_DIR/$TEST_EXECUTABLE" "tests/*.c src/lexer.c src/array.c src/parser.c src/stringbuilder.c src/ast.c src/token.c src/memory.c src/error.c"
         valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --verbose $TEST_BUILD_DIR/$TEST_EXECUTABLE
         exit 0;;
