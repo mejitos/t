@@ -2,11 +2,8 @@
 
 
 static Type_Specifier parse_type_specifier(Parser* parser);
-// static AST_Declaration* parse_declaration(Parser* parser);
-// static AST_Statement* parse_statement(Parser* parser);
 static AST_Statement* parse_block_statement(Parser* parser);
 static AST_Statement* parse_return_statement(Parser* parser);
-// static AST_Expression* parse_expression(Parser* parser);
 
 
 void parser_init(Parser* parser, Token** tokens)
@@ -40,7 +37,7 @@ void expect_token(Token* token, Token_Kind kind)
     if (token->kind == kind) return;
     else
     {
-        printf("Invalid token kind '%d', expected '%d'\n", token->kind, kind);
+        error(token->position, "Invalid token kind '%d', expected '%d'\n", token->kind, kind);
         exit(1);
     }
 }
@@ -134,10 +131,15 @@ static AST_Expression* primary(Parser* parser)
         }
         case TOKEN_LEFT_PARENTHESIS:
             parser->tokens++;
+            // TODO(timo): We should also peek for the closing parenthesis.
+            // If it is found, there is possibility for function without parameters.
             if ((*parser->tokens)->kind == TOKEN_IDENTIFIER)
             {
                 array* parameters = array_init(sizeof (Parameter*));
-
+                
+                // TODO(timo): This thing doesn't work in a situation where no
+                // parameters are being defined, since we don't even come in
+                // here in that case
                 do {
                     if ((*parser->tokens)->kind == TOKEN_COMMA) parser->tokens++;
                     
@@ -177,8 +179,9 @@ static AST_Expression* primary(Parser* parser)
 
 static AST_Expression* unary(Parser* parser)
 {
-    // TODO(timo): Add the logical and
-    if ((*parser->tokens)->kind == TOKEN_MINUS || (*parser->tokens)->kind == TOKEN_PLUS)
+    if ((*parser->tokens)->kind == TOKEN_MINUS || 
+        (*parser->tokens)->kind == TOKEN_PLUS ||
+        (*parser->tokens)->kind == TOKEN_NOT)
     {
         Token* _operator = *parser->tokens;
         parser->tokens++;
@@ -259,6 +262,14 @@ static AST_Expression* and(Parser* parser)
 {
     AST_Expression* expression = equality(parser);
 
+    while ((*parser->tokens)->kind == TOKEN_AND)
+    {
+        Token* _operator = *parser->tokens;
+        parser->tokens++;
+        AST_Expression* right = equality(parser);
+        expression = binary_expression(expression, _operator, right);
+    }
+
     return expression;
 }
 
@@ -266,6 +277,14 @@ static AST_Expression* and(Parser* parser)
 static AST_Expression* or(Parser* parser)
 {
     AST_Expression* expression = and(parser);
+
+    while ((*parser->tokens)->kind == TOKEN_OR)
+    {
+        Token* _operator = *parser->tokens;
+        parser->tokens++;
+        AST_Expression* right = and(parser);
+        expression = binary_expression(expression, _operator, right);
+    }
 
     return expression;
 }
@@ -308,9 +327,7 @@ AST_Declaration* parse_declaration(Parser* parser)
         return function_declaration(identifier, specifier, initializer);
     else
         printf("Created variable declaration\n");
-    
-    // TODO(timo): Create declaration and return it
-    return NULL;
+        return NULL;
 }
 
 

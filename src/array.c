@@ -14,7 +14,9 @@ void array_free(array* arr)
 {
     if (arr->items)
     {
-        for (int i = arr->length - 1; i < arr->capacity; i++)
+        // NOTE(timo): Frees the array elements from the first free element onwards. 
+        // User of the array is responsible of freeing the memory they use
+        for (int i = arr->length; i < arr->capacity; i++)
         // for (int i = 0; i < arr->capacity; i++)
         {
             // if (arr->items[i] == NULL) continue;

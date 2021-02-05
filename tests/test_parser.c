@@ -118,6 +118,13 @@ void assert_unary_expression_integer(AST_Expression* expression, Token_Kind _ope
 }
 
 
+void assert_unary_expression_boolean(AST_Expression* expression, Token_Kind _operator, bool operand)
+{
+    assert_unary_expression(expression, _operator, EXPRESSION_LITERAL);
+    assert_literal_expression_boolean(expression->unary.operand, operand);
+}
+
+
 void assert_binary_expression(AST_Expression* expression, Token_Kind _operator, Expression_Kind left, Expression_Kind right)
 {
     assert(expression->kind == EXPRESSION_BINARY);
@@ -132,6 +139,14 @@ void assert_binary_expression_integer(AST_Expression* expression, Token_Kind _op
     assert_binary_expression(expression, _operator, EXPRESSION_LITERAL, EXPRESSION_LITERAL);
     assert_literal_expression_integer(expression->binary.left, left);
     assert_literal_expression_integer(expression->binary.right, right);
+}
+
+
+void assert_binary_expression_boolean(AST_Expression* expression, Token_Kind _operator, bool left, bool right)
+{
+    assert_binary_expression(expression, _operator, EXPRESSION_LITERAL, EXPRESSION_LITERAL);
+    assert_literal_expression_boolean(expression->binary.left, left);
+    assert_literal_expression_boolean(expression->binary.right, right);
 }
 
 
@@ -397,6 +412,47 @@ void test_parser()
     expression_free(expression);
     parser_free(&parser);
     lexer_free(&lexer);
+
+    // Logical expressions
+    // --- and
+    lexer_init(&lexer, "true and false");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    expression = parse_expression(&parser);
+
+    assert_binary_expression_boolean(expression, TOKEN_AND, true, false);
+    
+    expression_free(expression);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    // --- or 
+    lexer_init(&lexer, "true or false");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    expression = parse_expression(&parser);
+
+    assert_binary_expression_boolean(expression, TOKEN_OR, true, false);
+    
+    expression_free(expression);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    // --- not
+    lexer_init(&lexer, "not true");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    expression = parse_expression(&parser);
+
+    assert_unary_expression_boolean(expression, TOKEN_NOT, true);
+    
+    expression_free(expression);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
 
     // Test for correct order of operations with arithmetics 
     sb = sb_init();
