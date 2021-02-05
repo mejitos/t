@@ -320,14 +320,14 @@ AST_Declaration* parse_declaration(Parser* parser)
     parser->tokens++;
 
     AST_Expression* initializer = parse_expression(parser);
+
     expect_token((*parser->tokens), TOKEN_SEMICOLON);
     parser->tokens++;
 
     if (initializer->kind == EXPRESSION_FUNCTION)
         return function_declaration(identifier, specifier, initializer);
     else
-        printf("Created variable declaration\n");
-        return NULL;
+        return variable_declaration(identifier, specifier, initializer);
 }
 
 

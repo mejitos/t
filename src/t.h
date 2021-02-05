@@ -249,6 +249,7 @@ struct AST_Expression
 
 
 AST_Declaration* function_declaration(Token* identifier, Type_Specifier specifier, AST_Expression* initializer);
+AST_Declaration* variable_declaration(Token* identifier, Type_Specifier specifier, AST_Expression* initializer);
 AST_Statement* expression_statement(AST_Expression* expression);
 AST_Statement* block_statement(array* statements, int statements_length);
 AST_Statement* return_statement(AST_Expression* value);

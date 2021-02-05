@@ -150,10 +150,31 @@ void assert_binary_expression_boolean(AST_Expression* expression, Token_Kind _op
 }
 
 
+void assert_declaration_variable_integer(AST_Declaration* declaration, const char* identifier, Type_Specifier specifier, int value)
+{
+    assert(declaration->kind == DECLARATION_VARIABLE);
+    assert(strcmp(declaration->identifier->identifier, identifier) == 0);
+    assert(declaration->specifier == specifier);
+    assert(declaration->initializer->kind == EXPRESSION_LITERAL);
+    assert(declaration->initializer->literal->integer_value == value);
+}
+
+
+void assert_declaration_function(AST_Declaration* declaration, const char* identifier, Type_Specifier specifier, int arity)
+{
+    assert(declaration->kind == DECLARATION_FUNCTION);
+    assert(strcmp(declaration->identifier->identifier, identifier) == 0);
+    assert(declaration->specifier == specifier);
+    assert(declaration->initializer->kind == EXPRESSION_FUNCTION);
+    assert(declaration->initializer->function.arity == arity);
+}
+
+
 void test_parser()
 {
     printf("Running parser tests...");
-
+    
+    char* source;
     Lexer lexer;
     Parser parser;
     AST_Expression* expression;
@@ -203,10 +224,8 @@ void test_parser()
     parser_free(&parser);
     lexer_free(&lexer);
 
-    // Base case for main program
-    const char* source = "main: int = (argc: int, argv: int) => {"
-                         "    return 0;"
-                         "};";
+    // Base case for variable delcaration
+    source = "foo: int = 42;";
 
     lexer_init(&lexer, source); 
     lex(&lexer);
@@ -214,7 +233,24 @@ void test_parser()
     parser_init(&parser, lexer.tokens);
     declaration = parse_declaration(&parser);
 
-    assert(declaration->kind == DECLARATION_FUNCTION);
+    assert_declaration_variable_integer(declaration, "foo", TYPE_SPECIFIER_INT, 42);
+
+    declaration_free(declaration);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    // Base case for main program / function declaration
+    source = "main: int = (argc: int, argv: int) => {"
+             "    return 0;"
+             "};";
+
+    lexer_init(&lexer, source); 
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    declaration = parse_declaration(&parser);
+
+    assert_declaration_function(declaration, "main", TYPE_SPECIFIER_INT, 2);
 
     declaration_free(declaration);
     parser_free(&parser);

@@ -13,6 +13,18 @@ AST_Declaration* function_declaration(Token* identifier, Type_Specifier specifie
 }
 
 
+AST_Declaration* variable_declaration(Token* identifier, Type_Specifier specifier, AST_Expression* initializer)
+{
+    AST_Declaration* declaration = xcalloc(1, sizeof (AST_Declaration));
+    declaration->kind = DECLARATION_VARIABLE;
+    declaration->identifier = identifier;
+    declaration->specifier = specifier;
+    declaration->initializer = initializer;
+
+    return declaration;
+}
+
+
 AST_Statement* expression_statement(AST_Expression* expression)
 {
     AST_Statement* statement = xcalloc(1, sizeof (AST_Statement));
