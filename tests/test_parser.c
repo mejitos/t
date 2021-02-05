@@ -197,6 +197,39 @@ void test_parser()
     AST_Declaration* declaration;
     stringbuilder* sb;
 
+    // Small program which declares variable, assigns new value to it and returns it
+    source = "main: int = (argc: int, argv: int) => {\n"
+             "    foo: int = 0;\n"
+             "    foo := 453;\n"
+             "\n"
+             "    return foo;\n"
+             "};";
+
+    lexer_init(&lexer, source); 
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    declaration = parse_declaration(&parser);
+
+    assert_declaration_function(declaration, "main", TYPE_SPECIFIER_INT, 2);
+    array* statements = declaration->initializer->function.body->block.statements;
+    assert(statements->length == 3);
+
+    statement = (AST_Statement*)*statements->items++;
+    assert(statement->kind == STATEMENT_DECLARATION);
+    assert_declaration_variable_integer(statement->declaration, "foo", TYPE_SPECIFIER_INT, 0);
+
+    statement = (AST_Statement*)*statements->items++;
+    assert(statement->kind == STATEMENT_EXPRESSION);
+    assert_assignment_expression_integer(statement->expression, "foo", 453);
+
+    statement = (AST_Statement*)*statements->items;
+    assert(statement->kind == STATEMENT_RETURN);
+    statements->items -= 2; // rewind the array
+    
+    declaration_free(declaration);
+    parser_free(&parser);
+    lexer_free(&lexer);
 
     // Base cases for expression statements
     // ---- binary arithmetics
@@ -248,7 +281,7 @@ void test_parser()
     statement = parse_statement(&parser);
 
     assert(statement->kind == STATEMENT_DECLARATION);
-    assert(statement->declaration->kind == DECLARATION_VARIABLE);
+    assert_declaration_variable_integer(statement->declaration, "BAR", TYPE_SPECIFIER_INT, 0);
 
     statement_free(statement);
     parser_free(&parser);

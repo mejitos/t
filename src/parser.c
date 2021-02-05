@@ -43,6 +43,12 @@ void expect_token(Token* token, Token_Kind kind)
 }
 
 
+Token* peek(Parser* parser)
+{
+    return *(parser->tokens + 1);
+}
+
+
 static Type_Specifier parse_type_specifier(Parser* parser)
 {
     switch ((*parser->tokens)->kind)
@@ -119,7 +125,10 @@ AST_Statement* parse_statement(Parser* parser)
         case TOKEN_RETURN:
             return parse_return_statement(parser);
         case TOKEN_IDENTIFIER:
-            return parse_declaration_statement(parser);
+            // NOTE(timo): This check is needed to distinguish between declaration 
+            // and assignment since we don't have keywords for declaration
+            if (peek(parser)->kind != TOKEN_COLON_ASSIGN)
+                return parse_declaration_statement(parser);
         default:
             return parse_expression_statement(parser);
     }
