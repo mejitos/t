@@ -256,6 +256,8 @@ AST_Statement* return_statement(AST_Expression* value);
 AST_Expression* literal_expression(Token* literal);
 AST_Expression* unary_expression(Token* _operator, AST_Expression* operand);
 AST_Expression* binary_expression(AST_Expression* left, Token* _operator, AST_Expression* right);
+AST_Expression* variable_expression(Token* identifier);
+AST_Expression* assignment_expression(AST_Expression* variable, AST_Expression* value);
 Parameter* function_parameter(Token* identifier, Type_Specifier specifier);
 AST_Expression* function_expression(array* parameters, int arity, AST_Statement* body);
 void declaration_free(AST_Declaration* declaration);

@@ -66,7 +66,6 @@ AST_Expression* literal_expression(Token* literal)
 }
 
 
-
 AST_Expression* unary_expression(Token* _operator, AST_Expression* operand)
 {
     AST_Expression* expression = xcalloc(1, sizeof (AST_Expression));
@@ -85,6 +84,27 @@ AST_Expression* binary_expression(AST_Expression* left, Token* _operator, AST_Ex
     expression->binary.left = left;
     expression->binary._operator = _operator;
     expression->binary.right = right;
+
+    return expression;
+}
+
+
+AST_Expression* variable_expression(Token* identifier)
+{
+    AST_Expression* expression = xcalloc(1, sizeof (AST_Expression));
+    expression->kind = EXPRESSION_VARIABLE;
+    expression->identifier = identifier;
+
+    return expression;
+}
+
+
+AST_Expression* assignment_expression(AST_Expression* variable, AST_Expression* value)
+{
+    AST_Expression* expression = xcalloc(1, sizeof (AST_Expression));
+    expression->kind = EXPRESSION_ASSIGNMENT;
+    expression->assignment.variable = variable;
+    expression->assignment.value = value;
 
     return expression;
 }
@@ -126,6 +146,14 @@ void expression_free(AST_Expression* expression)
         case EXPRESSION_BINARY:
             expression_free(expression->binary.left);
             expression_free(expression->binary.right);
+            break;
+        case EXPRESSION_VARIABLE:
+            // NOTE(timo); This can be just free'd since the expression
+            // only has the identifier, and lexer will free the token
+            break;
+        case EXPRESSION_ASSIGNMENT:
+            expression_free(expression->assignment.variable);
+            expression_free(expression->assignment.value);
             break;
         case EXPRESSION_FUNCTION:
             for (int i = 0; i < expression->function.parameters->length; i++)

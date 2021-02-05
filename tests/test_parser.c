@@ -150,6 +150,21 @@ void assert_binary_expression_boolean(AST_Expression* expression, Token_Kind _op
 }
 
 
+void assert_variable_expression(AST_Expression* expression, const char* identifier)
+{
+    assert(expression->kind == EXPRESSION_VARIABLE);
+    assert(strcmp(expression->identifier->identifier, identifier) == 0);
+}
+
+
+void assert_assignment_expression_integer(AST_Expression* expression, const char* identifier, int value)
+{
+    assert(expression->kind == EXPRESSION_ASSIGNMENT);
+    assert_variable_expression(expression->assignment.variable, identifier);
+    assert_literal_expression_integer(expression->assignment.value, value);
+}
+
+
 void assert_declaration_variable_integer(AST_Declaration* declaration, const char* identifier, Type_Specifier specifier, int value)
 {
     assert(declaration->kind == DECLARATION_VARIABLE);
@@ -484,6 +499,32 @@ void test_parser()
     expression = parse_expression(&parser);
 
     assert_unary_expression_boolean(expression, TOKEN_NOT, true);
+    
+    expression_free(expression);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    // Base case for variable expression
+    lexer_init(&lexer, "foo");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    expression = parse_expression(&parser);
+
+    assert_variable_expression(expression, "foo");
+    
+    expression_free(expression);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    // Base case for assignment expression
+    lexer_init(&lexer, "foo := 345");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    expression = parse_expression(&parser);
+
+    assert_assignment_expression_integer(expression, "foo", 345);
     
     expression_free(expression);
     parser_free(&parser);

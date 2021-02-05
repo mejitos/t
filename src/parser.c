@@ -129,6 +129,12 @@ static AST_Expression* primary(Parser* parser)
             parser->tokens++;
             return expression;
         }
+        case TOKEN_IDENTIFIER:
+        {
+            AST_Expression* expression = variable_expression(*parser->tokens);
+            parser->tokens++;
+            return expression;
+        }
         case TOKEN_LEFT_PARENTHESIS:
             parser->tokens++;
             // TODO(timo): We should also peek for the closing parenthesis.
@@ -293,6 +299,21 @@ static AST_Expression* or(Parser* parser)
 static AST_Expression* assignment(Parser* parser)
 {
     AST_Expression* expression = or(parser);
+
+    if ((*parser->tokens)->kind == TOKEN_COLON_ASSIGN)
+    {
+        parser->tokens++;
+        AST_Expression* value = assignment(parser);
+
+        if (expression->kind == EXPRESSION_VARIABLE)
+            // Advancement will be handled elsewhere
+            return assignment_expression(expression, value);
+        else
+        {
+            printf("Invalid assignment target, expected a variable.\n");
+            exit(1);
+        }
+    }
 
     return expression;
 }
