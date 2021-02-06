@@ -287,4 +287,18 @@ AST_Expression* parse_expression(Parser* parser);
 AST_Statement* parse_statement(Parser* parser);
 AST_Declaration* parse_declaration(Parser* parser);
 
+
+
+/*
+ *  Interpreter
+ *
+ *  File: interpreter.c
+ */
+typedef struct Interpreter
+{
+    array* declarations;
+} Interpreter;
+
+void interpret(array* declarations);
+
 #endif
