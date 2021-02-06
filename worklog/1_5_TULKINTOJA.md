@@ -17,3 +17,17 @@ ainakaan tällaisenaan. Kaiketi siihenkin joku clang-murre jostain löytyisi, mu
 se toimisi vain sen alla, eikä siten ole mielestäni hyvä ratkaisu. Pysyttelen myös melko
 tiukasti C99 alaisuudessa. Pitää siis luoda oma abstraktionsa arvolle ja varmaan muutama
 apufunktio, joiden avulla voi tarkastaa tyyppejä nopeasti.
+
+
+## Vastuunjaoista
+
+Tuossa kauppamatkan aikana vähän pohdiskelin näitä eri osien vastuita samalla, kun pohdin,
+että kenen tehtävä on esimerkiks luoda noita `Value` tietueita. Tulin siihen lopputulokseen,
+että kyllähän se on tarkastajan tehtävä. Tulin samalla siihen lopputulokseen, että selaajan
+tehtävä esimerkiksi ei kyllä tarvisi lainkaan olla arvojen päättäminen. Myöskään jäsentäjä
+kun ei tee mitään kyseisellä tiedolla. Näin ollen selaajan tehtäväksi jäisi vain poimia se
+lekseemi, ja tarkastaja sitten tarkastamisen yhteydessä muuntaa lekseemin arvoksi. Näin
+tämä arvoksi muuntaminen tapahtuu vain yhdessä paikassa ja selaajan työtaakka kevenee. Tai
+oikeastaan se selaajan tehtävä täsmentyy paremmin siihen, että mikä sen selaajan tehtävä on =
+luoda sanasia lekseemeistä, ei päättää onko joku asia kokonaisluku tai boolean. Tämä aiheuttaa
+jonkinverran työtä, mutta se on työ joka sitten vain tehdään.
