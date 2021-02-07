@@ -96,18 +96,15 @@ typedef enum Token_Kind
 
 
 /*
- * Represents the analyzed lexeme and its attributes from the source file
+ *  Represents the analyzed lexeme and its attributes from the source file
  *
  */
 typedef struct Token 
 {
     Token_Kind kind;
     Position position;
-    union {
-        const char* identifier;
-        int integer_value;
-        bool boolean_value;
-    };  
+    const char* lexeme;
+    int lexeme_length;
 } Token;
 
 
@@ -116,10 +113,7 @@ typedef struct Token
  *
  *  File: token.c
  */
-Token* token_base(Token_Kind kind, Position position);
-Token* token_integer(int value, Position position);
-Token* token_boolean(bool value, Position position);
-Token* token_identifier(const char* identifier, Position position);
+Token* token(Token_Kind kind, const char* lexeme, int lexeme_length, Position position);
 
 
 /*
@@ -288,17 +282,12 @@ AST_Statement* parse_statement(Parser* parser);
 AST_Declaration* parse_declaration(Parser* parser);
 
 
-
 /*
  *  Interpreter
  *
  *  File: interpreter.c
  */
-typedef struct Interpreter
-{
-    array* declarations;
-} Interpreter;
-
 void interpret(array* declarations);
+
 
 #endif

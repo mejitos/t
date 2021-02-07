@@ -27,32 +27,7 @@ stringbuilder* expression_to_string(AST_Expression* expression, stringbuilder* s
     switch (expression->kind)
     {
         case EXPRESSION_LITERAL:
-            switch (expression->literal->kind)
-            {
-                // TODO(timo): function to turn ints and bools to strings
-                // for now I use this "dumb and boring" way just to get 
-                // things to work. I could implement my own int_to_char later.
-                case TOKEN_INTEGER_LITERAL:
-                {
-                    // Integers will fit into 12 characters, but if 64-bit values
-                    // are used, then we need at least 21 characters
-                    char digit[12];
-                    sprintf(digit, "%d", expression->literal->integer_value);
-                    sb_append(sb, digit);
-
-                    return sb;
-                }
-                case TOKEN_BOOLEAN_LITERAL:
-                    if (expression->literal->boolean_value == true)
-                        sb_append(sb, "true");
-                    else if (expression->literal->boolean_value == false)
-                        sb_append(sb, "false");
-
-                    return sb;
-                default:
-                    sb_append(sb, "unknown literal");
-                    break;
-            }
+            sb_append(sb, expression->literal->lexeme);
             break;
         case EXPRESSION_BINARY:
             sb_append(sb, "(");
@@ -87,19 +62,19 @@ void assert_expression_str(char* result, const char* expected)
 }
 
 
-void assert_literal_expression_integer(AST_Expression* expression, int value)
+void assert_literal_expression_integer(AST_Expression* expression, const char* value)
 {
     assert(expression->kind == EXPRESSION_LITERAL);
     assert(expression->literal->kind == TOKEN_INTEGER_LITERAL);
-    assert(expression->literal->integer_value == value);
+    assert(strcmp(expression->literal->lexeme, value) == 0);
 }
 
 
-void assert_literal_expression_boolean(AST_Expression* expression, bool value)
+void assert_literal_expression_boolean(AST_Expression* expression, const char* value)
 {
     assert(expression->kind == EXPRESSION_LITERAL);
     assert(expression->literal->kind == TOKEN_BOOLEAN_LITERAL);
-    assert(expression->literal->boolean_value == value);
+    assert(strcmp(expression->literal->lexeme, value) == 0);
 }
 
 
@@ -111,14 +86,14 @@ void assert_unary_expression(AST_Expression* expression, Token_Kind _operator, E
 }
 
 
-void assert_unary_expression_integer(AST_Expression* expression, Token_Kind _operator, int operand)
+void assert_unary_expression_integer(AST_Expression* expression, Token_Kind _operator, const char* operand)
 {
     assert_unary_expression(expression, _operator, EXPRESSION_LITERAL);
     assert_literal_expression_integer(expression->unary.operand, operand);
 }
 
 
-void assert_unary_expression_boolean(AST_Expression* expression, Token_Kind _operator, bool operand)
+void assert_unary_expression_boolean(AST_Expression* expression, Token_Kind _operator, const char* operand)
 {
     assert_unary_expression(expression, _operator, EXPRESSION_LITERAL);
     assert_literal_expression_boolean(expression->unary.operand, operand);
@@ -134,7 +109,7 @@ void assert_binary_expression(AST_Expression* expression, Token_Kind _operator, 
 }
 
 
-void assert_binary_expression_integer(AST_Expression* expression, Token_Kind _operator, int left, int right)
+void assert_binary_expression_integer(AST_Expression* expression, Token_Kind _operator, const char* left, const char* right)
 {
     assert_binary_expression(expression, _operator, EXPRESSION_LITERAL, EXPRESSION_LITERAL);
     assert_literal_expression_integer(expression->binary.left, left);
@@ -142,7 +117,7 @@ void assert_binary_expression_integer(AST_Expression* expression, Token_Kind _op
 }
 
 
-void assert_binary_expression_boolean(AST_Expression* expression, Token_Kind _operator, bool left, bool right)
+void assert_binary_expression_boolean(AST_Expression* expression, Token_Kind _operator, const char* left, const char* right)
 {
     assert_binary_expression(expression, _operator, EXPRESSION_LITERAL, EXPRESSION_LITERAL);
     assert_literal_expression_boolean(expression->binary.left, left);
@@ -153,11 +128,11 @@ void assert_binary_expression_boolean(AST_Expression* expression, Token_Kind _op
 void assert_variable_expression(AST_Expression* expression, const char* identifier)
 {
     assert(expression->kind == EXPRESSION_VARIABLE);
-    assert(strcmp(expression->identifier->identifier, identifier) == 0);
+    assert(strcmp(expression->identifier->lexeme, identifier) == 0);
 }
 
 
-void assert_assignment_expression_integer(AST_Expression* expression, const char* identifier, int value)
+void assert_assignment_expression_integer(AST_Expression* expression, const char* identifier, const char* value)
 {
     assert(expression->kind == EXPRESSION_ASSIGNMENT);
     assert_variable_expression(expression->assignment.variable, identifier);
@@ -165,20 +140,19 @@ void assert_assignment_expression_integer(AST_Expression* expression, const char
 }
 
 
-void assert_declaration_variable_integer(AST_Declaration* declaration, const char* identifier, Type_Specifier specifier, int value)
+void assert_declaration_variable_integer(AST_Declaration* declaration, const char* identifier, Type_Specifier specifier, const char* value)
 {
     assert(declaration->kind == DECLARATION_VARIABLE);
-    assert(strcmp(declaration->identifier->identifier, identifier) == 0);
+    assert(strcmp(declaration->identifier->lexeme, identifier) == 0);
     assert(declaration->specifier == specifier);
-    assert(declaration->initializer->kind == EXPRESSION_LITERAL);
-    assert(declaration->initializer->literal->integer_value == value);
+    assert_literal_expression_integer(declaration->initializer, value);
 }
 
 
 void assert_declaration_function(AST_Declaration* declaration, const char* identifier, Type_Specifier specifier, int arity)
 {
     assert(declaration->kind == DECLARATION_FUNCTION);
-    assert(strcmp(declaration->identifier->identifier, identifier) == 0);
+    assert(strcmp(declaration->identifier->lexeme, identifier) == 0);
     assert(declaration->specifier == specifier);
     assert(declaration->initializer->kind == EXPRESSION_FUNCTION);
     assert(declaration->initializer->function.arity == arity);
@@ -188,7 +162,6 @@ void assert_declaration_function(AST_Declaration* declaration, const char* ident
 void test_parser()
 {
     printf("Running parser tests...");
-    
     char* source;
     Lexer lexer;
     Parser parser;
@@ -217,11 +190,11 @@ void test_parser()
 
     statement = (AST_Statement*)*statements->items++;
     assert(statement->kind == STATEMENT_DECLARATION);
-    assert_declaration_variable_integer(statement->declaration, "foo", TYPE_SPECIFIER_INT, 0);
+    assert_declaration_variable_integer(statement->declaration, "foo", TYPE_SPECIFIER_INT, "0");
 
     statement = (AST_Statement*)*statements->items++;
     assert(statement->kind == STATEMENT_EXPRESSION);
-    assert_assignment_expression_integer(statement->expression, "foo", 453);
+    assert_assignment_expression_integer(statement->expression, "foo", "453");
 
     statement = (AST_Statement*)*statements->items;
     assert(statement->kind == STATEMENT_RETURN);
@@ -240,6 +213,7 @@ void test_parser()
     statement = parse_statement(&parser);
 
     assert(statement->kind == STATEMENT_EXPRESSION);
+    assert_binary_expression_integer(statement->expression, TOKEN_PLUS, "1", "1");
 
     statement_free(statement);
     parser_free(&parser);
@@ -267,7 +241,7 @@ void test_parser()
     statement = parse_statement(&parser);
 
     assert(statement->kind == STATEMENT_RETURN);
-    assert(statement->_return.value->literal->integer_value == 0);
+    assert_literal_expression_integer(statement->_return.value, "0");
 
     statement_free(statement);
     parser_free(&parser);
@@ -281,7 +255,7 @@ void test_parser()
     statement = parse_statement(&parser);
 
     assert(statement->kind == STATEMENT_DECLARATION);
-    assert_declaration_variable_integer(statement->declaration, "BAR", TYPE_SPECIFIER_INT, 0);
+    assert_declaration_variable_integer(statement->declaration, "BAR", TYPE_SPECIFIER_INT, "0");
 
     statement_free(statement);
     parser_free(&parser);
@@ -297,7 +271,7 @@ void test_parser()
     parser_init(&parser, lexer.tokens);
     declaration = parse_declaration(&parser);
 
-    assert_declaration_variable_integer(declaration, "foo", TYPE_SPECIFIER_INT, 42);
+    assert_declaration_variable_integer(declaration, "foo", TYPE_SPECIFIER_INT, "42");
 
     declaration_free(declaration);
     parser_free(&parser);
@@ -327,7 +301,7 @@ void test_parser()
     parser_init(&parser, lexer.tokens);
     expression = parse_expression(&parser);
     
-    assert_literal_expression_integer(expression, 767);
+    assert_literal_expression_integer(expression, "767");
     expression_free(expression);
     parser_free(&parser);
     lexer_free(&lexer);
@@ -339,7 +313,7 @@ void test_parser()
     parser_init(&parser, lexer.tokens);
     expression = parse_expression(&parser);
 
-    assert_literal_expression_boolean(expression, true);
+    assert_literal_expression_boolean(expression, "true");
     expression_free(expression);
     parser_free(&parser);
     lexer_free(&lexer);
@@ -351,7 +325,7 @@ void test_parser()
     parser_init(&parser, lexer.tokens);
     expression = parse_expression(&parser);
     
-    assert_literal_expression_boolean(expression, false);
+    assert_literal_expression_boolean(expression, "false");
 
     expression_free(expression);
     parser_free(&parser);
@@ -364,7 +338,7 @@ void test_parser()
     parser_init(&parser, lexer.tokens);
     expression = parse_expression(&parser);
     
-    assert_binary_expression_integer(expression, TOKEN_PLUS, 1, 2);
+    assert_binary_expression_integer(expression, TOKEN_PLUS, "1", "2");
 
     expression_free(expression);
     parser_free(&parser);
@@ -377,7 +351,7 @@ void test_parser()
     parser_init(&parser, lexer.tokens);
     expression = parse_expression(&parser);
 
-    assert_binary_expression_integer(expression, TOKEN_MINUS, 3, 4);
+    assert_binary_expression_integer(expression, TOKEN_MINUS, "3", "4");
 
     expression_free(expression);
     parser_free(&parser);
@@ -390,7 +364,7 @@ void test_parser()
     parser_init(&parser, lexer.tokens);
     expression = parse_expression(&parser);
 
-    assert_binary_expression_integer(expression, TOKEN_MULTIPLY, 5, 6);
+    assert_binary_expression_integer(expression, TOKEN_MULTIPLY, "5", "6");
 
     expression_free(expression);
     parser_free(&parser);
@@ -403,7 +377,7 @@ void test_parser()
     parser_init(&parser, lexer.tokens);
     expression = parse_expression(&parser);
 
-    assert_binary_expression_integer(expression, TOKEN_DIVIDE, 7, 8);
+    assert_binary_expression_integer(expression, TOKEN_DIVIDE, "7", "8");
 
     expression_free(expression);
     parser_free(&parser);
@@ -416,7 +390,7 @@ void test_parser()
     parser_init(&parser, lexer.tokens);
     expression = parse_expression(&parser);
     
-    assert_unary_expression_integer(expression, TOKEN_MINUS, 42);
+    assert_unary_expression_integer(expression, TOKEN_MINUS, "42");
 
     expression_free(expression);
     parser_free(&parser);
@@ -429,7 +403,7 @@ void test_parser()
     parser_init(&parser, lexer.tokens);
     expression = parse_expression(&parser);
 
-    assert_unary_expression_integer(expression, TOKEN_PLUS, 42);
+    assert_unary_expression_integer(expression, TOKEN_PLUS, "42");
 
     expression_free(expression);
     parser_free(&parser);
@@ -442,7 +416,7 @@ void test_parser()
     parser_init(&parser, lexer.tokens);
     expression = parse_expression(&parser);
     
-    assert_binary_expression_integer(expression, TOKEN_IS_EQUAL, 1, 2);
+    assert_binary_expression_integer(expression, TOKEN_IS_EQUAL, "1", "2");
 
     expression_free(expression);
     parser_free(&parser);
@@ -455,7 +429,7 @@ void test_parser()
     parser_init(&parser, lexer.tokens);
     expression = parse_expression(&parser);
 
-    assert_binary_expression_integer(expression, TOKEN_NOT_EQUAL, 1, 2);
+    assert_binary_expression_integer(expression, TOKEN_NOT_EQUAL, "1", "2");
 
     expression_free(expression);
     parser_free(&parser);
@@ -468,7 +442,7 @@ void test_parser()
     parser_init(&parser, lexer.tokens);
     expression = parse_expression(&parser);
 
-    assert_binary_expression_integer(expression, TOKEN_LESS_THAN, 1, 2);
+    assert_binary_expression_integer(expression, TOKEN_LESS_THAN, "1", "2");
 
     expression_free(expression);
     parser_free(&parser);
@@ -481,7 +455,7 @@ void test_parser()
     parser_init(&parser, lexer.tokens);
     expression = parse_expression(&parser);
 
-    assert_binary_expression_integer(expression, TOKEN_LESS_THAN_EQUAL, 1, 2);
+    assert_binary_expression_integer(expression, TOKEN_LESS_THAN_EQUAL, "1", "2");
 
     expression_free(expression);
     parser_free(&parser);
@@ -494,7 +468,7 @@ void test_parser()
     parser_init(&parser, lexer.tokens);
     expression = parse_expression(&parser);
 
-    assert_binary_expression_integer(expression, TOKEN_GREATER_THAN, 1, 2);
+    assert_binary_expression_integer(expression, TOKEN_GREATER_THAN, "1", "2");
 
     expression_free(expression);
     parser_free(&parser);
@@ -507,7 +481,7 @@ void test_parser()
     parser_init(&parser, lexer.tokens);
     expression = parse_expression(&parser);
 
-    assert_binary_expression_integer(expression, TOKEN_GREATER_THAN_EQUAL, 1, 2);
+    assert_binary_expression_integer(expression, TOKEN_GREATER_THAN_EQUAL, "1", "2");
     
     expression_free(expression);
     parser_free(&parser);
@@ -521,7 +495,7 @@ void test_parser()
     parser_init(&parser, lexer.tokens);
     expression = parse_expression(&parser);
 
-    assert_binary_expression_boolean(expression, TOKEN_AND, true, false);
+    assert_binary_expression_boolean(expression, TOKEN_AND, "true", "false");
     
     expression_free(expression);
     parser_free(&parser);
@@ -534,7 +508,7 @@ void test_parser()
     parser_init(&parser, lexer.tokens);
     expression = parse_expression(&parser);
 
-    assert_binary_expression_boolean(expression, TOKEN_OR, true, false);
+    assert_binary_expression_boolean(expression, TOKEN_OR, "true", "false");
     
     expression_free(expression);
     parser_free(&parser);
@@ -547,7 +521,7 @@ void test_parser()
     parser_init(&parser, lexer.tokens);
     expression = parse_expression(&parser);
 
-    assert_unary_expression_boolean(expression, TOKEN_NOT, true);
+    assert_unary_expression_boolean(expression, TOKEN_NOT, "true");
     
     expression_free(expression);
     parser_free(&parser);
@@ -573,13 +547,12 @@ void test_parser()
     parser_init(&parser, lexer.tokens);
     expression = parse_expression(&parser);
 
-    assert_assignment_expression_integer(expression, "foo", 345);
+    assert_assignment_expression_integer(expression, "foo", "345");
     
     expression_free(expression);
     parser_free(&parser);
     lexer_free(&lexer);
-
-
+    
     // Test for correct order of operations with arithmetics 
     sb = sb_init();
     lexer_init(&lexer, "1 + 2 * 3");

@@ -60,7 +60,7 @@ static Type_Specifier parse_type_specifier(Parser* parser)
             parser->tokens++;
             return TYPE_SPECIFIER_BOOL;
         default:
-            printf("Expected type specifier, got something else '%d'\n", (*parser->tokens)->kind);
+            printf("Expected type specifier, got something else '%s'\n", (*parser->tokens)->lexeme);
             exit(1);
     }
 }

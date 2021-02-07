@@ -21,11 +21,17 @@ void lexer_free(Lexer* lexer)
     // that should be thinked through
     for (Token** it = lexer->tokens; it != lexer->tokens + lexer->tokens_length; it++)
     {
-        if ((*it)->kind == TOKEN_IDENTIFIER) 
-        {
-            free((char*)(*it)->identifier);
-            (*it)->identifier = NULL;
-        }
+        // TODO(timo): Why this is not needed anymore when before it was needed?!?
+        // All that has changed, is that the there is no union anymore for the
+        // idenfitier specifically, since everything has a lexeme now.
+        // NOTE(timo): Okay, so because we pass some things like operators as a value
+        // to the token constructor, we don't explicitly allocate memory for them.
+        // So now there is a problem with this. How do we know when to free the memory?
+        // free((char*)(*it)->lexeme);
+        // (*it)->lexeme = NULL;
+
+        free((char*)(*it)->lexeme);
+        (*it)->lexeme = NULL;
 
         free(*it);
         *it = NULL;
@@ -116,32 +122,17 @@ void lex(Lexer* lexer)
             case '0': case '1': case '2': case '3': case '4': 
             case '5': case '6': case '7': case '8': case '9':
             {
-                int value = 0;
+                const char* lexeme = lexer->stream;
 
-                while (is_digit(*lexer->stream)) 
-                {   
-                    // Converts ascii digit to corresponding number
-                    int digit = *lexer->stream - '0';
-
-                    // Check for integer overflow in integer literal
-                    if (value > (INT_MAX - digit) / 10) 
-                    {   
-                        error(lexer->position, "[LEXER] - Error: Integer overflow in integer literal\n");
-                        // TODO(timo): Maybe just iterate through the literal, dont add token
-                        // add continue the lexing normally from there
-                        exit(1);
-                    }
-
-                    value *= 10; 
-                    value += digit; 
-                    advance(lexer, 1);
-                }   
+                while (is_digit(*lexer->stream)) advance(lexer, 1);
                 
+                int length = lexer->position.column_end - lexer->position.column_start;
+
                 // TODO(timo): The position goes one step too far when it comes to the
                 // lexeme of the number, so this is quick and dirty way to fix it for now. 
                 lexer->position.column_end -= 1;
 
-                lexer_push_token(lexer, token_integer(value, lexer->position));
+                lexer_push_token(lexer, token(TOKEN_INTEGER_LITERAL, lexeme, length, lexer->position));
 
                 lexer->position.column_end += 1;
                 continue;
@@ -152,203 +143,187 @@ void lex(Lexer* lexer)
             case 'A': case 'B': case 'C': case 'D': case 'E': case 'F': case 'G': case 'H': case 'I': case 'J': case 'K': case 'L': case 'M':
             case 'N': case 'O': case 'P': case 'Q': case 'R': case 'S': case 'T': case 'U': case 'V': case 'W': case 'X': case 'Y': case 'Z':
             {
+                const char* lexeme = lexer->stream;
+
                 while (is_alpha(*lexer->stream) || is_digit(*lexer->stream)) advance(lexer, 1);
 
                 int length = lexer->position.column_end - lexer->position.column_start;
-                char* lexeme = xcalloc(length + 1, sizeof (char));
-                memcpy(lexeme, lexer->stream - length, length);
 
                 Token_Kind kind = TOKEN_IDENTIFIER;
 
                 switch (*lexeme)
                 {
                     case 'a':
-                        if (lexeme[1] == 'n' && lexeme[2] == 'd' && lexeme[3] == 0)
+                        if (lexeme[1] == 'n' && lexeme[2] == 'd' && !is_alpha(lexeme[3]))
                             kind = TOKEN_AND;
                         break;
                     case 'b':
                         switch (lexeme[1])
                         {
                             case 'o':
-                                if (lexeme[2] == 'o' && lexeme[3] == 'l' && lexeme[4] == 0)
+                                if (lexeme[2] == 'o' && lexeme[3] == 'l' && !is_alpha(lexeme[4]))
                                     kind = TOKEN_BOOL;
                                 break;
                             case 'r': 
-                                if (lexeme[2] == 'e' && lexeme[3] == 'a' && lexeme[4] == 'k' && lexeme[5] == 0)
+                                if (lexeme[2] == 'e' && lexeme[3] == 'a' && lexeme[4] == 'k' && !is_alpha(lexeme[5]))
                                     kind = TOKEN_BREAK;
                                 break;
                         }
                         break;
                     case 'c':
                         if (lexeme[1] == 'o' && lexeme[2] == 'n' && lexeme[3] == 't' && lexeme[4] == 'i' && 
-                            lexeme[5] == 'n' && lexeme[6] == 'u' &&lexeme[7] == 'e' && lexeme[8] == 0)
+                            lexeme[5] == 'n' && lexeme[6] == 'u' &&lexeme[7] == 'e' && !is_alpha(lexeme[8]))
                                 kind = TOKEN_CONTINUE;
                         break;
                     case 'd':
-                        if (lexeme[1] == 'o' && lexeme[2] == 0)
+                        if (lexeme[1] == 'o' && !is_alpha(lexeme[2]))
                             kind = TOKEN_DO;
                         break;
                     case 'e': 
-                        if (lexeme[1] == 'l' && lexeme[2] == 's' && lexeme[3] == 'e' && lexeme[4] == 0)
+                        if (lexeme[1] == 'l' && lexeme[2] == 's' && lexeme[3] == 'e' && !is_alpha(lexeme[4]))
                             kind = TOKEN_ELSE;
                         break;
                     case 'f': 
-                        if (lexeme[1] == 'a' && lexeme[2] == 'l' && lexeme[3] == 's' && lexeme[4] == 'e' && lexeme[5] == 0)
-                            kind = TOKEN_FALSE;
+                        if (lexeme[1] == 'a' && lexeme[2] == 'l' && lexeme[3] == 's' && lexeme[4] == 'e' && !is_alpha(lexeme[5]))
+                            kind = TOKEN_BOOLEAN_LITERAL;
                         break;
                     case 'i':
-                    {
                         switch (lexeme[1])
                         {
                             case 'f':
-                                if (lexeme[2] == 0)
+                                if (!is_alpha(lexeme[2]))
                                     kind = TOKEN_IF;
                                 break;
                             case 'n':
-                                if (lexeme[2] == 't' && lexeme[3] == 0)
+                                if (lexeme[2] == 't' && !is_alpha(lexeme[3]))
                                     kind = TOKEN_INT;
                                 break;
                         }
                         break;
-                    }
                     case 'n':
-                        if (lexeme[1] == 'o' && lexeme[2] == 't' && lexeme[3] == 0)
+                        if (lexeme[1] == 'o' && lexeme[2] == 't' && !is_alpha(lexeme[3]))
                             kind = TOKEN_NOT;
                         break;
                     case 'o': 
-                        if (lexeme[1] == 'r' && lexeme[2] == 0)
+                        if (lexeme[1] == 'r' && !is_alpha(lexeme[2]))
                             kind = TOKEN_OR;
                         break;
                     case 'r': 
-                        if (lexeme[1] == 'e' && lexeme[2] == 't' && lexeme[3] == 'u' && lexeme[4] == 'r' && lexeme[5] == 'n' && lexeme[6] == 0)
+                        if (lexeme[1] == 'e' && lexeme[2] == 't' && lexeme[3] == 'u' && lexeme[4] == 'r' && lexeme[5] == 'n' && !is_alpha(lexeme[6]))
                             kind = TOKEN_RETURN;
                         break;
                     case 't':
                         switch (lexeme[1])
                         {
                             case 'h': 
-                                if (lexeme[2] == 'e' && lexeme[3] == 'n' && lexeme[4] == 0)
+                                if (lexeme[2] == 'e' && lexeme[3] == 'n' && !is_alpha(lexeme[4]))
                                     kind = TOKEN_THEN;
                                 break;
                             case 'r': 
-                                if (lexeme[2] == 'u' && lexeme[3] == 'e' && lexeme[4] == 0)
-                                    kind = TOKEN_TRUE;
+                                if (lexeme[2] == 'u' && lexeme[3] == 'e' && !is_alpha(lexeme[4]))
+                                    kind = TOKEN_BOOLEAN_LITERAL;
                                 break;
                         }
                         break;
                     case 'w': 
-                        if (lexeme[1] == 'h' && lexeme[2] == 'i' && lexeme[3] == 'l' && lexeme[4] == 'e' && lexeme[5] == 0)
+                        if (lexeme[1] == 'h' && lexeme[2] == 'i' && lexeme[3] == 'l' && lexeme[4] == 'e' && !is_alpha(lexeme[5]))
                             kind = TOKEN_WHILE;
                         break;
                 }
-              
-                
+
                 // TODO(timo): The position goes one step too far when it comes to the
                 // lexeme of the identifier, so this is quick and dirty way to fix it for now. 
                 lexer->position.column_end -= 1;
 
-                if (kind == TOKEN_IDENTIFIER) 
-                    lexer_push_token(lexer, token_identifier(lexeme, lexer->position));
-                else if (kind == TOKEN_TRUE || kind == TOKEN_FALSE)
-                {
-                    // NOTE(timo): Since we don't use the lexeme for the keywords
-                    // we will have to free the memory allocated for the lexeme
-                    free(lexeme);
-                    lexer_push_token(lexer, token_boolean((bool)(kind == TOKEN_TRUE), lexer->position));
-                }
-                else 
-                {
-                    // NOTE(timo): Since we don't use the lexeme for the keywords
-                    // we will have to free the memory allocated for the lexeme
-                    free(lexeme);
-                    lexer_push_token(lexer, token_base(kind, lexer->position));
-                }
+                lexer_push_token(lexer, token(kind, lexeme, length, lexer->position));
 
                 lexer->position.column_end += 1;
                 continue;
             }
+            // TODO(timo): I could just group these operator things to a single block
+            // like I did with the identifiers
             case '+':
-                lexer_push_token(lexer, token_base(TOKEN_PLUS, lexer->position));
+                lexer_push_token(lexer, token(TOKEN_PLUS, "+", 1, lexer->position));
                 advance(lexer, 1);
                 continue;
             case '-':
-                lexer_push_token(lexer, token_base(TOKEN_MINUS, lexer->position));
+                lexer_push_token(lexer, token(TOKEN_MINUS, "-", 1, lexer->position));
                 advance(lexer, 1);
                 continue;
             case '*':
-                lexer_push_token(lexer, token_base(TOKEN_MULTIPLY, lexer->position));
+                lexer_push_token(lexer, token(TOKEN_MULTIPLY, "*", 1, lexer->position));
                 advance(lexer, 1);
                 continue;
             case '/':
-                lexer_push_token(lexer, token_base(TOKEN_DIVIDE, lexer->position));
+                lexer_push_token(lexer, token(TOKEN_DIVIDE, "/", 1, lexer->position));
                 advance(lexer, 1);
                 continue;
             case '(':
-                lexer_push_token(lexer, token_base(TOKEN_LEFT_PARENTHESIS, lexer->position));
+                lexer_push_token(lexer, token(TOKEN_LEFT_PARENTHESIS, "(", 1, lexer->position));
                 advance(lexer, 1);
                 continue;
             case ')':
-                lexer_push_token(lexer, token_base(TOKEN_RIGHT_PARENTHESIS, lexer->position));
+                lexer_push_token(lexer, token(TOKEN_RIGHT_PARENTHESIS, ")", 1, lexer->position));
                 advance(lexer, 1);
                 continue;
             case '[':
-                lexer_push_token(lexer, token_base(TOKEN_LEFT_BRACKET, lexer->position));
+                lexer_push_token(lexer, token(TOKEN_LEFT_BRACKET, "[", 1, lexer->position));
                 advance(lexer, 1);
                 continue;
             case ']':
-                lexer_push_token(lexer, token_base(TOKEN_RIGHT_BRACKET, lexer->position));
+                lexer_push_token(lexer, token(TOKEN_RIGHT_BRACKET, "]", 1, lexer->position));
                 advance(lexer, 1);
                 continue;
             case '{':
-                lexer_push_token(lexer, token_base(TOKEN_LEFT_CURLYBRACE, lexer->position));
+                lexer_push_token(lexer, token(TOKEN_LEFT_CURLYBRACE, "{", 1, lexer->position));
                 advance(lexer, 1);
                 continue;
             case '}':
-                lexer_push_token(lexer, token_base(TOKEN_RIGHT_CURLYBRACE, lexer->position));
+                lexer_push_token(lexer, token(TOKEN_RIGHT_CURLYBRACE, "}", 1, lexer->position));
                 advance(lexer, 1);
                 continue;
             case ',':
-                lexer_push_token(lexer, token_base(TOKEN_COMMA, lexer->position));
+                lexer_push_token(lexer, token(TOKEN_COMMA, ",", 1, lexer->position));
                 advance(lexer, 1);
                 continue;
             case ';':
-                lexer_push_token(lexer, token_base(TOKEN_SEMICOLON, lexer->position));
+                lexer_push_token(lexer, token(TOKEN_SEMICOLON, ";", 1, lexer->position));
                 advance(lexer, 1);
                 continue;
             case ':':
                 if (*(lexer->stream + 1) == '=')
                 {
                     advance(lexer, 1);
-                    lexer_push_token(lexer, token_base(TOKEN_COLON_ASSIGN, lexer->position));
+                    lexer_push_token(lexer, token(TOKEN_COLON_ASSIGN, ":=", 2, lexer->position));
                     advance(lexer, 1);
                     continue;
                 }
-                lexer_push_token(lexer, token_base(TOKEN_COLON, lexer->position));
+                lexer_push_token(lexer, token(TOKEN_COLON, ":", 1, lexer->position));
                 advance(lexer, 1);
                 continue;
             case '=':
                 if (*(lexer->stream + 1) == '=')
                 {
                     advance(lexer, 1);
-                    lexer_push_token(lexer, token_base(TOKEN_IS_EQUAL, lexer->position));
+                    lexer_push_token(lexer, token(TOKEN_IS_EQUAL, "==", 2, lexer->position));
                     advance(lexer, 1);
                     continue;
                 }
                 if (*(lexer->stream + 1) == '>')
                 {
                     advance(lexer, 1);
-                    lexer_push_token(lexer, token_base(TOKEN_ARROW, lexer->position));
+                    lexer_push_token(lexer, token(TOKEN_ARROW, "=>", 2, lexer->position));
                     advance(lexer, 1);
                     continue;
                 }
-                lexer_push_token(lexer, token_base(TOKEN_EQUAL, lexer->position));
+                lexer_push_token(lexer, token(TOKEN_EQUAL, "=", 1, lexer->position));
                 advance(lexer, 1);
                 continue;
             case '!':
                 if (*(lexer->stream + 1) == '=')
                 {
                     advance(lexer, 1);
-                    lexer_push_token(lexer, token_base(TOKEN_NOT_EQUAL, lexer->position));
+                    lexer_push_token(lexer, token(TOKEN_NOT_EQUAL, "!=", 2, lexer->position));
                     advance(lexer, 1);
                     continue;
                 }
@@ -359,22 +334,22 @@ void lex(Lexer* lexer)
                 if (*(lexer->stream + 1) == '=')
                 {
                     advance(lexer, 1);
-                    lexer_push_token(lexer, token_base(TOKEN_LESS_THAN_EQUAL, lexer->position));
+                    lexer_push_token(lexer, token(TOKEN_LESS_THAN_EQUAL, "<=", 2, lexer->position));
                     advance(lexer, 1);
                     continue;
                 }
-                lexer_push_token(lexer, token_base(TOKEN_LESS_THAN, lexer->position));
+                lexer_push_token(lexer, token(TOKEN_LESS_THAN, "<", 1, lexer->position));
                 advance(lexer, 1);
                 continue;
             case '>':
                 if (*(lexer->stream + 1) == '=')
                 {
                     advance(lexer, 1);
-                    lexer_push_token(lexer, token_base(TOKEN_GREATER_THAN_EQUAL, lexer->position));
+                    lexer_push_token(lexer, token(TOKEN_GREATER_THAN_EQUAL, ">=", 2, lexer->position));
                     advance(lexer, 1);
                     continue;
                 }
-                lexer_push_token(lexer, token_base(TOKEN_GREATER_THAN, lexer->position));
+                lexer_push_token(lexer, token(TOKEN_GREATER_THAN, ">", 1, lexer->position));
                 advance(lexer, 1);
                 continue;
             default:
@@ -390,5 +365,5 @@ void lex(Lexer* lexer)
     lexer->position.column_start = lexer->position.column_end;
 
     // Add the end of file token
-    lexer_push_token(lexer, token_base(TOKEN_EOF, lexer->position));    
+    lexer_push_token(lexer, token(TOKEN_EOF, "<EoF>", 5, lexer->position));    
 }
