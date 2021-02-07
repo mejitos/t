@@ -281,12 +281,87 @@ AST_Expression* parse_expression(Parser* parser);
 AST_Statement* parse_statement(Parser* parser);
 AST_Declaration* parse_declaration(Parser* parser);
 
+/*
+ *  Value
+ *  TODO(timo): Would a Operand be better/more descriptive name?
+ *
+ *  File: value.c
+ */
+typedef enum Value_Type
+{
+    VALUE_NONE,
+    VALUE_INTEGER,
+    VALUE_BOOLEAN,
+} Value_Type;
+
+
+typedef struct Value
+{
+    Value_Type type;
+    union {
+        int integer_value;
+        bool boolean_value;
+    };
+} Value;
+
+
+bool is_type(Value value, Value_Type type);
+bool is_int(Value value);
+bool is_bool(Value value);
+bool as_bool(Value value);
+bool as_int(Value value);
+
+
+/*
+ *  Symbol
+ *
+ *  TODO(timo): Symbols are not in use at the moment, just started
+ *  to draft the outlines
+ */
+typedef enum Symbol_Kind
+{
+    SYMBOL_NONE,
+    SYMBOL_VARIABLE,
+    SYMBOL_FUNCTION,
+} Symbol_Kind;
+
+
+typedef struct Symbol
+{
+    Symbol_Kind kind;
+    const char* identifier;
+    // type?
+    // value?
+    // other?
+} Symbol;
+
+
+/*
+ *  Scope
+ *
+ *  TODO(timo): This
+ */
+
+
+/*
+ *  Resolver
+ *  
+ *  TODO(timo): Only the resolve_expression will be implemented for now
+ */
+Value resolve_expression(AST_Expression* expression);
+void resolve_statement(AST_Statement* statement);
+void resolve_declaration(AST_Declaration* declaration);
+void resolve(array* declarations);
+
 
 /*
  *  Interpreter
  *
  *  File: interpreter.c
  */
+Value evaluate_expression(AST_Expression* expression);
+void evaluate_statement(AST_Statement* statement);
+void evaluate_declaration(AST_Declaration* declaration);
 void interpret(array* declarations);
 
 
