@@ -19,6 +19,7 @@
 typedef struct Position Position;
 typedef struct Type Type;
 typedef struct Value Value;
+typedef struct Scope Scope;
 typedef struct AST_Declaration AST_Declaration;
 typedef struct AST_Statement AST_Statement;
 typedef struct AST_Expression AST_Expression;
@@ -259,6 +260,7 @@ typedef struct AST_Literal
     Value value;
 } AST_Literal;
 
+
 struct AST_Expression
 {
     Expression_Kind kind;
@@ -383,7 +385,7 @@ typedef struct Symbol
 {
     Symbol_Kind kind;
     const char* identifier;
-    // type?
+    Type* type;
     // value?
     // other?
 } Symbol;
@@ -392,20 +394,43 @@ typedef struct Symbol
 /*
  *  Scope
  *
- *  TODO(timo): This
+ *  File: scope.c
  */
+struct Scope
+{
+    Scope* enclosing;
+    array* symbols;
+};
+
+Scope* scope_init(Scope* enclosing); // returns the created scope
+Scope* scope_enter(Scope* enclosing); // returns the entered scope
+Scope* scope_leave(); // returns the closed scope
+Symbol* scope_lookup(Scope* scope, const char* identifier);
+void scope_declare(Scope* scope, Symbol* symbol);
 
 
 /*
  *  Resolver
  *  
  *  TODO(timo): Only the resolve_expression will be implemented for now
+ *
+ *  File: resolver.c
  */
+typedef struct Resolver
+{
+    Scope* global;
+    Scope* local; // the current scope
+    array* scopes; // the scope stack TODO(timo): push and pop functions
+} Resolver;
+
+
+void resolver_init(Resolver* resolver);
+void resolver_free(Resolver* resolver);
 // Value resolve_expression(AST_Expression* expression);
-// Type* resolve_expression(AST_Expression* expression);
-void resolve_expression(AST_Expression* expression);
+Type* resolve_expression(AST_Expression* expression);
+// void resolve_expression(AST_Expression* expression);
 void resolve_statement(AST_Statement* statement);
-void resolve_declaration(AST_Declaration* declaration);
+void resolve_declaration(Resolver* resolver, AST_Declaration* declaration);
 void resolve(array* declarations);
 
 

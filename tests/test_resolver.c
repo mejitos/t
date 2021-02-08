@@ -141,12 +141,85 @@ void test_resolve_binary_expression(Lexer* lexer, Parser* parser)
 }
 
 
+void test_resolve_variable_declaration(Lexer* lexer, Parser* parser, Resolver* resolver)
+{
+    Symbol* symbol;
+    AST_Declaration* declaration;
+
+    // ---- int
+    lexer_init(lexer, "foo: int = 42;");
+    lex(lexer);
+
+    parser_init(parser, lexer->tokens);
+    declaration = parse_declaration(parser);
+
+    resolver_init(resolver);
+
+    assert(declaration->kind == DECLARATION_VARIABLE);
+    assert(declaration->specifier == TYPE_SPECIFIER_INT);
+
+    resolve_declaration(resolver, declaration);
+
+    assert(resolver->global->symbols->length == 1);
+
+    assert(declaration->initializer->literal.literal->kind == TOKEN_INTEGER_LITERAL);
+    assert(declaration->initializer->literal.value.integer == 42);
+
+    symbol = resolver->global->symbols->items[0];
+
+    assert(symbol->kind == SYMBOL_VARIABLE);
+    assert(strcmp(symbol->identifier, "foo") == 0);
+    assert(symbol->type->kind == TYPE_INTEGER);
+    // TODO(timo): How about value? Do we add the value to the symbol itself?
+    // I think that we don't really need the ACTUAL types of these things anywhere
+    // except when doing constant folding and of course it helps interpreter. But
+    // therefore I think we don't need the values for the symbols.
+
+    declaration_free(declaration);
+    resolver_free(resolver);
+    parser_free(parser);
+    lexer_free(lexer);
+
+
+    // ---- bool
+    lexer_init(lexer, "_bar: bool = false;");
+    lex(lexer);
+
+    parser_init(parser, lexer->tokens);
+    declaration = parse_declaration(parser);
+
+    resolver_init(resolver);
+
+    assert(declaration->kind == DECLARATION_VARIABLE);
+    assert(declaration->specifier == TYPE_SPECIFIER_BOOL);
+
+    resolve_declaration(resolver, declaration);
+
+    assert(resolver->global->symbols->length == 1);
+
+    assert(declaration->initializer->literal.literal->kind == TOKEN_BOOLEAN_LITERAL);
+    assert(declaration->initializer->literal.value.boolean == false);
+
+    symbol = resolver->global->symbols->items[0];
+
+    assert(symbol->kind == SYMBOL_VARIABLE);
+    assert(strcmp(symbol->identifier, "_bar") == 0);
+    assert(symbol->type->kind == TYPE_BOOLEAN);
+
+    declaration_free(declaration);
+    resolver_free(resolver);
+    parser_free(parser);
+    lexer_free(lexer);
+}
+
+
 void test_resolver()
 {
     printf("Running resolver tests...");
 
     Lexer lexer;
     Parser parser;
+    Resolver resolver;
 
     test_resolve_literal_expression(&lexer, &parser);
 
@@ -159,6 +232,10 @@ void test_resolver()
     test_resolve_binary_expression(&lexer, &parser);
 
     // TODO(timo): Diagnose errors while resolving binary expressions
+    
+    test_resolve_variable_declaration(&lexer, &parser, &resolver);
+
+    // TODO(timo): Variable assignment
 
     if (not_error) printf("OK\n");
     else printf("\n");

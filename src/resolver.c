@@ -17,8 +17,25 @@ Type* type_boolean()
 }
 
 
-// static Type* resolve_literal_expression(AST_Expression* expression)
-static void resolve_literal_expression(AST_Expression* expression)
+void resolver_init(Resolver* resolver)
+{
+    *resolver = (Resolver){ .global = scope_init(NULL) };
+}
+
+
+void resolver_free(Resolver* resolver)
+{
+    // TODO(timo): We also should free the contents of the symbol table
+    free(resolver->global);
+    resolver->global = NULL;
+
+    // NOTE(timo): The resolver itself is not being freed since it is
+    // being initialized in the top level function
+}
+
+
+static Type* resolve_literal_expression(AST_Expression* expression)
+// static void resolve_literal_expression(AST_Expression* expression)
 {
     assert(expression->kind == EXPRESSION_LITERAL);
     // TODO(timo): We should probably annotate the expression with
@@ -93,13 +110,13 @@ static void resolve_literal_expression(AST_Expression* expression)
     expression->type = type;
     expression->literal.value = value;
 
-    // return type;
+    return type;
 }
 
 
 // static Value resolve_unary_expression(AST_Expression* expression)
-// static Type* resolve_unary_expression(AST_Expression* expression)
-static void resolve_unary_expression(AST_Expression* expression)
+static Type* resolve_unary_expression(AST_Expression* expression)
+// static void resolve_unary_expression(AST_Expression* expression)
 {
     // Type* operand = resolve_expression(expression->unary.operand);
     resolve_expression(expression->unary.operand);
@@ -146,13 +163,13 @@ static void resolve_unary_expression(AST_Expression* expression)
 
     expression->type = operand->type;
 
-    // return operand;
+    return operand->type;
 }
 
 
 // static Value resolve_binary_expression(AST_Expression* expression)
-// static Type* resolve_binary_expression(AST_Expression* expression)
-static void resolve_binary_expression(AST_Expression* expression)
+static Type* resolve_binary_expression(AST_Expression* expression)
+// static void resolve_binary_expression(AST_Expression* expression)
 {
     // TODO(timo): Since the integer overlows can happen with these operations
     // too, we should check them in here also => make some utility function
@@ -222,14 +239,14 @@ static void resolve_binary_expression(AST_Expression* expression)
 
     expression->type = type;
 
-    // return left;
+    return type;
 }
 
 
-// static Type* resolve_variable_expression(AST_Expression* expression)
-static void resolve_variable_expression(AST_Expression* expression)
+static Type* resolve_variable_expression(AST_Expression* expression)
+// static void resolve_variable_expression(AST_Expression* expression)
 {
-    Type* result;
+    Type* type;
 
     // We check if the variable is declared
     // if not => error
@@ -237,13 +254,13 @@ static void resolve_variable_expression(AST_Expression* expression)
     // We get the variable type from the symbol table
     // return the type
 
-    // return result;
+    return type;
 }
 
 
 // Value resolve_expression(AST_Expression* expression)
-// Type* resolve_expression(AST_Expression* expression)
-void resolve_expression(AST_Expression* expression)
+Type* resolve_expression(AST_Expression* expression)
+// void resolve_expression(AST_Expression* expression)
 {
     // TODO(timo): We should pass a expected type into here so we can also 
     // make sure that the types are also something that we want then to be
@@ -252,21 +269,21 @@ void resolve_expression(AST_Expression* expression)
     // and therefore the typechecking of the expected type wont happen in the
     // expression resolving
 
-    // Type* result;
+    Type* type;
 
     switch (expression->kind)
     {
         case EXPRESSION_LITERAL:
-            // result = resolve_literal_expression(expression);
-            resolve_literal_expression(expression);
+            type = resolve_literal_expression(expression);
+            // resolve_literal_expression(expression);
             break;
         case EXPRESSION_UNARY:
-            // result = resolve_unary_expression(expression);
-            resolve_unary_expression(expression);
+            type = resolve_unary_expression(expression);
+            // resolve_unary_expression(expression);
             break;
         case EXPRESSION_BINARY:
-            // result = resolve_binary_expression(expression);
-            resolve_binary_expression(expression);
+            type = resolve_binary_expression(expression);
+            // resolve_binary_expression(expression);
             break;
         default:
             break;
@@ -280,7 +297,7 @@ void resolve_expression(AST_Expression* expression)
     }
     */
 
-    // return result;
+    return type;
 }
 
 
@@ -290,9 +307,62 @@ void resolve_statement(AST_Statement* statement)
 }
 
 
-void resolve_declaration(AST_Declaration* declaration)
+Type* resolve_type_specifier(Type_Specifier specifier)
 {
-    //
+    switch (specifier)
+    {
+        case TYPE_SPECIFIER_INT:
+            return type_integer();
+        case TYPE_SPECIFIER_BOOL:
+            return type_boolean();
+        default:
+            // TODO(timo): Error
+            break;
+    }
+}
+
+
+void resolve_variable_declaration(Resolver* resolver, AST_Declaration* declaration)
+{
+    // Create the symbol from the declaration
+    Symbol* symbol = xcalloc(1, sizeof (Symbol));
+    symbol->kind = SYMBOL_VARIABLE;
+    symbol->identifier = declaration->identifier->lexeme;
+
+    // Declare it in the scope symbol table. Scope handles the possible name collisions
+    scope_declare(resolver->global, symbol);
+
+    // Then we should resolve the type of the name
+    Type* expected_type = resolve_type_specifier(declaration->specifier);
+    
+    // Then resolve the initializer
+    Type* actual_type = resolve_expression(declaration->initializer);
+    
+    // Check if the expected type and the actual type match
+    if (expected_type->kind != actual_type->kind)
+    {
+        printf("Conflicting types in variable declaration\n");
+        exit(1);
+    }
+    
+    // Symbol resolved
+
+    symbol->type = expected_type;
+}
+
+
+void resolve_declaration(Resolver* resolver, AST_Declaration* declaration)
+{
+    switch (declaration->kind)
+    {
+        case DECLARATION_VARIABLE:
+            resolve_variable_declaration(resolver, declaration);
+            break;
+        case DECLARATION_FUNCTION:
+        default:
+            // TODO(timo): Error
+            break;
+    }
 }
 
 
