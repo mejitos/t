@@ -17,6 +17,8 @@
  *  Type definitions
  */
 typedef struct Position Position;
+typedef struct Type Type;
+typedef struct Value Value;
 typedef struct AST_Declaration AST_Declaration;
 typedef struct AST_Statement AST_Statement;
 typedef struct AST_Expression AST_Expression;
@@ -139,6 +141,41 @@ void lex(Lexer* lexer);
 
 
 /*
+ *  Value
+ *  TODO(timo): Would a Operand be better/more descriptive name?
+ *
+ *  File: value.c
+ */
+/*
+typedef enum Value_Type
+{
+    VALUE_NONE,
+    VALUE_INTEGER,
+    VALUE_BOOLEAN,
+} Value_Type;
+*/
+
+
+struct Value
+{
+    // Value_Type type;
+    union {
+        int integer;
+        bool boolean;
+    };
+};
+
+/*
+bool is_type(Value value, Value_Type type);
+bool is_int(Value value);
+bool is_bool(Value value);
+*/
+bool value_as_boolean(Value value);
+bool value_as_integer(Value value);
+
+
+
+/*
  *  AST stuff
  *
  *  File: ast.c
@@ -216,12 +253,21 @@ typedef enum Expression_Kind
 } Expression_Kind;
 
 
+typedef struct AST_Literal
+{
+    Token* literal;
+    Value value;
+} AST_Literal;
+
 struct AST_Expression
 {
     Expression_Kind kind;
+    // Position position;
+    Type* type;
+
     union {
-        Token* literal;
         Token* identifier;
+        AST_Literal literal;
         struct {
             Token* _operator;
             AST_Expression* operand;
@@ -281,35 +327,42 @@ AST_Expression* parse_expression(Parser* parser);
 AST_Statement* parse_statement(Parser* parser);
 AST_Declaration* parse_declaration(Parser* parser);
 
+
 /*
- *  Value
- *  TODO(timo): Would a Operand be better/more descriptive name?
+ *  Type
  *
- *  File: value.c
  */
-typedef enum Value_Type
+typedef enum Type_Kind
 {
-    VALUE_NONE,
-    VALUE_INTEGER,
-    VALUE_BOOLEAN,
-} Value_Type;
+    TYPE_NONE,
+    TYPE_INTEGER,
+    TYPE_BOOLEAN,
+} Type_Kind;
 
 
-typedef struct Value
+struct Type
 {
-    Value_Type type;
-    union {
-        int integer_value;
-        bool boolean_value;
-    };
-} Value;
+    Type_Kind kind;
+    size_t size;
+    // alignment?
+
+};
+
+bool type_is_integer(Type* type);
+bool type_is_boolean(Type* type);
 
 
-bool is_type(Value value, Value_Type type);
-bool is_int(Value value);
-bool is_bool(Value value);
-bool as_bool(Value value);
-bool as_int(Value value);
+/*
+ *  Operand
+ *
+ *  Used to tie the type and the value together
+ *
+ */
+typedef struct Operand
+{
+    Type* type;
+    Value value;
+} Operand;
 
 
 /*
@@ -348,7 +401,9 @@ typedef struct Symbol
  *  
  *  TODO(timo): Only the resolve_expression will be implemented for now
  */
-Value resolve_expression(AST_Expression* expression);
+// Value resolve_expression(AST_Expression* expression);
+// Type* resolve_expression(AST_Expression* expression);
+void resolve_expression(AST_Expression* expression);
 void resolve_statement(AST_Statement* statement);
 void resolve_declaration(AST_Declaration* declaration);
 void resolve(array* declarations);

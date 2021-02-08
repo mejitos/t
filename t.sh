@@ -44,7 +44,7 @@ case $COMMAND in
         echo -e "$USAGE"
         exit 0;;
     test )
-        build "$TEST_BUILD_DIR" "tests/main.c" "$TEST_BUILD_DIR/$TEST_EXECUTABLE" "tests/*.c src/lexer.c src/array.c src/parser.c src/stringbuilder.c src/ast.c src/token.c src/memory.c src/error.c"
+        build "$TEST_BUILD_DIR" "tests/main.c" "$TEST_BUILD_DIR/$TEST_EXECUTABLE" "tests/*.c src/lexer.c src/array.c src/type.c src/parser.c src/resolver.c src/stringbuilder.c src/ast.c src/token.c src/memory.c src/error.c"
         $TEST_BUILD_DIR/$TEST_EXECUTABLE
         exit 0;;
     run )
@@ -59,7 +59,7 @@ case $COMMAND in
         valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --verbose $BUILD_DIR/$EXECUTABLE
         exit 0;;
     vgtest )
-        build "$TEST_BUILD_DIR" "tests/main.c" "$TEST_BUILD_DIR/$TEST_EXECUTABLE" "tests/*.c src/lexer.c src/array.c src/parser.c src/stringbuilder.c src/ast.c src/token.c src/memory.c src/error.c"
+        build "$TEST_BUILD_DIR" "tests/main.c" "$TEST_BUILD_DIR/$TEST_EXECUTABLE" "tests/*.c src/lexer.c src/array.c src/type.c src/parser.c src/resolver.c src/stringbuilder.c src/ast.c src/token.c src/memory.c src/error.c"
         valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --verbose $TEST_BUILD_DIR/$TEST_EXECUTABLE
         exit 0;;
 esac

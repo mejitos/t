@@ -1,6 +1,7 @@
 #include "t.h"
 
 
+/*
 bool is_type(Value value, Value_Type type)
 {
     return value.type == type;
@@ -17,19 +18,16 @@ bool is_int(Value value)
 {
     return value.type == VALUE_INTEGER;
 }
+*/
 
 
-bool as_bool(Value value)
+bool value_as_boolean(Value value)
 {
-    assert(value.type == VALUE_BOOLEAN);
-
-    return value.boolean_value;
+    return value.boolean;
 }
 
 
-bool as_int(Value value)
+bool value_as_integer(Value value)
 {
-    assert(value.type == VALUE_INTEGER);
-
-    return value.integer_value;
+    return value.integer;
 }

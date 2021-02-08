@@ -4,22 +4,6 @@
 
 
 static bool not_error = true;
-const char* lexemes[] = 
-{
-    [TOKEN_PLUS]                = "+",
-    [TOKEN_MINUS]               = "-",
-    [TOKEN_MULTIPLY]            = "*",
-    [TOKEN_DIVIDE]              = "/",
-    [TOKEN_IS_EQUAL]            = "==",
-    [TOKEN_NOT_EQUAL]           = "!=",
-    [TOKEN_LESS_THAN]           = "<",
-    [TOKEN_LESS_THAN_EQUAL]     = "<=",
-    [TOKEN_GREATER_THAN]        = ">",
-    [TOKEN_GREATER_THAN_EQUAL]  = ">=",
-    [TOKEN_AND]                 = "and",
-    [TOKEN_OR]                  = "or",
-    [TOKEN_NOT]                 = "not",
-};
 
 
 stringbuilder* expression_to_string(AST_Expression* expression, stringbuilder* sb)
@@ -27,18 +11,20 @@ stringbuilder* expression_to_string(AST_Expression* expression, stringbuilder* s
     switch (expression->kind)
     {
         case EXPRESSION_LITERAL:
-            sb_append(sb, expression->literal->lexeme);
+            sb_append(sb, expression->literal.literal->lexeme);
             break;
         case EXPRESSION_BINARY:
             sb_append(sb, "(");
             expression_to_string(expression->binary.left, sb);
-            sb_append(sb, lexemes[expression->binary._operator->kind]);
+            // sb_append(sb, lexemes[expression->binary._operator->kind]);
+            sb_append(sb, expression->binary._operator->lexeme);
             expression_to_string(expression->binary.right, sb);
             sb_append(sb, ")");
             break;
         case EXPRESSION_UNARY:
             sb_append(sb, "(");
-            sb_append(sb, lexemes[expression->unary._operator->kind]);
+            // sb_append(sb, lexemes[expression->unary._operator->kind]);
+            sb_append(sb, expression->unary._operator->lexeme);
             expression_to_string(expression->unary.operand, sb);
             sb_append(sb, ")");
             break;
@@ -65,16 +51,16 @@ void assert_expression_str(char* result, const char* expected)
 void assert_literal_expression_integer(AST_Expression* expression, const char* value)
 {
     assert(expression->kind == EXPRESSION_LITERAL);
-    assert(expression->literal->kind == TOKEN_INTEGER_LITERAL);
-    assert(strcmp(expression->literal->lexeme, value) == 0);
+    assert(expression->literal.literal->kind == TOKEN_INTEGER_LITERAL);
+    assert(strcmp(expression->literal.literal->lexeme, value) == 0);
 }
 
 
 void assert_literal_expression_boolean(AST_Expression* expression, const char* value)
 {
     assert(expression->kind == EXPRESSION_LITERAL);
-    assert(expression->literal->kind == TOKEN_BOOLEAN_LITERAL);
-    assert(strcmp(expression->literal->lexeme, value) == 0);
+    assert(expression->literal.literal->kind == TOKEN_BOOLEAN_LITERAL);
+    assert(strcmp(expression->literal.literal->lexeme, value) == 0);
 }
 
 

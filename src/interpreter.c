@@ -9,13 +9,8 @@ static Value evaluate_literal_expression(AST_Expression* expression)
     switch (expression->literal->kind)
     {
         case TOKEN_INTEGER_LITERAL:
-            return (Value){ .type = VALUE_INTEGER, 
-                            .integer_value = 0 };
-                            // .integer_value = expression->literal->integer_value };
         case TOKEN_BOOLEAN_LITERAL:
-            return (Value){ .type = VALUE_BOOLEAN, 
-                            .boolean_value = true };
-                            // .boolean_value = expression->literal->boolean_value };
+            return expression->value;
         default:
             // TODO(timo): Error
             break;

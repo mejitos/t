@@ -70,7 +70,7 @@ AST_Expression* literal_expression(Token* literal)
 {
     AST_Expression* expression = xcalloc(1, sizeof (AST_Expression));
     expression->kind = EXPRESSION_LITERAL;
-    expression->literal = literal;
+    expression->literal.literal = literal;
 
     return expression;
 }
