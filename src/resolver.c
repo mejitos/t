@@ -135,11 +135,11 @@ static Type* resolve_literal_expression(AST_Expression* expression)
 
 
 // static Value resolve_unary_expression(AST_Expression* expression)
-static Type* resolve_unary_expression(AST_Expression* expression)
+static Type* resolve_unary_expression(Resolver* resolver, AST_Expression* expression)
 // static void resolve_unary_expression(AST_Expression* expression)
 {
     // Type* operand = resolve_expression(expression->unary.operand);
-    resolve_expression(expression->unary.operand);
+    resolve_expression(resolver, expression->unary.operand);
 
     AST_Expression* operand = expression->unary.operand;
     Token* _operator = expression->binary._operator;
@@ -188,15 +188,15 @@ static Type* resolve_unary_expression(AST_Expression* expression)
 
 
 // static Value resolve_binary_expression(AST_Expression* expression)
-static Type* resolve_binary_expression(AST_Expression* expression)
+static Type* resolve_binary_expression(Resolver* resolver, AST_Expression* expression)
 // static void resolve_binary_expression(AST_Expression* expression)
 {
     // TODO(timo): Since the integer overlows can happen with these operations
     // too, we should check them in here also => make some utility function
     // Type* left = resolve_expression(expression->binary.left);
     // Type* right = resolve_expression(expression->binary.right);
-    resolve_expression(expression->binary.left);
-    resolve_expression(expression->binary.right);
+    resolve_expression(resolver, expression->binary.left);
+    resolve_expression(resolver, expression->binary.right);
 
     AST_Expression* left = expression->binary.left;
     AST_Expression* right = expression->binary.right;
@@ -263,23 +263,39 @@ static Type* resolve_binary_expression(AST_Expression* expression)
 }
 
 
-static Type* resolve_variable_expression(AST_Expression* expression)
+static Type* resolve_variable_expression(Resolver* resolver, AST_Expression* expression)
 // static void resolve_variable_expression(AST_Expression* expression)
+{
+    // We check if the variable is declared
+    // if not => error
+    Symbol* symbol = scope_lookup(resolver->global, expression->identifier->lexeme);
+    
+    if (symbol == NULL)
+    {
+        // TODO(timo): Error
+        printf("Undeclared identifier '%s'\n", expression->identifier->lexeme);
+        exit(1);
+    }
+
+    // TODO(timo): Should the variable we are trying to access, be already resolved?
+
+    Type* type = symbol->type; 
+
+    return type;
+}
+
+
+static Type* resolve_assignment_expression(Resolver* resolver, AST_Expression* expression)
 {
     Type* type;
 
-    // We check if the variable is declared
-    // if not => error
-
-    // We get the variable type from the symbol table
-    // return the type
 
     return type;
 }
 
 
 // Value resolve_expression(AST_Expression* expression)
-Type* resolve_expression(AST_Expression* expression)
+Type* resolve_expression(Resolver* resolver, AST_Expression* expression)
 // void resolve_expression(AST_Expression* expression)
 {
     Type* type;
@@ -290,12 +306,16 @@ Type* resolve_expression(AST_Expression* expression)
             type = resolve_literal_expression(expression);
             // resolve_literal_expression(expression);
             break;
+        case EXPRESSION_VARIABLE:
+            type = resolve_variable_expression(resolver, expression);
+        case EXPRESSION_ASSIGNMENT:
+            break;
         case EXPRESSION_UNARY:
-            type = resolve_unary_expression(expression);
+            type = resolve_unary_expression(resolver, expression);
             // resolve_unary_expression(expression);
             break;
         case EXPRESSION_BINARY:
-            type = resolve_binary_expression(expression);
+            type = resolve_binary_expression(resolver, expression);
             // resolve_binary_expression(expression);
             break;
         default:
@@ -387,7 +407,7 @@ void resolve_declaration(Resolver* resolver, AST_Declaration* declaration)
     // Type* expected_type = resolve_type_specifier(declaration->specifier);
     
     // Then resolve the initializer
-    Type* type = resolve_expression(declaration->initializer);
+    Type* type = resolve_expression(resolver, declaration->initializer);
     
     // Check if the expected type and the actual type match
     if (symbol->type->kind != type->kind)

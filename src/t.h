@@ -437,7 +437,7 @@ typedef struct Resolver
 void resolver_init(Resolver* resolver);
 void resolver_free(Resolver* resolver);
 // Value resolve_expression(AST_Expression* expression);
-Type* resolve_expression(AST_Expression* expression);
+Type* resolve_expression(Resolver* resolver, AST_Expression* expression);
 // void resolve_expression(AST_Expression* expression);
 void resolve_statement(Resolver* resolver, AST_Statement* statement);
 void resolve_declaration(Resolver* resolver, AST_Declaration* declaration);

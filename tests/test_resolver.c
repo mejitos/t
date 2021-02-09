@@ -4,7 +4,7 @@
 
 static bool not_error = true;
 
-void test_resolve_literal_expression(Lexer* lexer, Parser* parser)
+void test_resolve_literal_expression(Lexer* lexer, Parser* parser, Resolver* resolver)
 {
     const char* tests[] =
     {
@@ -28,9 +28,11 @@ void test_resolve_literal_expression(Lexer* lexer, Parser* parser)
         parser_init(parser, lexer->tokens);
         AST_Expression* expression = parse_expression(parser);
 
+        resolver_init(resolver);
+
         assert(expression->kind == EXPRESSION_LITERAL);
 
-        resolve_expression(expression);
+        resolve_expression(resolver, expression);
 
         assert(expression->type->kind == results[i][0]);
 
@@ -40,13 +42,14 @@ void test_resolve_literal_expression(Lexer* lexer, Parser* parser)
             assert(expression->literal.value.boolean == results[i][1]);
 
         expression_free(expression);
+        resolver_free(resolver);
         parser_free(parser);
         lexer_free(lexer);
     }
 }
 
 
-void test_resolve_unary_expression(Lexer* lexer, Parser* parser)
+void test_resolve_unary_expression(Lexer* lexer, Parser* parser, Resolver* resolver)
 {
     const char* tests[] =
     {
@@ -70,21 +73,24 @@ void test_resolve_unary_expression(Lexer* lexer, Parser* parser)
         parser_init(parser, lexer->tokens);
         AST_Expression* expression = parse_expression(parser);
 
+        resolver_init(resolver);
+
         assert(expression->kind == EXPRESSION_UNARY);
         assert(expression->unary.operand->kind == EXPRESSION_LITERAL);
 
-        resolve_expression(expression);
+        resolve_expression(resolver, expression);
 
         assert(expression->type->kind == results[i]);
 
         expression_free(expression);
+        resolver_free(resolver);
         parser_free(parser);
         lexer_free(lexer);
     }
 }
 
 
-void test_resolve_binary_expression(Lexer* lexer, Parser* parser)
+void test_resolve_binary_expression(Lexer* lexer, Parser* parser, Resolver* resolver)
 {
     const char* tests[] =
     {
@@ -126,15 +132,18 @@ void test_resolve_binary_expression(Lexer* lexer, Parser* parser)
         parser_init(parser, lexer->tokens);
         AST_Expression* expression = parse_expression(parser);
 
+        resolver_init(resolver);
+
         assert(expression->kind == EXPRESSION_BINARY);
         assert(expression->binary.left->kind == EXPRESSION_LITERAL);
         assert(expression->binary.right->kind == EXPRESSION_LITERAL);
 
-        resolve_expression(expression);
+        resolve_expression(resolver, expression);
 
         assert(expression->type->kind == results[i]);
 
         expression_free(expression);
+        resolver_free(resolver);
         parser_free(parser);
         lexer_free(lexer);
     }
@@ -360,6 +369,68 @@ void test_resolve_multiple_global_variable_declarations(Lexer* lexer, Parser* pa
 }
 
 
+void test_resolve_variable_expression(Lexer* lexer, Parser* parser, Resolver* resolver)
+{
+    const char* source = "{\n    foo: int = 42;\n    foo;\n}";
+
+    AST_Statement* statement;
+    // Symbol* symbol;
+
+    lexer_init(lexer, source); 
+    lex(lexer);
+
+    parser_init(parser, lexer->tokens);
+    statement = parse_statement(parser);
+    array* statements = statement->block.statements;
+
+    assert(statement->kind == STATEMENT_BLOCK);
+    assert(statements->length == 2);
+    
+    resolver_init(resolver);
+
+    resolve_statement(resolver, statements->items[0]);
+
+    assert(resolver->global->symbols->length == 1);
+    
+    statement = statements->items[1];
+    assert(statement->kind == STATEMENT_EXPRESSION);
+    // Type* type = resolve_expression(resolver, (AST_Statement*)(statements->items[1])->expression);
+    Type* type = resolve_expression(resolver, statement->expression);
+    
+    assert(type->kind == TYPE_INTEGER);
+
+
+    resolver_free(resolver);
+    parser_free(parser);
+    lexer_free(lexer);
+}
+
+
+void test_resolve_assignment_expression(Lexer* lexer, Parser* parser, Resolver* resolver)
+{
+    const char* source = "{\n    foo: int = 42;\n    foo := 7;\n}";
+
+    AST_Declaration* declaration;
+    Symbol* symbol;
+
+    lexer_init(lexer, source); 
+    lex(lexer);
+
+    parser_init(parser, lexer->tokens);
+    AST_Statement* statement = parse_statement(parser);
+
+    assert(statement->kind == STATEMENT_BLOCK);
+
+    resolver_init(resolver);
+
+
+
+    resolver_free(resolver);
+    parser_free(parser);
+    lexer_free(lexer);
+}
+
+
 void test_resolver()
 {
     printf("Running resolver tests...");
@@ -368,15 +439,15 @@ void test_resolver()
     Parser parser;
     Resolver resolver;
 
-    test_resolve_literal_expression(&lexer, &parser);
+    test_resolve_literal_expression(&lexer, &parser, &resolver);
 
     // TODO(timo): Diagnose errors while resolving literal expressions
 
-    test_resolve_unary_expression(&lexer, &parser);
+    test_resolve_unary_expression(&lexer, &parser, &resolver);
 
     // TODO(timo): Diagnose errors while resolving unary expressions
 
-    test_resolve_binary_expression(&lexer, &parser);
+    test_resolve_binary_expression(&lexer, &parser, &resolver);
 
     // TODO(timo): Diagnose errors while resolving binary expressions
 
@@ -392,7 +463,17 @@ void test_resolver()
     
     test_resolve_multiple_global_variable_declarations(&lexer, &parser, &resolver);
 
+    test_resolve_variable_expression(&lexer, &parser, &resolver);
+
+    // TODO(timo): Diagnose errors while resolving variable expression
+
     // TODO(timo): Variable assignment
+
+    // TODO(timo): Diagnose errors while resolving assignment expressions
+
+    // TODO(timo): Resolve order independent global variable declarations
+
+    // TODO(timo); Diagnose errors while resolving order independent global variable declarations
 
     if (not_error) printf("OK\n");
     else printf("\n");
