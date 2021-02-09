@@ -410,20 +410,57 @@ void test_resolve_assignment_expression(Lexer* lexer, Parser* parser, Resolver* 
 {
     const char* source = "{\n    foo: int = 42;\n    foo := 7;\n}";
 
-    AST_Declaration* declaration;
+    AST_Statement* statement;
     Symbol* symbol;
 
     lexer_init(lexer, source); 
     lex(lexer);
 
     parser_init(parser, lexer->tokens);
-    AST_Statement* statement = parse_statement(parser);
+    statement = parse_statement(parser);
+    array* statements = statement->block.statements;
 
     assert(statement->kind == STATEMENT_BLOCK);
+    assert(statements->length == 2);
 
     resolver_init(resolver);
 
+    statement = statements->items[0];
+    resolve_statement(resolver, statement);
 
+    assert(resolver->global->symbols->length == 1);
+
+    statement = statements->items[1];
+    assert(statement->kind == STATEMENT_EXPRESSION);
+    assert(statement->expression->kind == EXPRESSION_ASSIGNMENT);
+
+    Type* type = resolve_expression(resolver, statement->expression);
+    assert(type->kind == TYPE_INTEGER);
+
+    resolver_free(resolver);
+    parser_free(parser);
+    lexer_free(lexer);
+}
+
+
+void test_resolve_order_independent_global_variable_declarations(Lexer* lexer, Parser* parser, Resolver* resolver)
+{
+    const char* source = "foo: int = bar;"
+                         "bar: int = 42;";
+
+    lexer_init(lexer, source);
+    lex(lexer);
+
+    parser_init(parser, lexer->tokens);
+    parse(parser);
+
+    array* declarations = parser->declarations;
+
+    assert(declarations->length == 2);
+
+    resolver_init(resolver);
+
+    resolve(resolver, declarations);
 
     resolver_free(resolver);
     parser_free(parser);
@@ -468,10 +505,12 @@ void test_resolver()
     // TODO(timo): Diagnose errors while resolving variable expression
 
     // TODO(timo): Variable assignment
+    test_resolve_assignment_expression(&lexer, &parser, &resolver);
 
     // TODO(timo): Diagnose errors while resolving assignment expressions
 
     // TODO(timo): Resolve order independent global variable declarations
+    test_resolve_order_independent_global_variable_declarations(&lexer, &parser, &resolver);
 
     // TODO(timo); Diagnose errors while resolving order independent global variable declarations
 

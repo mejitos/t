@@ -32,6 +32,10 @@ Symbol* symbol_variable(AST_Declaration* declaration)
 Symbol* symbol_function()
 {
     Symbol* symbol = xcalloc(1, sizeof (Symbol));
+    symbol->state = STATE_UNRESOLVED;
+    symbol->kind = SYMBOL_FUNCTION;
+    symbol->identifier = declaration->identifier->lexeme;
+    symbol->type = resolve_type_specifier(declaration->specifier);
 
     return symbol;
 }
@@ -278,6 +282,9 @@ static Type* resolve_variable_expression(Resolver* resolver, AST_Expression* exp
     }
 
     // TODO(timo): Should the variable we are trying to access, be already resolved?
+    // Probably should since if we are declaring and using things out or order in the 
+    // top level, for example we should be able to assign the values to the variables 
+    // out of order, and that is something that needs the variables to be resolved
 
     Type* type = symbol->type; 
 
@@ -287,10 +294,17 @@ static Type* resolve_variable_expression(Resolver* resolver, AST_Expression* exp
 
 static Type* resolve_assignment_expression(Resolver* resolver, AST_Expression* expression)
 {
-    Type* type;
+    Type* variable_type = resolve_expression(resolver, expression->assignment.variable);
+    Type* value_type = resolve_expression(resolver, expression->assignment.value);
+    
+    if (variable_type->kind != value_type->kind)
+    {
+        // TODO(timo): Error
+        printf("Conflicting types in assignment expression\n");
+        exit(1);
+    }
 
-
-    return type;
+    return variable_type;
 }
 
 
@@ -308,7 +322,9 @@ Type* resolve_expression(Resolver* resolver, AST_Expression* expression)
             break;
         case EXPRESSION_VARIABLE:
             type = resolve_variable_expression(resolver, expression);
+            break;
         case EXPRESSION_ASSIGNMENT:
+            type = resolve_assignment_expression(resolver, expression);
             break;
         case EXPRESSION_UNARY:
             type = resolve_unary_expression(resolver, expression);
