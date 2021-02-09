@@ -126,8 +126,10 @@ AST_Statement* parse_statement(Parser* parser)
             return parse_return_statement(parser);
         case TOKEN_IDENTIFIER:
             // NOTE(timo): This check is needed to distinguish between declaration 
-            // and assignment since we don't have keywords for declaration
-            if (peek(parser)->kind != TOKEN_COLON_ASSIGN)
+            // and assignment since we don't have keywords for declaration.
+            // Also the 2nd check is needed to make sure that 'foo;' expresison is
+            // handled correctly as a variable expression
+            if (peek(parser)->kind != TOKEN_COLON_ASSIGN && peek(parser)->kind != TOKEN_SEMICOLON)
                 return parse_declaration_statement(parser);
         default:
             return parse_expression_statement(parser);

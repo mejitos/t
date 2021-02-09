@@ -147,6 +147,10 @@ void assert_declaration_function(AST_Declaration* declaration, const char* ident
 
 void test_parser()
 {
+    // TODO(timo): Variable statement expression 'foo;', for now it expects a colon
+    // and type. So we should make sure that also this case is handled so we can
+    // assign variables etc.
+
     printf("Running parser tests...");
     char* source;
     Lexer lexer;
