@@ -213,6 +213,153 @@ void test_resolve_variable_declaration(Lexer* lexer, Parser* parser, Resolver* r
 }
 
 
+void test_resolve_declaration_statement_variable(Lexer* lexer, Parser* parser, Resolver* resolver)
+{
+    Symbol* symbol;
+    AST_Statement* statement;
+    AST_Declaration* declaration;
+
+    // ---- int
+    lexer_init(lexer, "foo: int = 42;");
+    lex(lexer);
+
+    parser_init(parser, lexer->tokens);
+    statement = parse_statement(parser);
+
+    resolver_init(resolver);
+
+    declaration = statement->declaration;
+    assert(declaration->kind == DECLARATION_VARIABLE);
+    assert(declaration->specifier == TYPE_SPECIFIER_INT);
+    assert(declaration->initializer->literal.literal->kind == TOKEN_INTEGER_LITERAL);
+
+    resolve_statement(resolver, statement);
+
+    // TODO(timo): assert that the value is null before resolving
+    // Even though for now it didn't seem to be possible
+    assert(declaration->initializer->literal.value.integer == 42);
+    assert(resolver->global->symbols->length == 1);
+
+    symbol = resolver->global->symbols->items[0];
+
+    assert(symbol->kind == SYMBOL_VARIABLE);
+    assert(strcmp(symbol->identifier, "foo") == 0);
+    assert(symbol->type->kind == TYPE_INTEGER);
+    // TODO(timo): How about value? Do we add the value to the symbol itself?
+    // I think that we don't really need the ACTUAL types of these things anywhere
+    // except when doing constant folding and of course it helps interpreter. But
+    // therefore I think we don't need the values for the symbols.
+
+    declaration_free(declaration);
+    resolver_free(resolver);
+    parser_free(parser);
+    lexer_free(lexer);
+
+
+    // ---- bool
+    lexer_init(lexer, "_bar: bool = false;");
+    lex(lexer);
+
+    parser_init(parser, lexer->tokens);
+    statement = parse_statement(parser);
+
+    resolver_init(resolver);
+    
+    declaration = statement->declaration;
+    assert(declaration->kind == DECLARATION_VARIABLE);
+    assert(declaration->specifier == TYPE_SPECIFIER_BOOL);
+    assert(declaration->initializer->literal.literal->kind == TOKEN_BOOLEAN_LITERAL);
+
+    resolve_statement(resolver, statement);
+    
+    // TODO(timo): assert that the value is null before resolving
+    // Even though for now it didn't seem to be possible
+    assert(declaration->initializer->literal.value.boolean == false);
+    assert(resolver->global->symbols->length == 1);
+
+    symbol = resolver->global->symbols->items[0];
+
+    assert(symbol->kind == SYMBOL_VARIABLE);
+    assert(strcmp(symbol->identifier, "_bar") == 0);
+    assert(symbol->type->kind == TYPE_BOOLEAN);
+
+    declaration_free(declaration);
+    resolver_free(resolver);
+    parser_free(parser);
+    lexer_free(lexer);
+}
+
+    
+void test_resolve_multiple_global_variable_declarations(Lexer* lexer, Parser* parser, Resolver* resolver)
+{
+    const char* source = "foo: int = 42;"
+                         "_bar: bool = false;"
+                         "FOOBAR: int = 0;";
+
+    AST_Declaration* declaration;
+    Symbol* symbol;
+
+    lexer_init(lexer, source); 
+    lex(lexer);
+
+    parser_init(parser, lexer->tokens);
+    parse(parser);
+
+    array* declarations = parser->declarations;
+
+    assert(declarations->length == 3);
+
+    resolver_init(resolver);
+    resolve(resolver, declarations);
+
+    assert(resolver->global->symbols->length == 3);
+
+    // ---- symbol 1
+    declaration = declarations->items[0];
+    symbol = resolver->global->symbols->items[0];
+
+    assert(declaration->initializer->literal.literal->kind == TOKEN_INTEGER_LITERAL);
+    assert(declaration->initializer->literal.value.integer == 42);
+
+    assert(symbol->kind == SYMBOL_VARIABLE);
+    assert(strcmp(symbol->identifier, "foo") == 0);
+    assert(symbol->type->kind == TYPE_INTEGER);
+    assert(symbol->state == STATE_RESOLVED);
+
+    // ---- symbol 2
+    declaration = declarations->items[1];
+    symbol = resolver->global->symbols->items[1];
+
+    assert(declaration->initializer->literal.literal->kind == TOKEN_BOOLEAN_LITERAL);
+    assert(declaration->initializer->literal.value.boolean == false);
+
+    assert(symbol->kind == SYMBOL_VARIABLE);
+    assert(strcmp(symbol->identifier, "_bar") == 0);
+    assert(symbol->type->kind == TYPE_BOOLEAN);
+    assert(symbol->state == STATE_RESOLVED);
+
+    // ---- symbol 2
+    declaration = declarations->items[2];
+    symbol = resolver->global->symbols->items[2];
+
+    assert(declaration->initializer->literal.literal->kind == TOKEN_INTEGER_LITERAL);
+    assert(declaration->initializer->literal.value.integer == 0);
+
+    assert(symbol->kind == SYMBOL_VARIABLE);
+    assert(strcmp(symbol->identifier, "FOOBAR") == 0);
+    assert(symbol->type->kind == TYPE_INTEGER);
+    assert(symbol->state == STATE_RESOLVED);
+    
+    // ---- teardown
+    /*
+    declaration_free(declaration);
+    resolver_free(resolver);
+    parser_free(parser);
+    lexer_free(lexer);
+    */
+}
+
+
 void test_resolver()
 {
     printf("Running resolver tests...");
@@ -233,7 +380,14 @@ void test_resolver()
 
     // TODO(timo): Diagnose errors while resolving binary expressions
     
-    test_resolve_variable_declaration(&lexer, &parser, &resolver);
+    // TODO(timo): We can't use the direct declaration resolving, unless we
+    // create the undeclared symbols in the resolve declaration function itself
+    // test_resolve_variable_declaration(&lexer, &parser, &resolver);
+    test_resolve_declaration_statement_variable(&lexer, &parser, &resolver);
+
+    // TODO(timo): Diagnose errors while resolving variable declarations
+    
+    test_resolve_multiple_global_variable_declarations(&lexer, &parser, &resolver);
 
     // TODO(timo): Variable assignment
 

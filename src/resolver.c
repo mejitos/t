@@ -17,6 +17,26 @@ Type* type_boolean()
 }
 
 
+Symbol* symbol_variable(AST_Declaration* declaration)
+{
+    Symbol* symbol = xcalloc(1, sizeof (Symbol));
+    symbol->state = STATE_UNRESOLVED;
+    symbol->kind = SYMBOL_VARIABLE;
+    symbol->identifier = declaration->identifier->lexeme;
+    symbol->type = resolve_type_specifier(declaration->specifier);
+        
+    return symbol;
+}
+
+
+Symbol* symbol_function()
+{
+    Symbol* symbol = xcalloc(1, sizeof (Symbol));
+
+    return symbol;
+}
+
+
 void resolver_init(Resolver* resolver)
 {
     *resolver = (Resolver){ .global = scope_init(NULL) };
@@ -30,7 +50,7 @@ void resolver_free(Resolver* resolver)
     resolver->global = NULL;
 
     // NOTE(timo): The resolver itself is not being freed since it is
-    // being initialized in the top level function
+    // being initialized to the stack in the top level function
 }
 
 
@@ -262,13 +282,6 @@ static Type* resolve_variable_expression(AST_Expression* expression)
 Type* resolve_expression(AST_Expression* expression)
 // void resolve_expression(AST_Expression* expression)
 {
-    // TODO(timo): We should pass a expected type into here so we can also 
-    // make sure that the types are also something that we want then to be
-    // NOTE(timo): The type of thing X will be in the symbol table and therefore
-    // it can be accessed from there. Expressions only produce and return values
-    // and therefore the typechecking of the expected type wont happen in the
-    // expression resolving
-
     Type* type;
 
     switch (expression->kind)
@@ -289,21 +302,29 @@ Type* resolve_expression(AST_Expression* expression)
             break;
     }
 
-    /*
-    if (result.type != expected_type)
-    {
-        printf("Conflicting types\n");
-        exit(1);
-    }
-    */
-
     return type;
 }
 
 
-void resolve_statement(AST_Statement* statement)
+void resolve_declaration_statement(Resolver* resolver, AST_Statement* statement)
 {
-    //
+    Symbol* symbol = symbol_variable(statement->declaration);
+
+    scope_declare(resolver->global, symbol);
+    resolve_declaration(resolver, statement->declaration);
+}
+
+
+void resolve_statement(Resolver* resolver, AST_Statement* statement)
+{
+    switch (statement->kind)
+    {
+        case STATEMENT_DECLARATION:
+            resolve_declaration_statement(resolver, statement);
+            break;
+        default:
+            break;
+    }
 }
 
 
@@ -322,59 +343,79 @@ Type* resolve_type_specifier(Type_Specifier specifier)
 }
 
 
-void resolve_variable_declaration(Resolver* resolver, AST_Declaration* declaration)
+void resolve_declaration(Resolver* resolver, AST_Declaration* declaration)
 {
-    // Create the symbol from the declaration
-    Symbol* symbol = xcalloc(1, sizeof (Symbol));
-    symbol->kind = SYMBOL_VARIABLE;
-    symbol->identifier = declaration->identifier->lexeme;
+    // TODO(timo): We could also create the symbol in here if the symbol is NULL
+    // That way we could avoid doing the same code twice
+
+    // Get the symbol from the symbol table
+    Symbol* symbol = scope_lookup(resolver->global, declaration->identifier->lexeme);
+
+    // Check for the state of the symbol
+    assert(symbol->state == STATE_UNRESOLVED);
+
+    if (symbol->state == STATE_RESOLVED) return;
+    if (symbol->state == STATE_RESOLVING)
+    {
+        // TODO(timo): Error
+        printf("For some reason we are trying to resolve the same declaration\n");
+        exit(1);
+    }
+
+    symbol->state = STATE_RESOLVING;
 
     // Declare it in the scope symbol table. Scope handles the possible name collisions
-    scope_declare(resolver->global, symbol);
+    // scope_declare(resolver->global, symbol);
 
     // Then we should resolve the type of the name
-    Type* expected_type = resolve_type_specifier(declaration->specifier);
+    // TODO(timo): This could already be in the symbol
+    // Type* expected_type = resolve_type_specifier(declaration->specifier);
     
     // Then resolve the initializer
-    Type* actual_type = resolve_expression(declaration->initializer);
+    Type* type = resolve_expression(declaration->initializer);
     
     // Check if the expected type and the actual type match
-    if (expected_type->kind != actual_type->kind)
+    if (symbol->type->kind != type->kind)
     {
         printf("Conflicting types in variable declaration\n");
         exit(1);
     }
     
     // Symbol resolved
-
-    symbol->type = expected_type;
+    symbol->state = STATE_RESOLVED;
 }
 
 
-void resolve_declaration(Resolver* resolver, AST_Declaration* declaration)
+void resolve(Resolver* resolver, array* declarations)
 {
-    switch (declaration->kind)
+    // TODO(timo): We probably should create a abstraction for the program itself
+    
+    // Declare all the top level declarations in the global symbol table
+    // TODO(timo): Now things are declared and resolved in the order of
+    // declaration. That order independent declaration came out to be a
+    // bit bigger nut to crack, so it will be pushed to later stage. 
+    for (int i = 0; i < declarations->length; i++)
     {
-        case DECLARATION_VARIABLE:
-            resolve_variable_declaration(resolver, declaration);
-            break;
-        case DECLARATION_FUNCTION:
-        default:
-            // TODO(timo): Error
-            break;
+        AST_Declaration* declaration = declarations->items[i];
+        Symbol* symbol;
+
+        switch (declaration->kind)
+        {
+            case DECLARATION_VARIABLE:
+                symbol = symbol_variable(declaration);
+                break;
+            case DECLARATION_FUNCTION:
+            default:
+                // TODO(timo): Error
+                break;
+        }
+
+        scope_declare(resolver->global, symbol);
     }
-}
-
-
-void resolve(array* declarations)
-{
-    // TODO(timo): Since we are not creating some lightweight scripting language
-    // this time, this function should also work differently
-    // We cannot just "resolve everything by iterating through the declarations"
-    // and instead at this level we should just declare all the top level declarations
-    // and after that we actually resolve the declarations. This is just to avoid
-    // the forcing of the ordering in the top level code. We shouldn't really care
-    // when the function x for variable y is declared in relation to the scope
-    // it is actually being used.
-    // TODO(timo): We probably should also create a abstraction for the program itself
+    
+    for (int i = 0; i < declarations->length; i++)
+    {
+        AST_Declaration* declaration = declarations->items[i];
+        resolve_declaration(resolver, declarations->items[i]);
+    }
 }

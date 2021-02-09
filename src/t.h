@@ -358,7 +358,8 @@ bool type_is_boolean(Type* type);
  *  Operand
  *
  *  Used to tie the type and the value together
- *
+ *  
+ *  HOX! Not used for anything at the moment!
  */
 typedef struct Operand
 {
@@ -381,9 +382,18 @@ typedef enum Symbol_Kind
 } Symbol_Kind;
 
 
+typedef enum Symbol_State
+{
+    STATE_UNRESOLVED,
+    STATE_RESOLVING,
+    STATE_RESOLVED,
+} Symbol_State;
+
+
 typedef struct Symbol
 {
     Symbol_Kind kind;
+    Symbol_State state;
     const char* identifier;
     Type* type;
     // value?
@@ -429,9 +439,10 @@ void resolver_free(Resolver* resolver);
 // Value resolve_expression(AST_Expression* expression);
 Type* resolve_expression(AST_Expression* expression);
 // void resolve_expression(AST_Expression* expression);
-void resolve_statement(AST_Statement* statement);
+void resolve_statement(Resolver* resolver, AST_Statement* statement);
 void resolve_declaration(Resolver* resolver, AST_Declaration* declaration);
-void resolve(array* declarations);
+Type* resolve_type_specifier(Type_Specifier specifier);
+void resolve(Resolver* resolver, array* declarations);
 
 
 /*
