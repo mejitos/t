@@ -306,6 +306,19 @@ Type* resolve_expression(AST_Expression* expression)
 }
 
 
+void resolve_block_statement(Resolver* resolver, AST_Statement* statement)
+{
+    // TODO(timo): enter the scope of the block
+
+    array* statements = statement->block.statements;
+    
+    for (int i = 0; i < statements->length; i++)
+        resolve_statement(resolver, statements->items[i]); 
+
+    // TODO(timo): leave the scope of the block
+}
+
+
 void resolve_declaration_statement(Resolver* resolver, AST_Statement* statement)
 {
     Symbol* symbol = symbol_variable(statement->declaration);
@@ -319,6 +332,8 @@ void resolve_statement(Resolver* resolver, AST_Statement* statement)
 {
     switch (statement->kind)
     {
+        case STATEMENT_BLOCK:
+            resolve_block_statement(resolver, statement);
         case STATEMENT_DECLARATION:
             resolve_declaration_statement(resolver, statement);
             break;

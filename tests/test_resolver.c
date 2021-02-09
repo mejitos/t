@@ -379,6 +379,9 @@ void test_resolver()
     test_resolve_binary_expression(&lexer, &parser);
 
     // TODO(timo): Diagnose errors while resolving binary expressions
+
+    // TODO(timo): You can only use declarations at the top level so no
+    // statements or expressions are allowed at top level.
     
     // TODO(timo): We can't use the direct declaration resolving, unless we
     // create the undeclared symbols in the resolve declaration function itself
