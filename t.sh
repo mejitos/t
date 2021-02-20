@@ -60,7 +60,7 @@ case $COMMAND in
         exit 0;;
     vgtest )
         build "$TEST_BUILD_DIR" "tests/main.c" "$TEST_BUILD_DIR/$TEST_EXECUTABLE" "tests/*.c src/lexer.c src/scope.c src/array.c src/type.c src/parser.c src/resolver.c src/stringbuilder.c src/ast.c src/token.c src/memory.c src/error.c"
-        valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --verbose $TEST_BUILD_DIR/$TEST_EXECUTABLE
+        valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --log-file="vglog" --verbose $TEST_BUILD_DIR/$TEST_EXECUTABLE
         exit 0;;
 esac
 
