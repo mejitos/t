@@ -5,5 +5,6 @@
 void test_lexer();
 void test_parser();
 void test_resolver();
+void test_interpreter();
 
 #endif

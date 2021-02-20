@@ -147,19 +147,17 @@ void lex(Lexer* lexer);
  *
  *  File: value.c
  */
-/*
 typedef enum Value_Type
 {
     VALUE_NONE,
     VALUE_INTEGER,
     VALUE_BOOLEAN,
 } Value_Type;
-*/
 
 
 struct Value
 {
-    // Value_Type type;
+    Value_Type type;
     union {
         int integer;
         bool boolean;
@@ -438,7 +436,6 @@ typedef struct Resolver
     } context;
 } Resolver;
 
-
 void resolver_init(Resolver* resolver);
 void resolver_free(Resolver* resolver);
 Type* resolve_expression(Resolver* resolver, AST_Expression* expression);
@@ -453,10 +450,21 @@ void resolve(Resolver* resolver, array* declarations);
  *
  *  File: interpreter.c
  */
-Value evaluate_expression(AST_Expression* expression);
-void evaluate_statement(AST_Statement* statement);
-void evaluate_declaration(AST_Declaration* declaration);
-void interpret(array* declarations);
+typedef struct Interpreter
+{
+    array* declarations;
+    // params for the program?
+    // symbol table
+    // activation records / stack frames?
+    // NOTE(timo): This is used for now just to be able to return something
+    Value return_value;
+} Interpreter;
+
+void interpreter_init(Interpreter* interpreter);
+Value evaluate_expression(Interpreter* interpreter, AST_Expression* expression);
+void evaluate_statement(Interpreter* interpreter, AST_Statement* statement);
+void evaluate_declaration(Interpreter* interpreter, AST_Declaration* declaration);
+void interpret(Interpreter* interpreter);
 
 
 #endif

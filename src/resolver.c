@@ -109,7 +109,8 @@ static Type* resolve_literal_expression(AST_Expression* expression)
             }
             
             type = type_integer();
-            value = (Value){ .integer = integer_value };
+            value = (Value){ .type = VALUE_INTEGER, 
+                             .integer = integer_value };
             // TODO(timo): Add the value (and type?) to the expression
             break;
         }
@@ -123,7 +124,8 @@ static Type* resolve_literal_expression(AST_Expression* expression)
                 boolean_value = false;
 
             type = type_boolean();
-            value = (Value){ .boolean = boolean_value };
+            value = (Value){ .type = VALUE_BOOLEAN,
+                              .boolean = boolean_value };
             // TODO(timo): Add the value (and type?) to the expression
             break;
         }
@@ -488,7 +490,6 @@ void resolve_declaration(Resolver* resolver, AST_Declaration* declaration)
     // Declare it in the scope symbol table. Scope handles the possible name collisions
     // scope_declare(resolver->global, symbol);
 
-    // Resolve the initializer
     // NOTE(timo): So this type will be the type of the value assigned to the variable 
     // or if the declaration is function, this will be the type of the return value.
     Type* type = resolve_expression(resolver, declaration->initializer);

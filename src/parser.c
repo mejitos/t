@@ -32,7 +32,7 @@ void parser_free(Parser* parser)
 }
 
 
-void expect_token(Token* token, Token_Kind kind)
+static void expect_token(Token* token, Token_Kind kind)
 {
     if (token->kind == kind) return;
     else
@@ -43,7 +43,7 @@ void expect_token(Token* token, Token_Kind kind)
 }
 
 
-Token* peek(Parser* parser)
+static Token* peek(Parser* parser)
 {
     return *(parser->tokens + 1);
 }

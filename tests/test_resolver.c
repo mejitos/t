@@ -29,7 +29,7 @@ void test_resolve_literal_expression(Lexer* lexer, Parser* parser, Resolver* res
         { TYPE_BOOLEAN, 0 },
     };
 
-    for (size_t i = 0; i < sizeof (tests) / sizeof (*tests); i++)
+    for (int i = 0; i < sizeof (tests) / sizeof (*tests); i++)
     {
         lexer_init(lexer, tests[i]);
         lex(lexer);
