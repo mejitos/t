@@ -116,6 +116,43 @@ static AST_Statement* parse_declaration_statement(Parser* parser)
 }
 
 
+static AST_Statement* parse_if_statement(Parser* parser)
+{
+    parser->tokens++;
+
+    AST_Expression* condition = parse_expression(parser);
+
+    expect_token(*parser->tokens, TOKEN_THEN);
+    parser->tokens++;
+
+    AST_Statement* then = parse_block_statement(parser);
+    AST_Statement* _else;
+
+    if ((*parser->tokens)->kind == TOKEN_ELSE)
+    {
+        parser->tokens++;
+        _else = parse_block_statement(parser);
+    }
+
+    return if_statement(condition, then, _else);
+}
+
+
+static AST_Statement* parse_while_statement(Parser* parser)
+{
+    parser->tokens++;
+
+    AST_Expression* condition = parse_expression(parser);
+
+    expect_token(*parser->tokens, TOKEN_DO);
+    parser->tokens++;
+
+    AST_Statement* body = parse_block_statement(parser);
+
+    return while_statement(condition, body);
+}
+
+
 AST_Statement* parse_statement(Parser* parser)
 {
     switch((*parser->tokens)->kind)
@@ -124,6 +161,10 @@ AST_Statement* parse_statement(Parser* parser)
             return parse_block_statement(parser);
         case TOKEN_RETURN:
             return parse_return_statement(parser);
+        case TOKEN_IF:
+            return parse_if_statement(parser);
+        case TOKEN_WHILE:
+            return parse_while_statement(parser);
         case TOKEN_IDENTIFIER:
             // NOTE(timo): This check is needed to distinguish between declaration 
             // and assignment since we don't have keywords for declaration.

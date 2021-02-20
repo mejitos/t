@@ -228,6 +228,15 @@ struct AST_Statement
             int statements_length;
         } block;
         struct {
+            AST_Expression* condition;
+            AST_Statement* then;
+            AST_Statement* _else;
+        } _if;
+        struct {
+            AST_Expression* condition;
+            AST_Statement* body;
+        } _while;
+        struct {
             AST_Expression* value;
         } _return;
     };
@@ -295,6 +304,8 @@ AST_Declaration* function_declaration(Token* identifier, Type_Specifier specifie
 AST_Declaration* variable_declaration(Token* identifier, Type_Specifier specifier, AST_Expression* initializer);
 AST_Statement* expression_statement(AST_Expression* expression);
 AST_Statement* block_statement(array* statements, int statements_length);
+AST_Statement* if_statement(AST_Expression* condition, AST_Statement* then, AST_Statement* _else);
+AST_Statement* while_statement(AST_Expression* condition, AST_Statement* body);
 AST_Statement* return_statement(AST_Expression* value);
 AST_Statement* declaration_statement(AST_Declaration* declaration);
 AST_Expression* literal_expression(Token* literal);

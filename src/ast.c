@@ -46,6 +46,29 @@ AST_Statement* block_statement(array* statements, int statements_length)
 }
 
 
+AST_Statement* if_statement(AST_Expression* condition, AST_Statement* then, AST_Statement* _else)
+{
+    AST_Statement* statement = xcalloc(1, sizeof (AST_Statement));
+    statement->kind = STATEMENT_IF;
+    statement->_if.condition = condition;
+    statement->_if.then = then;
+    statement->_if._else = _else;
+
+    return statement;
+}
+
+
+AST_Statement* while_statement(AST_Expression* condition, AST_Statement* body)
+{
+    AST_Statement* statement = xcalloc(1, sizeof (AST_Statement));
+    statement->kind = STATEMENT_IF;
+    statement->_while.condition = condition;
+    statement->_while.body = body;
+
+    return statement;
+}
+
+
 AST_Statement* return_statement(AST_Expression* value)
 {
     AST_Statement* statement = xcalloc(1, sizeof (AST_Statement));
@@ -196,6 +219,16 @@ void statement_free(AST_Statement* statement)
             }
 
             array_free(statement->block.statements);
+            break;
+        case STATEMENT_IF:
+            expression_free(statement->_if.condition);
+            statement_free(statement->_if.then);
+            if (statement->_if._else)
+                statement_free(statement->_if._else);
+            break;
+        case STATEMENT_WHILE:
+            expression_free(statement->_while.condition);
+            statement_free(statement->_while.body);
             break;
         case STATEMENT_RETURN:
             expression_free(statement->_return.value);
