@@ -6,6 +6,8 @@ Type* type_integer()
     Type* type = xmalloc(sizeof (Type));
     type->kind = TYPE_INTEGER;
     type->size = 4;
+
+    return type;
 }
 
 
@@ -14,6 +16,8 @@ Type* type_boolean()
     Type* type = xmalloc(sizeof (Type));
     type->kind = TYPE_BOOLEAN;
     type->size = 1;
+
+    return type;
 }
 
 
@@ -29,7 +33,7 @@ Symbol* symbol_variable(AST_Declaration* declaration)
 }
 
 
-Symbol* symbol_function()
+Symbol* symbol_function(AST_Declaration* declaration)
 {
     Symbol* symbol = xcalloc(1, sizeof (Symbol));
     symbol->state = STATE_UNRESOLVED;
@@ -43,13 +47,17 @@ Symbol* symbol_function()
 
 void resolver_init(Resolver* resolver)
 {
-    *resolver = (Resolver){ .global = scope_init(NULL) };
+    *resolver = (Resolver){ .global = scope_init(NULL),
+                            .context.not_in_loop = true,
+                            .context.not_in_function = true, };
+                            // .current_declaration = NULL };
 }
 
 
 void resolver_free(Resolver* resolver)
 {
     // TODO(timo): We also should free the contents of the symbol table
+    // scope_free(resolver->global)
     free(resolver->global);
     resolver->global = NULL;
 
@@ -59,12 +67,8 @@ void resolver_free(Resolver* resolver)
 
 
 static Type* resolve_literal_expression(AST_Expression* expression)
-// static void resolve_literal_expression(AST_Expression* expression)
 {
     assert(expression->kind == EXPRESSION_LITERAL);
-    // TODO(timo): We should probably annotate the expression with
-    // the value. That way we could already free the literal token
-    // if we wanted to.
     // TODO(timo): But we actually should just return the type of
     // the expression and not the value. Unless if we are doing
     // constant folding but even then the values could be accessed
@@ -72,12 +76,13 @@ static Type* resolve_literal_expression(AST_Expression* expression)
     
     Type* type;
     Value value;
+    AST_Literal literal = expression->literal;
 
-    switch (expression->literal.literal->kind)
+    switch (literal.literal->kind)
     {
         case TOKEN_INTEGER_LITERAL:
         {
-            const char* lexeme = expression->literal.literal->lexeme;
+            const char* lexeme = literal.literal->lexeme;
             int integer_value = 0;
 
             while (*lexeme != '\0') 
@@ -106,24 +111,20 @@ static Type* resolve_literal_expression(AST_Expression* expression)
             type = type_integer();
             value = (Value){ .integer = integer_value };
             // TODO(timo): Add the value (and type?) to the expression
-            
-            // return type;
             break;
         }
         case TOKEN_BOOLEAN_LITERAL:
         {
             bool boolean_value;
 
-            if (strcmp(expression->literal.literal->lexeme, "true") == 0)
+            if (strcmp(literal.literal->lexeme, "true") == 0)
                 boolean_value = true;
-            else if (strcmp(expression->literal.literal->lexeme, "false") == 0)
+            else if (strcmp(literal.literal->lexeme, "false") == 0)
                 boolean_value = false;
 
             type = type_boolean();
             value = (Value){ .boolean = boolean_value };
             // TODO(timo): Add the value (and type?) to the expression
-
-            // return type;
             break;
         }
         default:
@@ -138,15 +139,10 @@ static Type* resolve_literal_expression(AST_Expression* expression)
 }
 
 
-// static Value resolve_unary_expression(AST_Expression* expression)
 static Type* resolve_unary_expression(Resolver* resolver, AST_Expression* expression)
-// static void resolve_unary_expression(AST_Expression* expression)
 {
-    // Type* operand = resolve_expression(expression->unary.operand);
-    resolve_expression(resolver, expression->unary.operand);
-
-    AST_Expression* operand = expression->unary.operand;
-    Token* _operator = expression->binary._operator;
+    Type* operand_type = resolve_expression(resolver, expression->unary.operand);
+    Token* _operator = expression->unary._operator;
 
     // TODO(timo): We should probably check for the negative overflow
     // in here, since the negative value is being returned from here
@@ -154,14 +150,14 @@ static Type* resolve_unary_expression(Resolver* resolver, AST_Expression* expres
     switch (_operator->kind)
     {
         case TOKEN_PLUS:
-            if (operand->type->kind != TYPE_INTEGER)
+            if (operand_type->kind != TYPE_INTEGER)
             {
                 printf("Invalid operand type\n");
                 exit(1);
             }
             break;
         case TOKEN_MINUS:
-            if (operand->type->kind != TYPE_INTEGER)
+            if (operand_type->kind != TYPE_INTEGER)
             {
                 printf("Invalid operand type\n");
                 exit(1);
@@ -171,7 +167,7 @@ static Type* resolve_unary_expression(Resolver* resolver, AST_Expression* expres
             // The biggest 32-bit integer is 2147483647
             break;
         case TOKEN_NOT:
-            if (operand->type->kind != TYPE_BOOLEAN)
+            if (operand_type->kind != TYPE_BOOLEAN)
             {
                 printf("Invalid operand type\n");
                 exit(1);
@@ -185,27 +181,20 @@ static Type* resolve_unary_expression(Resolver* resolver, AST_Expression* expres
             break;
     }
 
-    expression->type = operand->type;
+    expression->type = operand_type;
 
-    return operand->type;
+    return operand_type;
 }
 
 
-// static Value resolve_binary_expression(AST_Expression* expression)
 static Type* resolve_binary_expression(Resolver* resolver, AST_Expression* expression)
-// static void resolve_binary_expression(AST_Expression* expression)
 {
     // TODO(timo): Since the integer overlows can happen with these operations
     // too, we should check them in here also => make some utility function
-    // Type* left = resolve_expression(expression->binary.left);
-    // Type* right = resolve_expression(expression->binary.right);
-    resolve_expression(resolver, expression->binary.left);
-    resolve_expression(resolver, expression->binary.right);
-
-    AST_Expression* left = expression->binary.left;
-    AST_Expression* right = expression->binary.right;
+    Type* type_left = resolve_expression(resolver, expression->binary.left);
+    Type* type_right = resolve_expression(resolver, expression->binary.right);
     Token* _operator = expression->binary._operator;
-
+    
     Type* type;
     
     // TODO(timo): Do we want booleans to have some other expressions
@@ -216,24 +205,24 @@ static Type* resolve_binary_expression(Resolver* resolver, AST_Expression* expre
         case TOKEN_MINUS:
         case TOKEN_MULTIPLY:
         case TOKEN_DIVIDE:
-            if (left->type->kind != TYPE_INTEGER && right->type->kind != TYPE_INTEGER)
+            if (type_left->kind != TYPE_INTEGER && type_right->kind != TYPE_INTEGER)
             {
                 printf("Invalid operand types\n");
                 exit(1);
             }
             // TODO(timo): Check for integer overflow here too
-            type = left->type;
+            type = type_left;
             break;
         case TOKEN_IS_EQUAL:
         case TOKEN_NOT_EQUAL:
             // The left type and the right type has to be the same
             // Also the equality of the booleans can be compared
-            if (left->type->kind == TYPE_INTEGER && right->type->kind != TYPE_INTEGER)
+            if (type_left->kind == TYPE_INTEGER && type_right->kind != TYPE_INTEGER)
             {
                 printf("Invalid operand types\n");
                 exit(1);
             }
-            else if (left->type->kind == TYPE_BOOLEAN && right->type->kind != TYPE_BOOLEAN)
+            else if (type_left->kind == TYPE_BOOLEAN && type_right->kind != TYPE_BOOLEAN)
             {
                 printf("Invalid operand types\n");
                 exit(1);
@@ -246,7 +235,7 @@ static Type* resolve_binary_expression(Resolver* resolver, AST_Expression* expre
         case TOKEN_GREATER_THAN_EQUAL:
             // TODO(timo): Operand/values has to be scalar types e.g. integers
             // in this case for the ordering expression
-            if (left->type->kind == TYPE_INTEGER && right->type->kind != TYPE_INTEGER)
+            if (type_left->kind == TYPE_INTEGER && type_right->kind != TYPE_INTEGER)
             {
                 printf("Invalid operand types\n");
                 exit(1);
@@ -268,10 +257,7 @@ static Type* resolve_binary_expression(Resolver* resolver, AST_Expression* expre
 
 
 static Type* resolve_variable_expression(Resolver* resolver, AST_Expression* expression)
-// static void resolve_variable_expression(AST_Expression* expression)
 {
-    // We check if the variable is declared
-    // if not => error
     Symbol* symbol = scope_lookup(resolver->global, expression->identifier->lexeme);
     
     if (symbol == NULL)
@@ -285,6 +271,8 @@ static Type* resolve_variable_expression(Resolver* resolver, AST_Expression* exp
     // Probably should since if we are declaring and using things out or order in the 
     // top level, for example we should be able to assign the values to the variables 
     // out of order, and that is something that needs the variables to be resolved
+    // TODO(timo): Order independent declarations will be done at a later stage so this
+    // can be ignored for now
 
     Type* type = symbol->type; 
 
@@ -308,9 +296,42 @@ static Type* resolve_assignment_expression(Resolver* resolver, AST_Expression* e
 }
 
 
-// Value resolve_expression(AST_Expression* expression)
+static Type* resolve_function_expression(Resolver* resolver, AST_Expression* expression)
+{
+    resolver->context.not_in_function = false;
+    // Begin a new scope
+
+    // Resolve parameters
+    /*
+    array* parameters = expression->function.parameters;
+
+    for (int i = 0; i < parameters->length; i++)
+        resolve_function_parameter(resolver, parameters->items[i]);
+    */
+
+    // Resolve body and return type
+    resolve_statement(resolver, expression->function.body);
+     
+    // End scope
+    
+    // TODO(timo): We should have some way to detect error if the
+    // type of the return value was incorrect. Since this function
+    // has to return something, we really can't do the expected type
+    // check in the resolve_return_statement
+    // Thats why we might need the special context structure to keep
+    // track of information like this
+    // NOTE(timo): Decided to force only single return statement per
+    // function, so this can actually return something. Even though
+    // this information could carry inside the context structure.
+    Type* return_type = resolver->context.return_type;
+
+    resolver->context.not_in_function = true;
+    
+    return return_type;
+}
+
+
 Type* resolve_expression(Resolver* resolver, AST_Expression* expression)
-// void resolve_expression(AST_Expression* expression)
 {
     Type* type;
 
@@ -318,7 +339,6 @@ Type* resolve_expression(Resolver* resolver, AST_Expression* expression)
     {
         case EXPRESSION_LITERAL:
             type = resolve_literal_expression(expression);
-            // resolve_literal_expression(expression);
             break;
         case EXPRESSION_VARIABLE:
             type = resolve_variable_expression(resolver, expression);
@@ -328,11 +348,12 @@ Type* resolve_expression(Resolver* resolver, AST_Expression* expression)
             break;
         case EXPRESSION_UNARY:
             type = resolve_unary_expression(resolver, expression);
-            // resolve_unary_expression(expression);
             break;
         case EXPRESSION_BINARY:
             type = resolve_binary_expression(resolver, expression);
-            // resolve_binary_expression(expression);
+            break;
+        case EXPRESSION_FUNCTION:
+            type = resolve_function_expression(resolver, expression);
             break;
         default:
             break;
@@ -364,16 +385,59 @@ void resolve_declaration_statement(Resolver* resolver, AST_Statement* statement)
 }
 
 
+void resolve_return_statement(Resolver* resolver, AST_Statement* statement)
+{
+    assert(statement->kind == STATEMENT_RETURN);
+
+    if (resolver->context.not_in_function)
+    {
+        printf("Can't return outside of functions\n");
+        exit(1);
+    }
+
+    if (resolver->context.returned)
+    {
+        printf("YORO. You only return once\n");
+        exit(1);
+    }
+
+    resolver->context.return_type = resolve_expression(resolver, statement->_return.value);
+}
+
+
+void resolve_break_statement(Resolver* resolver)
+{
+    if (resolver->context.not_in_loop)
+    {
+        printf("Can't break outside of loops");
+        exit(1);
+    }
+}
+
+
 void resolve_statement(Resolver* resolver, AST_Statement* statement)
 {
+    // NOTE(timo): In case of statements we cant really return anything
+    // since the statements themselves don't return anything. For example
+    // the return statement. Function can return at any point so we can't
+    // resolve the function body in a way that we return just a single value
+
     switch (statement->kind)
     {
         case STATEMENT_BLOCK:
             resolve_block_statement(resolver, statement);
+            break;
         case STATEMENT_DECLARATION:
             resolve_declaration_statement(resolver, statement);
             break;
+        case STATEMENT_RETURN:
+            resolve_return_statement(resolver, statement);
+            break;
+        case STATEMENT_IF:
+        case STATEMENT_WHILE:
+        case STATEMENT_BREAK:
         default:
+            // TODO(timo): Error
             break;
     }
 }
@@ -415,20 +479,24 @@ void resolve_declaration(Resolver* resolver, AST_Declaration* declaration)
 
     symbol->state = STATE_RESOLVING;
 
+    // NOTE(timo): This way we can't access the info of the current
+    // declaration context e.g. to check return types
+    // TODO(timo): Should I create a specific Context structure for this
+    // kind of thing? It could be more useful as its own abstraction
+    // resolver->current_declaration = symbol;
+
     // Declare it in the scope symbol table. Scope handles the possible name collisions
     // scope_declare(resolver->global, symbol);
 
-    // Then we should resolve the type of the name
-    // TODO(timo): This could already be in the symbol
-    // Type* expected_type = resolve_type_specifier(declaration->specifier);
-    
-    // Then resolve the initializer
+    // Resolve the initializer
+    // NOTE(timo): So this type will be the type of the value assigned to the variable 
+    // or if the declaration is function, this will be the type of the return value.
     Type* type = resolve_expression(resolver, declaration->initializer);
     
     // Check if the expected type and the actual type match
     if (symbol->type->kind != type->kind)
     {
-        printf("Conflicting types in variable declaration\n");
+        printf("Conflicting types in declaration\n");
         exit(1);
     }
     
@@ -444,7 +512,9 @@ void resolve(Resolver* resolver, array* declarations)
     // Declare all the top level declarations in the global symbol table
     // TODO(timo): Now things are declared and resolved in the order of
     // declaration. That order independent declaration came out to be a
-    // bit bigger nut to crack, so it will be pushed to later stage. 
+    // bit bigger nut to crack, so it will be pushed to later stage. Therefore
+    // this "double for loop" is kind of unnecessary for now but it will be
+    // used at a later stage
     for (int i = 0; i < declarations->length; i++)
     {
         AST_Declaration* declaration = declarations->items[i];
@@ -456,6 +526,8 @@ void resolve(Resolver* resolver, array* declarations)
                 symbol = symbol_variable(declaration);
                 break;
             case DECLARATION_FUNCTION:
+                symbol = symbol_function(declaration);
+                break;
             default:
                 // TODO(timo): Error
                 break;

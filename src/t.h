@@ -214,6 +214,7 @@ typedef enum Statement_Kind
     STATEMENT_IF,
     STATEMENT_WHILE,
     STATEMENT_RETURN,
+    STATEMENT_BREAK,
     STATEMENT_DECLARATION,
 } Statement_Kind;
 
@@ -422,8 +423,6 @@ void scope_declare(Scope* scope, Symbol* symbol);
 /*
  *  Resolver
  *  
- *  TODO(timo): Only the resolve_expression will be implemented for now
- *
  *  File: resolver.c
  */
 typedef struct Resolver
@@ -431,14 +430,18 @@ typedef struct Resolver
     Scope* global;
     Scope* local; // the current scope
     array* scopes; // the scope stack TODO(timo): push and pop functions
+    struct {
+        bool not_in_loop;
+        bool not_in_function;
+        bool returned;
+        Type* return_type;
+    } context;
 } Resolver;
 
 
 void resolver_init(Resolver* resolver);
 void resolver_free(Resolver* resolver);
-// Value resolve_expression(AST_Expression* expression);
 Type* resolve_expression(Resolver* resolver, AST_Expression* expression);
-// void resolve_expression(AST_Expression* expression);
 void resolve_statement(Resolver* resolver, AST_Statement* statement);
 void resolve_declaration(Resolver* resolver, AST_Declaration* declaration);
 Type* resolve_type_specifier(Type_Specifier specifier);

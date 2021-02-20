@@ -4,6 +4,15 @@
 
 static bool not_error = true;
 
+
+static void teardown(Resolver* resolver, Parser* parser, Lexer* lexer)
+{
+    if (resolver != NULL) resolver_free(resolver);
+    if (parser != NULL) parser_free(parser);
+    if (lexer != NULL) lexer_free(lexer);
+}
+
+
 void test_resolve_literal_expression(Lexer* lexer, Parser* parser, Resolver* resolver)
 {
     const char* tests[] =
@@ -360,12 +369,9 @@ void test_resolve_multiple_global_variable_declarations(Lexer* lexer, Parser* pa
     assert(symbol->state == STATE_RESOLVED);
     
     // ---- teardown
-    /*
-    declaration_free(declaration);
     resolver_free(resolver);
     parser_free(parser);
     lexer_free(lexer);
-    */
 }
 
 
@@ -443,10 +449,20 @@ void test_resolve_assignment_expression(Lexer* lexer, Parser* parser, Resolver* 
 }
 
 
+/*
 void test_resolve_order_independent_global_variable_declarations(Lexer* lexer, Parser* parser, Resolver* resolver)
 {
-    const char* source = "foo: int = bar;"
-                         "bar: int = 42;";
+    // TODO(timo): Now there is the problem that we dont know the value of the
+    // assigned declaration e.g. in this case even though the declaration and
+    // assignments are correct, we don't have the value 42 in the foo.
+    // In simple case like this, this might be fine
+    const char* source = "foo: int = bar;\n"
+                         "bar: int = 42;\n"
+                         "main: int = (argc: int, argv: int) => {\n"
+                         "    foo;\n"
+                         "\n"
+                         "    return 0;\n"
+                         "};";
 
     lexer_init(lexer, source);
     lex(lexer);
@@ -456,7 +472,7 @@ void test_resolve_order_independent_global_variable_declarations(Lexer* lexer, P
 
     array* declarations = parser->declarations;
 
-    assert(declarations->length == 2);
+    assert(declarations->length == 3);
 
     resolver_init(resolver);
 
@@ -465,6 +481,66 @@ void test_resolve_order_independent_global_variable_declarations(Lexer* lexer, P
     resolver_free(resolver);
     parser_free(parser);
     lexer_free(lexer);
+}
+*/
+
+
+void test_resolve_return_statement()
+{
+    Lexer lexer;
+    Parser parser;
+    Resolver resolver;
+    AST_Expression* return_value;
+
+    const char* source = "return 0;";
+
+    lexer_init(&lexer, source);
+    lex(&lexer);
+    
+    parser_init(&parser, lexer.tokens);
+
+    AST_Statement* statement = parse_statement(&parser);
+
+    resolver_init(&resolver);
+
+    Type* return_type = resolve_expression(&resolver, statement->_return.value);
+
+    assert(return_type->kind == TYPE_INTEGER);
+    
+    resolver_free(&resolver);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+}
+
+
+void test_resolve_function_return_value()
+{
+    Lexer lexer;
+    Parser parser;
+    Resolver resolver;
+    AST_Expression* return_value;
+
+    const char* source = "main: int = (argc: int, argv: int) => {\n"
+                         "    return 0;\n"
+                         "};";
+
+    lexer_init(&lexer, source);
+    lex(&lexer);
+    
+    parser_init(&parser, lexer.tokens);
+    parse(&parser);
+
+    assert(parser.declarations->length == 1);
+
+    resolver_init(&resolver);
+    resolve(&resolver, parser.declarations);
+
+    assert(resolver.context.return_type->kind == TYPE_INTEGER);
+
+    resolver_free(&resolver);
+    parser_free(&parser);
+    lexer_free(&lexer);
 }
 
 
@@ -510,9 +586,23 @@ void test_resolver()
     // TODO(timo): Diagnose errors while resolving assignment expressions
 
     // TODO(timo): Resolve order independent global variable declarations
-    test_resolve_order_independent_global_variable_declarations(&lexer, &parser, &resolver);
+    // TODO(timo): Lets just forget this functionality for now and maybe add it later.
+    // It is more important to get forward at this point
+    // test_resolve_order_independent_global_variable_declarations(&lexer, &parser, &resolver);
 
     // TODO(timo); Diagnose errors while resolving order independent global variable declarations
+
+    test_resolve_return_statement();
+
+    // TODO(timo): Diganose error while resolving return statement (return value is missing)
+    
+    test_resolve_function_return_value();
+    
+    // TODO(timo): Diagnose invalid type of the return value
+    
+    // TODO(timo): Diagnose no break statement outside loops
+    // TODO(timo): Diagnose no continue statement outside loops
+    // TODO(timo): Diagnose no return statement outside functions
 
     if (not_error) printf("OK\n");
     else printf("\n");
