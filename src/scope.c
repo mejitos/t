@@ -11,6 +11,20 @@ Scope* scope_init(Scope* enclosing)
 }
 
 
+/*
+void scope_enter(Scope* enclosing)
+{
+    //
+}
+
+
+void scope_leave()
+{
+    //
+}
+*/
+
+
 Symbol* scope_get(Scope* scope, const char* identifier)
 {
     for (int i = 0; i < scope->symbols->length; i++)

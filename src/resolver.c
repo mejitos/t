@@ -1,50 +1,6 @@
 #include "t.h"
 
 
-Type* type_integer()
-{
-    Type* type = xmalloc(sizeof (Type));
-    type->kind = TYPE_INTEGER;
-    type->size = 4;
-
-    return type;
-}
-
-
-Type* type_boolean()
-{
-    Type* type = xmalloc(sizeof (Type));
-    type->kind = TYPE_BOOLEAN;
-    type->size = 1;
-
-    return type;
-}
-
-
-Symbol* symbol_variable(AST_Declaration* declaration)
-{
-    Symbol* symbol = xcalloc(1, sizeof (Symbol));
-    symbol->state = STATE_UNRESOLVED;
-    symbol->kind = SYMBOL_VARIABLE;
-    symbol->identifier = declaration->identifier->lexeme;
-    symbol->type = resolve_type_specifier(declaration->specifier);
-        
-    return symbol;
-}
-
-
-Symbol* symbol_function(AST_Declaration* declaration)
-{
-    Symbol* symbol = xcalloc(1, sizeof (Symbol));
-    symbol->state = STATE_UNRESOLVED;
-    symbol->kind = SYMBOL_FUNCTION;
-    symbol->identifier = declaration->identifier->lexeme;
-    symbol->type = resolve_type_specifier(declaration->specifier);
-
-    return symbol;
-}
-
-
 void resolver_init(Resolver* resolver)
 {
     *resolver = (Resolver){ .global = scope_init(NULL),
@@ -312,6 +268,8 @@ static Type* resolve_function_expression(Resolver* resolver, AST_Expression* exp
     */
 
     // Resolve body and return type
+    // TODO(timo): Take into account that we cannot declare
+    // functions inside functions. At least for now
     resolve_statement(resolver, expression->function.body);
      
     // End scope
@@ -387,6 +345,38 @@ void resolve_declaration_statement(Resolver* resolver, AST_Statement* statement)
 }
 
 
+void resolve_if_statement(Resolver* resolver, AST_Statement* statement)
+{
+    Type* condition = resolve_expression(resolver, statement->_if.condition);
+
+    if (condition->kind != TYPE_BOOLEAN)
+    {
+        printf("Conditional expression must produce boolean value\n");
+        exit(1);
+    }
+
+    resolve_statement(resolver, statement->_if.then);
+
+    if (statement->_if._else) resolve_statement(resolver, statement->_if._else);
+}
+
+
+void resolve_while_statement(Resolver* resolver, AST_Statement* statement)
+{
+    Type* condition = resolve_expression(resolver, statement->_while.condition);
+
+    if (condition->kind != TYPE_BOOLEAN)
+    {
+        printf("Conditional expression must produce boolean value\n");
+        exit(1);
+    }
+
+    resolver->context.not_in_loop = false;
+    resolve_statement(resolver, statement->_while.body);
+    resolver->context.not_in_loop = true;
+}
+
+
 void resolve_return_statement(Resolver* resolver, AST_Statement* statement)
 {
     assert(statement->kind == STATEMENT_RETURN);
@@ -399,7 +389,7 @@ void resolve_return_statement(Resolver* resolver, AST_Statement* statement)
 
     if (resolver->context.returned)
     {
-        printf("YORO. You only return once\n");
+        printf("YORO - You only return once\n");
         exit(1);
     }
 
@@ -426,6 +416,9 @@ void resolve_statement(Resolver* resolver, AST_Statement* statement)
 
     switch (statement->kind)
     {
+        case STATEMENT_EXPRESSION:
+            resolve_expression(resolver, statement->expression);
+            break;
         case STATEMENT_BLOCK:
             resolve_block_statement(resolver, statement);
             break;
@@ -436,8 +429,14 @@ void resolve_statement(Resolver* resolver, AST_Statement* statement)
             resolve_return_statement(resolver, statement);
             break;
         case STATEMENT_IF:
+            resolve_if_statement(resolver, statement);
+            break;
         case STATEMENT_WHILE:
+            resolve_while_statement(resolver, statement);
+            break;
         case STATEMENT_BREAK:
+            resolve_break_statement(resolver);
+            break;
         default:
             // TODO(timo): Error
             break;

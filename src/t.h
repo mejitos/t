@@ -360,6 +360,8 @@ struct Type
 
 };
 
+Type* type_integer();
+Type* type_boolean();
 bool type_is_integer(Type* type);
 bool type_is_boolean(Type* type);
 
@@ -407,8 +409,12 @@ typedef struct Symbol
     const char* identifier;
     Type* type;
     // value?
+    Value value;
     // other?
 } Symbol;
+
+Symbol* symbol_variable(AST_Declaration* declaration);
+Symbol* symbol_function(AST_Declaration* declaration);
 
 
 /*
@@ -466,6 +472,9 @@ typedef struct Interpreter
     array* declarations;
     // params for the program?
     // symbol table
+    // NOTE(timo): Only global scope used for now to get things going
+    Scope* global;
+    Scope* local;
     // activation records / stack frames?
     // NOTE(timo): This is used for now just to be able to return something
     Value return_value;

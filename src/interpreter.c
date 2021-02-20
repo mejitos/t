@@ -3,7 +3,7 @@
 
 void interpreter_init(Interpreter* interpreter)
 {
-    *interpreter = (Interpreter) {};
+    *interpreter = (Interpreter) { .global = scope_init(NULL) };
 }
 
 
@@ -89,6 +89,29 @@ static Value evaluate_binary_expression(Interpreter* interpreter, AST_Expression
 }
 
 
+Value evaluate_variable_expression(Interpreter* interpreter, AST_Expression* expression)
+{
+    Symbol* symbol = scope_lookup(interpreter->global, expression->identifier->lexeme);
+
+    // NOTE(timo): We could check for null value, but resolver should 
+    // have handled this. The famous last words.
+    
+    return symbol->value;
+}
+
+
+Value evaluate_assignment_expression(Interpreter* interpreter, AST_Expression* expression)
+{
+    AST_Expression* variable = expression->assignment.variable;
+    Symbol* symbol = scope_lookup(interpreter->global, variable->identifier->lexeme);
+    
+    // TODO(timo): Some error handling here?
+    symbol->value = evaluate_expression(interpreter, expression->assignment.value);
+
+    return symbol->value;
+}
+
+
 Value evaluate_expression(Interpreter* interpreter, AST_Expression* expression)
 {
     switch (expression->kind)
@@ -99,6 +122,10 @@ Value evaluate_expression(Interpreter* interpreter, AST_Expression* expression)
             return evaluate_unary_expression(interpreter, expression);
         case EXPRESSION_BINARY:
             return evaluate_binary_expression(interpreter, expression);
+        case EXPRESSION_VARIABLE:
+            return evaluate_variable_expression(interpreter, expression);
+        case EXPRESSION_ASSIGNMENT:
+            return evaluate_assignment_expression(interpreter, expression);
         default:
             // TODO(timo): Error
             break;
@@ -106,7 +133,30 @@ Value evaluate_expression(Interpreter* interpreter, AST_Expression* expression)
 }
 
 
+static void evaluate_expression_statement(Interpreter* interpreter, AST_Statement* statement)
+{
+    //
+}
+
+
 static void evaluate_block_statement(Interpreter* interpreter, AST_Statement* statement)
+{
+    // begin scope
+
+    for (int i = 0; i < statement->block.statements->length; i++)
+        evaluate_statement(interpreter, statement->block.statements->items[i]);
+
+    // leave scope
+}
+
+
+static void evaluate_if_statement(Interpreter* interpreter, AST_Statement* statement)
+{
+    //
+}
+
+
+static void evaluate_while_statement(Interpreter* interpreter, AST_Statement* statement)
 {
     //
 }
@@ -123,10 +173,20 @@ void evaluate_statement(Interpreter* interpreter, AST_Statement* statement)
     switch (statement->kind)
     {
         case STATEMENT_EXPRESSION:
-            // evaluate_expression(interpreter, statement);
+            evaluate_expression_statement(interpreter, statement);
+            break;
+        case STATEMENT_DECLARATION:
+            // TODO(timo): Is this enough?
+            evaluate_declaration(interpreter, statement->declaration);
             break;
         case STATEMENT_BLOCK:
             evaluate_block_statement(interpreter, statement);
+            break;
+        case STATEMENT_IF:
+            evaluate_if_statement(interpreter, statement);
+            break;
+        case STATEMENT_WHILE:
+            evaluate_while_statement(interpreter, statement);
             break;
         case STATEMENT_RETURN:
             evaluate_return_statement(interpreter, statement);
@@ -143,9 +203,12 @@ static void evaluate_variable_declaration(Interpreter* interpreter, AST_Declarat
     assert(declaration->kind == DECLARATION_VARIABLE);
 
     // Declare the identifier in the current scope
-    // Name collisions should've been handled by the resolver
+    // Name collisions should've been handled by the resolver,
+    // now we are more interested of the value
+    Symbol* symbol = symbol_variable(declaration);
+    symbol->value = evaluate_expression(interpreter, declaration->initializer);
 
-    // There is really is not anything else to do
+    scope_declare(interpreter->global, symbol);
 }
 
 
