@@ -31,11 +31,13 @@ static Value evaluate_unary_expression(Interpreter* interpreter, AST_Expression*
     {
         case TOKEN_PLUS:
             return (Value){ .type = VALUE_INTEGER,
-                            .integer = +operand.integer};
+                            .integer = +operand.integer };
         case TOKEN_MINUS:
             return (Value){ .type = VALUE_INTEGER,
-                            .integer = -operand.integer};
+                            .integer = -operand.integer };
         case TOKEN_NOT:
+            return (Value){ .type = VALUE_BOOLEAN,
+                            .boolean = !operand.boolean };
         default:
             break;
     }
