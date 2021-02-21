@@ -958,6 +958,56 @@ static void test_declaration_statement()
 }
 
 
+static void test_type_specifier()
+{
+    printf("\tType specifier...");
+    not_error = true;
+
+    Lexer lexer;
+    Parser parser;
+    Type_Specifier specifier;
+    
+    // int
+    lexer_init(&lexer, "int");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    specifier = parse_type_specifier(&parser);
+
+    assert(specifier == TYPE_SPECIFIER_INT);
+
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    // bool
+    lexer_init(&lexer, "bool");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    specifier = parse_type_specifier(&parser);
+
+    assert(specifier == TYPE_SPECIFIER_BOOL);
+
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    // [int]
+    lexer_init(&lexer, "[int]");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    specifier = parse_type_specifier(&parser);
+
+    assert(specifier == TYPE_SPECIFIER_ARRAY_INT);
+
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    if (not_error) printf("PASSED\n");
+    else printf("\n");
+}
+
+
 static void test_function_declaration()
 {
     printf("\tFunction declartion...");
@@ -1059,7 +1109,7 @@ void test_parser()
     test_return_statement();
     test_declaration_statement();
 
-    // test_type_specifier();
+    test_type_specifier();
 
     test_variable_declaration();
     test_function_declaration();

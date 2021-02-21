@@ -1,10 +1,8 @@
 #include "t.h"
 
 
-static Type_Specifier parse_type_specifier(Parser* parser);
 static AST_Statement* parse_block_statement(Parser* parser);
 static AST_Statement* parse_return_statement(Parser* parser);
-
 static inline void advance(Parser* parser);
 
 
@@ -64,20 +62,44 @@ static inline void advance(Parser* parser)
 }
 
 
-static Type_Specifier parse_type_specifier(Parser* parser)
+Type_Specifier parse_type_specifier(Parser* parser)
 {
+    Type_Specifier specifier;
+
     switch (parser->current_token->kind)
     {
         case TOKEN_INT:
+        {
             advance(parser);
-            return TYPE_SPECIFIER_INT;
+            specifier = TYPE_SPECIFIER_INT;
+        }
+        break;
         case TOKEN_BOOL:
+        {
             advance(parser);
-            return TYPE_SPECIFIER_BOOL;
+            specifier = TYPE_SPECIFIER_BOOL;
+        }
+        break;
+        case TOKEN_LEFT_BRACKET:
+        {
+            advance(parser);
+            // NOTE(timo): Since we will only have arrays of int at this point
+            // of time, we will force it here at the parsing stage already
+            // TODO(timo): This needs more descriptive error message though
+            expect_token(parser->current_token, TOKEN_INT, "int");
+            advance(parser);
+            expect_token(parser->current_token, TOKEN_RIGHT_BRACKET, "]");
+            advance(parser);
+
+            specifier = TYPE_SPECIFIER_ARRAY_INT;
+        }
+        break;
         default:
             printf("Expected type specifier, got something else '%s'\n", parser->current_token->lexeme);
             exit(1);
     }
+
+    return specifier;
 }
 
 
@@ -105,6 +127,7 @@ static AST_Statement* parse_block_statement(Parser* parser)
 
     while (parser->current_token->kind != TOKEN_RIGHT_CURLYBRACE && parser->current_token->kind != TOKEN_EOF)
         array_push(statements, parse_statement(parser));
+        // TODO(timo): Check for errors and if found, panic mode
 
     expect_token(parser->current_token, TOKEN_RIGHT_CURLYBRACE, "}");
     advance(parser);
@@ -502,6 +525,8 @@ void parse(Parser* parser)
     while (parser->current_token->kind != TOKEN_EOF)
     {
         array_push(parser->declarations, parse_declaration(parser));
+
+        // TODO(timo): Check for errors and panic mode if error is found
     }
 
     assert(parser->current_token->kind == TOKEN_EOF);

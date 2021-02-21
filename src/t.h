@@ -168,7 +168,6 @@ bool value_as_boolean(Value value);
 bool value_as_integer(Value value);
 
 
-
 /*
  *  AST stuff
  *
@@ -186,6 +185,7 @@ typedef enum Type_Specifier
 {
     TYPE_SPECIFIER_NONE,
     TYPE_SPECIFIER_INT,
+    TYPE_SPECIFIER_ARRAY_INT,
     TYPE_SPECIFIER_BOOL,
 } Type_Specifier;
 
@@ -346,7 +346,8 @@ typedef struct Parser
 void parser_init(Parser* parser, array* tokens);
 void parser_free(Parser* parser);
 void parse(Parser* parser);
-// Public functions to make testing easier
+
+Type_Specifier parse_type_specifier(Parser* parser);
 AST_Expression* parse_expression(Parser* parser);
 AST_Statement* parse_statement(Parser* parser);
 AST_Declaration* parse_declaration(Parser* parser);
