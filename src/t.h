@@ -91,7 +91,6 @@ typedef enum Token_Kind
     TOKEN_WHILE, TOKEN_DO,
     TOKEN_AND, TOKEN_OR, TOKEN_NOT, 
     TOKEN_RETURN, TOKEN_BREAK, TOKEN_CONTINUE,
-    TOKEN_TRUE, TOKEN_FALSE, // TODO(timo): Do I want booleans as literals or just as these reserved words since they are both
 
     // Type specifiers
     TOKEN_INT, TOKEN_BOOL,
@@ -125,11 +124,8 @@ Token* token(Token_Kind kind, const char* lexeme, int lexeme_length, Position po
 typedef struct Lexer
 {
     const char* stream;
+    array* tokens;
     Position position;
-
-    Token** tokens;
-    int tokens_length;
-    int tokens_capacity;
 } Lexer;
 
 
@@ -143,7 +139,6 @@ void lex(Lexer* lexer);
 
 /*
  *  Value
- *  TODO(timo): Would a Operand be better/more descriptive name?
  *
  *  File: value.c
  */
@@ -327,11 +322,11 @@ void expression_free(AST_Expression* expression);
  */
 typedef struct Parser
 {
-    Token** tokens;
+    array* tokens;
     array* declarations;
 } Parser;
 
-void parser_init(Parser* parser, Token** tokens);
+void parser_init(Parser* parser, array* tokens);
 void parser_free(Parser* parser);
 void parse(Parser* parser);
 // Public functions to make testing easier

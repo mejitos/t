@@ -9,60 +9,30 @@ void lexer_init(Lexer* lexer, const char* source)
 {
     *lexer = (Lexer){ .stream = source, 
                       .position.line_end = 1, 
-                      .position.column_end = 1 };
+                      .position.column_end = 1,
+                      .tokens = array_init(sizeof (Token*)) };
 }
 
 
 void lexer_free(Lexer* lexer)
 {
-    // TODO(timo): We should take into account the "unwindind" of the tokens
-    // so we can actually iterate them from the beginning. As of now, this
-    // has to be handled by the caller before calling, but this is something
-    // that should be thinked through
-    for (Token** it = lexer->tokens; it != lexer->tokens + lexer->tokens_length; it++)
+    // NOTE(timo): It is the callers responsibility to "unwind" the array
+    // to the beginning so this iteration can be done.
+    for (int i = 0; i < lexer->tokens->length; i++)
     {
-        // TODO(timo): Why this is not needed anymore when before it was needed?!?
-        // All that has changed, is that the there is no union anymore for the
-        // idenfitier specifically, since everything has a lexeme now.
-        // NOTE(timo): Okay, so because we pass some things like operators as a value
-        // to the token constructor, we don't explicitly allocate memory for them.
-        // So now there is a problem with this. How do we know when to free the memory?
-        // free((char*)(*it)->lexeme);
-        // (*it)->lexeme = NULL;
+        Token* token = lexer->tokens->items[i];
+        free((char*)token->lexeme);
+        token->lexeme = NULL;
 
-        free((char*)(*it)->lexeme);
-        (*it)->lexeme = NULL;
-
-        free(*it);
-        *it = NULL;
+        free(token);
+        token = NULL;
     }
+    
+    // NOTE(timo): This function will set the array to NULL after freeing
+    array_free(lexer->tokens);
 
-    free(lexer->tokens);
-    lexer->tokens = NULL;
-
-    // NOTE(timo); The lexer itself is not freed, since it being 
-    // initialized in the stack at the top level function.
-}
-
-
-static void lexer_push_token(Lexer* lexer, Token* token)
-{
-    if (! lexer->tokens)
-    {
-        lexer->tokens = xcalloc(8, sizeof (Token*));
-        lexer->tokens_capacity = 8;
-        lexer->tokens_length = 0;
-    }
-
-    if (lexer->tokens_capacity == lexer->tokens_length)
-    {
-        lexer->tokens = xrealloc(lexer->tokens, sizeof (Token*) * lexer->tokens_capacity * 2);
-        lexer->tokens_capacity *= 2;
-        for (int i = lexer->tokens_length; i < lexer->tokens_capacity; i++) *(lexer->tokens + i) = NULL;
-    }
-
-    *(lexer->tokens + lexer->tokens_length) = token;
-    lexer->tokens_length++;
+    // NOTE(timo): The lexer itself is not freed, since it is being initialized 
+    // in the stack at the top level function.
 }
 
 
@@ -132,7 +102,7 @@ void lex(Lexer* lexer)
                 // lexeme of the number, so this is quick and dirty way to fix it for now. 
                 lexer->position.column_end -= 1;
 
-                lexer_push_token(lexer, token(TOKEN_INTEGER_LITERAL, lexeme, length, lexer->position));
+                array_push(lexer->tokens, token(TOKEN_INTEGER_LITERAL, lexeme, length, lexer->position));
 
                 lexer->position.column_end += 1;
                 continue;
@@ -235,7 +205,7 @@ void lex(Lexer* lexer)
                 // lexeme of the identifier, so this is quick and dirty way to fix it for now. 
                 lexer->position.column_end -= 1;
 
-                lexer_push_token(lexer, token(kind, lexeme, length, lexer->position));
+                array_push(lexer->tokens, token(kind, lexeme, length, lexer->position));
 
                 lexer->position.column_end += 1;
                 continue;
@@ -243,87 +213,87 @@ void lex(Lexer* lexer)
             // TODO(timo): I could just group these operator things to a single block
             // like I did with the identifiers
             case '+':
-                lexer_push_token(lexer, token(TOKEN_PLUS, "+", 1, lexer->position));
+                array_push(lexer->tokens, token(TOKEN_PLUS, "+", 1, lexer->position));
                 advance(lexer, 1);
                 continue;
             case '-':
-                lexer_push_token(lexer, token(TOKEN_MINUS, "-", 1, lexer->position));
+                array_push(lexer->tokens, token(TOKEN_MINUS, "-", 1, lexer->position));
                 advance(lexer, 1);
                 continue;
             case '*':
-                lexer_push_token(lexer, token(TOKEN_MULTIPLY, "*", 1, lexer->position));
+                array_push(lexer->tokens, token(TOKEN_MULTIPLY, "*", 1, lexer->position));
                 advance(lexer, 1);
                 continue;
             case '/':
-                lexer_push_token(lexer, token(TOKEN_DIVIDE, "/", 1, lexer->position));
+                array_push(lexer->tokens, token(TOKEN_DIVIDE, "/", 1, lexer->position));
                 advance(lexer, 1);
                 continue;
             case '(':
-                lexer_push_token(lexer, token(TOKEN_LEFT_PARENTHESIS, "(", 1, lexer->position));
+                array_push(lexer->tokens, token(TOKEN_LEFT_PARENTHESIS, "(", 1, lexer->position));
                 advance(lexer, 1);
                 continue;
             case ')':
-                lexer_push_token(lexer, token(TOKEN_RIGHT_PARENTHESIS, ")", 1, lexer->position));
+                array_push(lexer->tokens, token(TOKEN_RIGHT_PARENTHESIS, ")", 1, lexer->position));
                 advance(lexer, 1);
                 continue;
             case '[':
-                lexer_push_token(lexer, token(TOKEN_LEFT_BRACKET, "[", 1, lexer->position));
+                array_push(lexer->tokens, token(TOKEN_LEFT_BRACKET, "[", 1, lexer->position));
                 advance(lexer, 1);
                 continue;
             case ']':
-                lexer_push_token(lexer, token(TOKEN_RIGHT_BRACKET, "]", 1, lexer->position));
+                array_push(lexer->tokens, token(TOKEN_RIGHT_BRACKET, "]", 1, lexer->position));
                 advance(lexer, 1);
                 continue;
             case '{':
-                lexer_push_token(lexer, token(TOKEN_LEFT_CURLYBRACE, "{", 1, lexer->position));
+                array_push(lexer->tokens, token(TOKEN_LEFT_CURLYBRACE, "{", 1, lexer->position));
                 advance(lexer, 1);
                 continue;
             case '}':
-                lexer_push_token(lexer, token(TOKEN_RIGHT_CURLYBRACE, "}", 1, lexer->position));
+                array_push(lexer->tokens, token(TOKEN_RIGHT_CURLYBRACE, "}", 1, lexer->position));
                 advance(lexer, 1);
                 continue;
             case ',':
-                lexer_push_token(lexer, token(TOKEN_COMMA, ",", 1, lexer->position));
+                array_push(lexer->tokens, token(TOKEN_COMMA, ",", 1, lexer->position));
                 advance(lexer, 1);
                 continue;
             case ';':
-                lexer_push_token(lexer, token(TOKEN_SEMICOLON, ";", 1, lexer->position));
+                array_push(lexer->tokens, token(TOKEN_SEMICOLON, ";", 1, lexer->position));
                 advance(lexer, 1);
                 continue;
             case ':':
                 if (*(lexer->stream + 1) == '=')
                 {
                     advance(lexer, 1);
-                    lexer_push_token(lexer, token(TOKEN_COLON_ASSIGN, ":=", 2, lexer->position));
+                    array_push(lexer->tokens, token(TOKEN_COLON_ASSIGN, ":=", 2, lexer->position));
                     advance(lexer, 1);
                     continue;
                 }
-                lexer_push_token(lexer, token(TOKEN_COLON, ":", 1, lexer->position));
+                array_push(lexer->tokens, token(TOKEN_COLON, ":", 1, lexer->position));
                 advance(lexer, 1);
                 continue;
             case '=':
                 if (*(lexer->stream + 1) == '=')
                 {
                     advance(lexer, 1);
-                    lexer_push_token(lexer, token(TOKEN_IS_EQUAL, "==", 2, lexer->position));
+                    array_push(lexer->tokens, token(TOKEN_IS_EQUAL, "==", 2, lexer->position));
                     advance(lexer, 1);
                     continue;
                 }
                 if (*(lexer->stream + 1) == '>')
                 {
                     advance(lexer, 1);
-                    lexer_push_token(lexer, token(TOKEN_ARROW, "=>", 2, lexer->position));
+                    array_push(lexer->tokens, token(TOKEN_ARROW, "=>", 2, lexer->position));
                     advance(lexer, 1);
                     continue;
                 }
-                lexer_push_token(lexer, token(TOKEN_EQUAL, "=", 1, lexer->position));
+                array_push(lexer->tokens, token(TOKEN_EQUAL, "=", 1, lexer->position));
                 advance(lexer, 1);
                 continue;
             case '!':
                 if (*(lexer->stream + 1) == '=')
                 {
                     advance(lexer, 1);
-                    lexer_push_token(lexer, token(TOKEN_NOT_EQUAL, "!=", 2, lexer->position));
+                    array_push(lexer->tokens, token(TOKEN_NOT_EQUAL, "!=", 2, lexer->position));
                     advance(lexer, 1);
                     continue;
                 }
@@ -334,22 +304,22 @@ void lex(Lexer* lexer)
                 if (*(lexer->stream + 1) == '=')
                 {
                     advance(lexer, 1);
-                    lexer_push_token(lexer, token(TOKEN_LESS_THAN_EQUAL, "<=", 2, lexer->position));
+                    array_push(lexer->tokens, token(TOKEN_LESS_THAN_EQUAL, "<=", 2, lexer->position));
                     advance(lexer, 1);
                     continue;
                 }
-                lexer_push_token(lexer, token(TOKEN_LESS_THAN, "<", 1, lexer->position));
+                array_push(lexer->tokens, token(TOKEN_LESS_THAN, "<", 1, lexer->position));
                 advance(lexer, 1);
                 continue;
             case '>':
                 if (*(lexer->stream + 1) == '=')
                 {
                     advance(lexer, 1);
-                    lexer_push_token(lexer, token(TOKEN_GREATER_THAN_EQUAL, ">=", 2, lexer->position));
+                    array_push(lexer->tokens, token(TOKEN_GREATER_THAN_EQUAL, ">=", 2, lexer->position));
                     advance(lexer, 1);
                     continue;
                 }
-                lexer_push_token(lexer, token(TOKEN_GREATER_THAN, ">", 1, lexer->position));
+                array_push(lexer->tokens, token(TOKEN_GREATER_THAN, ">", 1, lexer->position));
                 advance(lexer, 1);
                 continue;
             default:
@@ -365,5 +335,5 @@ void lex(Lexer* lexer)
     lexer->position.column_start = lexer->position.column_end;
 
     // Add the end of file token
-    lexer_push_token(lexer, token(TOKEN_EOF, "<EoF>", 5, lexer->position));    
+    array_push(lexer->tokens, token(TOKEN_EOF, "<EoF>", 5, lexer->position));    
 }
