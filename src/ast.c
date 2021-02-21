@@ -185,6 +185,17 @@ AST_Expression* function_expression(array* parameters, int arity, AST_Statement*
 }
 
 
+AST_Expression* call_expression(AST_Expression* variable, array* arguments)
+{
+    AST_Expression* expression = xcalloc(1, sizeof (AST_Expression));
+    expression->kind = EXPRESSION_CALL;
+    expression->call.variable = variable;
+    expression->call.arguments = arguments;
+
+    return expression;
+}
+
+
 void expression_free(AST_Expression* expression)
 {
     switch (expression->kind)
@@ -221,6 +232,18 @@ void expression_free(AST_Expression* expression)
             array_free(expression->function.parameters);
             statement_free(expression->function.body);
             break; 
+        case EXPRESSION_CALL:
+            expression_free(expression->call.variable);
+            for (int i = 0; i < expression->call.arguments->length; i++)
+            {
+                AST_Expression* argument = expression->call.arguments->items[i];
+                expression_free(argument);
+                // NOTE(timo): The array item gets freed and assigned to NULL 
+                // when the expression is freed so no need to do it in here
+                expression->call.arguments->items[i] = NULL;
+            }
+            array_free(expression->call.arguments);
+            break;
     }
 
     free(expression);

@@ -6,6 +6,20 @@
 static bool not_error = true;
 
 
+const char* expression_kinds[] =
+{
+    [EXPRESSION_NONE] = "none",
+    [EXPRESSION_LITERAL] = "literal expression",
+    [EXPRESSION_UNARY] = "unary expression",
+    [EXPRESSION_BINARY] = "binary expression",
+    [EXPRESSION_VARIABLE] = "variable expression",
+    [EXPRESSION_ASSIGNMENT] = "assignment expression",
+    [EXPRESSION_INDEX] = "index expression",
+    [EXPRESSION_FUNCTION] = "function expression",
+    [EXPRESSION_CALL] = "call expression",
+};
+
+
 stringbuilder* expression_to_string(AST_Expression* expression, stringbuilder* sb)
 {
     switch (expression->kind)
@@ -50,7 +64,11 @@ void assert_expression_str(char* result, const char* expected)
 
 void assert_literal_expression_integer(AST_Expression* expression, const char* value)
 {
-    assert(expression->kind == EXPRESSION_LITERAL);
+    if (expression->kind != EXPRESSION_LITERAL)
+    {
+        printf("\n\t\tInvalid expression kind '%s', expected literal expression", expression_kinds[expression->kind]);
+        not_error = false;
+    }
     assert(expression->literal.literal->kind == TOKEN_INTEGER_LITERAL);
     assert(strcmp(expression->literal.literal->lexeme, value) == 0);
 }
@@ -576,10 +594,38 @@ static void test_function_expression()
 }
 
 
+
 static void test_call_expression()
 {
     printf("\tCall expression...");
     not_error = true;
+
+    Lexer lexer;
+    Parser parser;
+    AST_Expression* expression;
+    AST_Expression* argument;
+
+    lexer_init(&lexer, "foo(0, bar)");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    expression = parse_expression(&parser);
+
+    assert(expression->kind == EXPRESSION_CALL);
+    assert_variable_expression(expression->call.variable, "foo");
+    
+    array* arguments = expression->call.arguments;
+    assert(arguments->length == 2);
+    
+    argument = arguments->items[0];
+    assert_literal_expression_integer(argument, "0");
+
+    argument = arguments->items[1];
+    assert_variable_expression(argument, "bar");
+
+    expression_free(expression);
+    parser_free(&parser);
+    lexer_free(&lexer);
 
     if (not_error) printf("PASSED\n");
     else printf("\n");

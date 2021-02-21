@@ -290,7 +290,29 @@ static AST_Expression* call(Parser* parser)
         expect_token(parser->current_token, TOKEN_RIGHT_BRACKET, "]");
         advance(parser);
 
-        return index_expression(expression, index);
+        expression = index_expression(expression, index);
+    }
+    else if (parser->current_token->kind == TOKEN_LEFT_PARENTHESIS)
+    {
+        advance(parser);
+
+        array* arguments = array_init(sizeof (AST_Expression*));
+        // TODO(timo): Should probably check for end of file too
+        if (parser->current_token->kind != TOKEN_RIGHT_PARENTHESIS)
+        {
+            array_push(arguments, parse_expression(parser));
+
+            while (parser->current_token->kind == TOKEN_COMMA)
+            {
+                advance(parser);
+                array_push(arguments, parse_expression(parser));
+            }
+        }
+
+        expect_token(parser->current_token, TOKEN_RIGHT_PARENTHESIS, ")");
+        advance(parser);
+
+        expression = call_expression(expression, arguments);
     }
 
     return expression;

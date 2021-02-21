@@ -298,6 +298,10 @@ struct AST_Expression
             int arity;
             AST_Statement* body;
         } function;
+        struct {
+            AST_Expression* variable;
+            array* arguments;
+        } call;
     };
 };
 
@@ -319,6 +323,7 @@ AST_Expression* assignment_expression(AST_Expression* variable, AST_Expression* 
 AST_Expression* index_expression(AST_Expression* variable, AST_Expression* value);
 Parameter* function_parameter(Token* identifier, Type_Specifier specifier);
 AST_Expression* function_expression(array* parameters, int arity, AST_Statement* body);
+AST_Expression* call_expression(AST_Expression* variable, array* arguments);
 void declaration_free(AST_Declaration* declaration);
 void statement_free(AST_Statement* statement);
 void expression_free(AST_Expression* expression);
