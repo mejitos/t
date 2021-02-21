@@ -1,6 +1,8 @@
 #include "array.h"
 
 
+// item size if the size of the items pointer
+// since this array will store pointers of the items
 array* array_init(size_t item_size)
 {
     array* arr = xcalloc(1, sizeof (array));
@@ -14,16 +16,9 @@ void array_free(array* arr)
 {
     if (arr->items)
     {
-        // NOTE(timo): Frees the array elements from the first free element onwards. 
-        // User of the array is responsible of freeing the memory they use
-        for (int i = arr->length; i < arr->capacity; i++)
-        // for (int i = 0; i < arr->capacity; i++)
-        {
-            // if (arr->items[i] == NULL) continue;
-            free(arr->items[i]);
-            arr->items[i] = NULL;
-        }
-
+        // NOTE(timo): The user of the array is responsible for freeing the 
+        // elements they use. Since the rest of the elements are being initalized 
+        // as NULL and not used, we don't have to explicitly free them.
         free(arr->items);
         arr->items = NULL;
     }
