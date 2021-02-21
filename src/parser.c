@@ -186,14 +186,14 @@ AST_Statement* parse_statement(Parser* parser)
     {
         case TOKEN_LEFT_CURLYBRACE:
             return parse_block_statement(parser);
-        case TOKEN_RETURN:
-            return parse_return_statement(parser);
         case TOKEN_IF:
             return parse_if_statement(parser);
         case TOKEN_WHILE:
             return parse_while_statement(parser);
         case TOKEN_BREAK:
             return parse_break_statement(parser);
+        case TOKEN_RETURN:
+            return parse_return_statement(parser);
         case TOKEN_IDENTIFIER:
             // NOTE(timo): This check is needed to distinguish between declaration 
             // and assignment since we don't have keywords for declaration.
@@ -276,6 +276,27 @@ static AST_Expression* primary(Parser* parser)
 }
 
 
+static AST_Expression* call(Parser* parser)
+{
+    AST_Expression* expression = primary(parser);
+
+    if (parser->current_token->kind == TOKEN_LEFT_BRACKET)
+    {
+        advance(parser);
+        // TODO(timo): Do we want to force the index to be integer literal
+        // or do we leave that to the resolver? For now we pass it to resolver.
+        AST_Expression* index = parse_expression(parser);
+
+        expect_token(parser->current_token, TOKEN_RIGHT_BRACKET, "]");
+        advance(parser);
+
+        return index_expression(expression, index);
+    }
+
+    return expression;
+}
+
+
 static AST_Expression* unary(Parser* parser)
 {
     if (parser->current_token->kind == TOKEN_MINUS || 
@@ -288,7 +309,7 @@ static AST_Expression* unary(Parser* parser)
         return unary_expression(_operator, operand);
     }
 
-    return primary(parser);
+    return call(parser);
 }
 
 

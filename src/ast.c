@@ -152,6 +152,17 @@ AST_Expression* assignment_expression(AST_Expression* variable, AST_Expression* 
 }
 
 
+AST_Expression* index_expression(AST_Expression* variable, AST_Expression* value)
+{
+    AST_Expression* expression = xcalloc(1, sizeof (AST_Expression));
+    expression->kind = EXPRESSION_INDEX;
+    expression->index.variable = variable;
+    expression->index.value = value;
+
+    return expression;
+}
+
+
 Parameter* function_parameter(Token* identifier, Type_Specifier specifier)
 {
     Parameter* parameter = xcalloc(1, sizeof (Parameter));
@@ -196,6 +207,10 @@ void expression_free(AST_Expression* expression)
         case EXPRESSION_ASSIGNMENT:
             expression_free(expression->assignment.variable);
             expression_free(expression->assignment.value);
+            break;
+        case EXPRESSION_INDEX:
+            expression_free(expression->index.variable);
+            expression_free(expression->index.value);
             break;
         case EXPRESSION_FUNCTION:
             for (int i = 0; i < expression->function.parameters->length; i++)

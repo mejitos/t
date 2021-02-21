@@ -126,6 +126,18 @@ void assert_assignment_expression_integer(AST_Expression* expression, const char
 }
 
 
+void assert_index_expression(AST_Expression* expression, const char* identifier, const char* value)
+{
+    if (expression->kind != EXPRESSION_INDEX)
+    {
+        printf("\n\t\tInvalid expression kind '%d', expected index expression");
+        not_error = false;
+    }
+    assert_variable_expression(expression->index.variable, identifier);
+    assert_literal_expression_integer(expression->index.value, value);
+}
+
+
 void assert_declaration_variable_integer(AST_Declaration* declaration, const char* identifier, Type_Specifier specifier, const char* value)
 {
     assert(declaration->kind == DECLARATION_VARIABLE);
@@ -528,6 +540,52 @@ static void test_assignment_expression()
 }
 
 
+static void test_index_expression()
+{
+    printf("\tIndex expression...");
+    not_error = true;
+
+    Lexer lexer;
+    Parser parser;
+    AST_Expression* expression;
+
+    lexer_init(&lexer, "foo[0]");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    expression = parse_expression(&parser);
+
+    assert_index_expression(expression, "foo", "0");
+
+    expression_free(expression);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    if (not_error) printf("PASSED\n");
+    else printf("\n");
+}
+
+
+static void test_function_expression()
+{
+    printf("\tFunction expression...");
+    not_error = true;
+
+    if (not_error) printf("PASSED\n");
+    else printf("\n");
+}
+
+
+static void test_call_expression()
+{
+    printf("\tCall expression...");
+    not_error = true;
+
+    if (not_error) printf("PASSED\n");
+    else printf("\n");
+}
+
+
 static void test_order_of_arithmetic_operations()
 {
     printf("\tOrder of arithmetic operations...");
@@ -887,9 +945,12 @@ void test_parser()
     test_binary_expression_arithmetic();
     test_binary_expression_comparison();
     test_logical_expression();
-    test_variable_declaration();
     test_variable_expression();
     test_assignment_expression();
+    test_index_expression();
+    test_function_expression();
+    test_call_expression();
+
     test_order_of_arithmetic_operations();
 
     test_expression_statement();
@@ -900,6 +961,9 @@ void test_parser()
     test_return_statement();
     test_declaration_statement();
 
+    // test_type_specifier();
+
+    test_variable_declaration();
     test_function_declaration();
 
     test_small_program();
