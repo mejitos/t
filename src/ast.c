@@ -224,12 +224,15 @@ void expression_free(AST_Expression* expression)
             expression_free(expression->index.value);
             break;
         case EXPRESSION_FUNCTION:
-            for (int i = 0; i < expression->function.parameters->length; i++)
+            if (expression->function.arity > 0)
             {
-                free(expression->function.parameters->items[i]);
-                expression->function.parameters->items[i] = NULL;
+                for (int i = 0; i < expression->function.parameters->length; i++)
+                {
+                    free(expression->function.parameters->items[i]);
+                    expression->function.parameters->items[i] = NULL;
+                }
+                array_free(expression->function.parameters);
             }
-            array_free(expression->function.parameters);
             statement_free(expression->function.body);
             break; 
         case EXPRESSION_CALL:

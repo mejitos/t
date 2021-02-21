@@ -589,6 +589,58 @@ static void test_function_expression()
     printf("\tFunction expression...");
     not_error = true;
 
+    Lexer lexer;
+    Parser parser;
+    AST_Expression* expression;
+    array* parameters;
+    Parameter* parameter;
+
+    // Function expression with parameters
+    lexer_init(&lexer, "(foo: int, bar: bool) => { do_something; };");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    expression = parse_expression(&parser);
+
+    assert(expression->kind == EXPRESSION_FUNCTION);
+    assert(expression->function.arity == 2);
+
+    parameters = expression->function.parameters;
+    assert(parameters->length == 2);
+    
+    parameter = parameters->items[0];
+    assert(strcmp(parameter->identifier->lexeme, "foo") == 0);
+    assert(parameter->specifier == TYPE_SPECIFIER_INT);
+    
+    parameter = parameters->items[1];
+    assert(strcmp(parameter->identifier->lexeme, "bar") == 0);
+    assert(parameter->specifier == TYPE_SPECIFIER_BOOL);
+
+    assert(expression->function.body->kind == STATEMENT_BLOCK);
+
+    expression_free(expression);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    // Function expression with no parameters
+    lexer_init(&lexer, "() => { do_something; };");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    expression = parse_expression(&parser);
+
+    assert(expression->kind == EXPRESSION_FUNCTION);
+    assert(expression->function.arity == 0);
+
+    parameters = expression->function.parameters;
+    assert(parameters == NULL);
+    
+    assert(expression->function.body->kind == STATEMENT_BLOCK);
+
+    expression_free(expression);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
     if (not_error) printf("PASSED\n");
     else printf("\n");
 }

@@ -213,32 +213,30 @@ AST_Statement* parse_statement(Parser* parser)
 
 static AST_Expression* primary(Parser* parser)
 {
+    AST_Expression* expression;
+
     switch (parser->current_token->kind)
     {
         case TOKEN_INTEGER_LITERAL:
         case TOKEN_BOOLEAN_LITERAL:
         {
-            AST_Expression* expression = literal_expression(parser->current_token);
+            expression = literal_expression(parser->current_token);
             advance(parser);
-            return expression;
+            break;
         }
         case TOKEN_IDENTIFIER:
         {
-            AST_Expression* expression = variable_expression(parser->current_token);
+            expression = variable_expression(parser->current_token);
             advance(parser);
-            return expression;
+            break;
         }
         case TOKEN_LEFT_PARENTHESIS:
             advance(parser);
-            // TODO(timo): We should also peek for the closing parenthesis.
-            // If it is found, there is possibility for function without parameters.
+
             if (parser->current_token->kind == TOKEN_IDENTIFIER)
             {
                 array* parameters = array_init(sizeof (Parameter*));
                 
-                // TODO(timo): This thing doesn't work in a situation where no
-                // parameters are being defined, since we don't even come in
-                // here in that case
                 do {
                     if (parser->current_token->kind == TOKEN_COMMA) advance(parser);
                     
@@ -258,21 +256,32 @@ static AST_Expression* primary(Parser* parser)
 
                 AST_Statement* body = parse_statement(parser);
 
-                return function_expression(parameters, parameters->length, body);
+                expression = function_expression(parameters, parameters->length, body);
+            }
+            else if (parser->current_token->kind == TOKEN_RIGHT_PARENTHESIS)
+            {
+                advance(parser);     
+                expect_token(parser->current_token, TOKEN_ARROW, "=>");
+                advance(parser);
+
+                AST_Statement* body = parse_statement(parser);
+
+                expression = function_expression(NULL, 0, body);
             }
             else
             {
-                AST_Expression* expression = parse_expression(parser);
+                expression = parse_expression(parser);
 
                 expect_token(parser->current_token, TOKEN_RIGHT_PARENTHESIS, ")");
                 advance(parser);
-
-                return expression;
             }
+            break;
         default:
             printf("Invalid token in primary()\n");
             exit(1);
     }
+
+    return expression;
 }
 
 
