@@ -268,6 +268,7 @@ struct AST_Expression
 {
     Expression_Kind kind;
     // Position position;
+    // TODO(timo): Is this type actually needed for every expression?
     Type* type;
 
     union {
@@ -301,6 +302,7 @@ AST_Statement* expression_statement(AST_Expression* expression);
 AST_Statement* block_statement(array* statements, int statements_length);
 AST_Statement* if_statement(AST_Expression* condition, AST_Statement* then, AST_Statement* _else);
 AST_Statement* while_statement(AST_Expression* condition, AST_Statement* body);
+AST_Statement* break_statement();
 AST_Statement* return_statement(AST_Expression* value);
 AST_Statement* declaration_statement(AST_Declaration* declaration);
 AST_Expression* literal_expression(Token* literal);
@@ -322,9 +324,12 @@ void expression_free(AST_Expression* expression);
  */
 typedef struct Parser
 {
+    int index;
     array* tokens;
+    Token* current_token;
     array* declarations;
 } Parser;
+
 
 void parser_init(Parser* parser, array* tokens);
 void parser_free(Parser* parser);

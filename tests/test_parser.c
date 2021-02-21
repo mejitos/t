@@ -145,146 +145,16 @@ void assert_declaration_function(AST_Declaration* declaration, const char* ident
 }
 
 
-void test_parser()
+static void test_literal_expression()
 {
-    // TODO(timo): Variable statement expression 'foo;', for now it expects a colon
-    // and type. So we should make sure that also this case is handled so we can
-    // assign variables etc.
+    printf("\tLiteral expressions...");
+    not_error = true;
 
-    printf("Running parser tests...");
-    char* source;
     Lexer lexer;
     Parser parser;
     AST_Expression* expression;
-    AST_Statement* statement;
-    AST_Declaration* declaration;
-    stringbuilder* sb;
 
-    // Small program which declares variable, assigns new value to it and returns it
-    source = "main: int = (argc: int, argv: int) => {\n"
-             "    foo: int = 0;\n"
-             "    foo := 453;\n"
-             "\n"
-             "    return foo;\n"
-             "};";
-
-    lexer_init(&lexer, source); 
-    lex(&lexer);
-
-    parser_init(&parser, lexer.tokens);
-    declaration = parse_declaration(&parser);
-
-    assert_declaration_function(declaration, "main", TYPE_SPECIFIER_INT, 2);
-    array* statements = declaration->initializer->function.body->block.statements;
-    assert(statements->length == 3);
-
-    statement = (AST_Statement*)*statements->items++;
-    assert(statement->kind == STATEMENT_DECLARATION);
-    assert_declaration_variable_integer(statement->declaration, "foo", TYPE_SPECIFIER_INT, "0");
-
-    statement = (AST_Statement*)*statements->items++;
-    assert(statement->kind == STATEMENT_EXPRESSION);
-    assert_assignment_expression_integer(statement->expression, "foo", "453");
-
-    statement = (AST_Statement*)*statements->items;
-    assert(statement->kind == STATEMENT_RETURN);
-    statements->items -= 2; // rewind the array
-    
-    declaration_free(declaration);
-    parser_free(&parser);
-    lexer_free(&lexer);
-
-    // Base cases for expression statements
-    // ---- binary arithmetics
-    lexer_init(&lexer, "1 + 1;");
-    lex(&lexer);
-
-    parser_init(&parser, lexer.tokens);
-    statement = parse_statement(&parser);
-
-    assert(statement->kind == STATEMENT_EXPRESSION);
-    assert_binary_expression_integer(statement->expression, TOKEN_PLUS, "1", "1");
-
-    statement_free(statement);
-    parser_free(&parser);
-    lexer_free(&lexer);
-
-    // Base case for block statement
-    lexer_init(&lexer, "{ 1 + 2;\n 3 * 4;\nreturn 0; }");
-    lex(&lexer);
-
-    parser_init(&parser, lexer.tokens);
-    statement = parse_statement(&parser);
-
-    assert(statement->kind == STATEMENT_BLOCK);
-    assert(statement->block.statements_length == 3);
-
-    statement_free(statement);
-    parser_free(&parser);
-    lexer_free(&lexer);
-    
-    // Base case for return statement
-    lexer_init(&lexer, "return 0;");
-    lex(&lexer);
-
-    parser_init(&parser, lexer.tokens);
-    statement = parse_statement(&parser);
-
-    assert(statement->kind == STATEMENT_RETURN);
-    assert_literal_expression_integer(statement->_return.value, "0");
-
-    statement_free(statement);
-    parser_free(&parser);
-    lexer_free(&lexer);
-
-    // Base case for declaration statement
-    lexer_init(&lexer, "BAR: int = 0;");
-    lex(&lexer);
-
-    parser_init(&parser, lexer.tokens);
-    statement = parse_statement(&parser);
-
-    assert(statement->kind == STATEMENT_DECLARATION);
-    assert_declaration_variable_integer(statement->declaration, "BAR", TYPE_SPECIFIER_INT, "0");
-
-    statement_free(statement);
-    parser_free(&parser);
-    lexer_free(&lexer);
-
-
-    // Base case for variable delcaration
-    source = "foo: int = 42;";
-
-    lexer_init(&lexer, source); 
-    lex(&lexer);
-
-    parser_init(&parser, lexer.tokens);
-    declaration = parse_declaration(&parser);
-
-    assert_declaration_variable_integer(declaration, "foo", TYPE_SPECIFIER_INT, "42");
-
-    declaration_free(declaration);
-    parser_free(&parser);
-    lexer_free(&lexer);
-
-    // Base case for main program / function declaration
-    source = "main: int = (argc: int, argv: int) => {"
-             "    return 0;"
-             "};";
-
-    lexer_init(&lexer, source); 
-    lex(&lexer);
-
-    parser_init(&parser, lexer.tokens);
-    declaration = parse_declaration(&parser);
-
-    assert_declaration_function(declaration, "main", TYPE_SPECIFIER_INT, 2);
-
-    declaration_free(declaration);
-    parser_free(&parser);
-    lexer_free(&lexer);
-
-    // Integer literal expression
+    // Integer literal
     lexer_init(&lexer, "767");
     lex(&lexer);
 
@@ -292,11 +162,12 @@ void test_parser()
     expression = parse_expression(&parser);
     
     assert_literal_expression_integer(expression, "767");
+    
     expression_free(expression);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    // Boolean literal expression
+    
+    // Boolean literal 
     lexer_init(&lexer, "true");
     lex(&lexer);
 
@@ -304,11 +175,12 @@ void test_parser()
     expression = parse_expression(&parser);
 
     assert_literal_expression_boolean(expression, "true");
+
     expression_free(expression);
     parser_free(&parser);
     lexer_free(&lexer);
 
-    // Boolean literal expression
+    // Boolean literal 
     lexer_init(&lexer, "false");
     lex(&lexer);
 
@@ -321,6 +193,60 @@ void test_parser()
     parser_free(&parser);
     lexer_free(&lexer);
     
+    if (not_error) printf("PASSED\n");
+    else printf("\n");
+}
+
+
+static void test_unary_expression()
+{
+    printf("\tUnary expressions...");
+    not_error = true;
+
+    Lexer lexer;
+    Parser parser;
+    AST_Expression* expression;
+
+    // Unary minus
+    lexer_init(&lexer, "-42");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    expression = parse_expression(&parser);
+    
+    assert_unary_expression_integer(expression, TOKEN_MINUS, "42");
+
+    expression_free(expression);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    // Unary plus 
+    lexer_init(&lexer, "+42");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    expression = parse_expression(&parser);
+
+    assert_unary_expression_integer(expression, TOKEN_PLUS, "42");
+
+    expression_free(expression);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    if (not_error) printf("PASSED\n");
+    else printf("\n");
+}
+
+
+static void test_binary_expression_arithmetic()
+{
+    printf("\tArithmetic binary expressions...");
+    not_error = true;
+
+    Lexer lexer;
+    Parser parser;
+    AST_Expression* expression;
+
     // Binary plus expression
     lexer_init(&lexer, "1 + 2");
     lex(&lexer);
@@ -373,32 +299,20 @@ void test_parser()
     parser_free(&parser);
     lexer_free(&lexer);
 
-    // Unary minus expression
-    lexer_init(&lexer, "-42");
-    lex(&lexer);
+    if (not_error) printf("PASSED\n");
+    else printf("\n");
+}
 
-    parser_init(&parser, lexer.tokens);
-    expression = parse_expression(&parser);
+
+static void test_binary_expression_comparison()
+{
+    printf("\tComparison binary expressions...");
+    not_error = true;
+
+    Lexer lexer;
+    Parser parser;
+    AST_Expression* expression;
     
-    assert_unary_expression_integer(expression, TOKEN_MINUS, "42");
-
-    expression_free(expression);
-    parser_free(&parser);
-    lexer_free(&lexer);
-
-    // Unary plus expression
-    lexer_init(&lexer, "+42");
-    lex(&lexer);
-
-    parser_init(&parser, lexer.tokens);
-    expression = parse_expression(&parser);
-
-    assert_unary_expression_integer(expression, TOKEN_PLUS, "42");
-
-    expression_free(expression);
-    parser_free(&parser);
-    lexer_free(&lexer);
-
     // Equality expression
     lexer_init(&lexer, "1 == 2");
     lex(&lexer);
@@ -477,7 +391,20 @@ void test_parser()
     parser_free(&parser);
     lexer_free(&lexer);
 
-    // Logical expressions
+    if (not_error) printf("PASSED\n");
+    else printf("\n");
+}
+
+
+static void test_logical_expression()
+{
+    printf("\tLogical expressions...");
+    not_error = true;
+
+    Lexer lexer;
+    Parser parser;
+    AST_Expression* expression;
+
     // --- and
     lexer_init(&lexer, "true and false");
     lex(&lexer);
@@ -517,6 +444,46 @@ void test_parser()
     parser_free(&parser);
     lexer_free(&lexer);
 
+    if (not_error) printf("PASSED\n");
+    else printf("\n");
+}
+
+
+static void test_variable_declaration()
+{
+    printf("\tVariable declaration...");
+    not_error = true;
+
+    Lexer lexer;
+    Parser parser;
+    AST_Declaration* declaration;
+
+    lexer_init(&lexer, "foo: int = 42;"); 
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    declaration = parse_declaration(&parser);
+
+    assert_declaration_variable_integer(declaration, "foo", TYPE_SPECIFIER_INT, "42");
+
+    declaration_free(declaration);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    if (not_error) printf("PASSED\n");
+    else printf("\n");
+}
+
+
+static void test_variable_expression()
+{
+    printf("\tVariable expression...");
+    not_error = true;
+
+    Lexer lexer;
+    Parser parser;
+    AST_Expression* expression;
+
     // Base case for variable expression
     lexer_init(&lexer, "foo");
     lex(&lexer);
@@ -530,7 +497,20 @@ void test_parser()
     parser_free(&parser);
     lexer_free(&lexer);
 
-    // Base case for assignment expression
+    if (not_error) printf("PASSED\n");
+    else printf("\n");
+}
+
+
+static void test_assignment_expression()
+{
+    printf("\tAssignment expression...");
+    not_error = true;
+    
+    Lexer lexer;
+    Parser parser;
+    AST_Expression* expression;
+
     lexer_init(&lexer, "foo := 345");
     lex(&lexer);
 
@@ -542,9 +522,24 @@ void test_parser()
     expression_free(expression);
     parser_free(&parser);
     lexer_free(&lexer);
+
+    if (not_error) printf("PASSED\n");
+    else printf("\n");
+}
+
+
+static void test_order_of_arithmetic_operations()
+{
+    printf("\tOrder of arithmetic operations...");
+    not_error = true;
     
-    // Test for correct order of operations with arithmetics 
+    Lexer lexer;
+    Parser parser;
+    stringbuilder* sb;
+    AST_Expression* expression;
+
     sb = sb_init();
+
     lexer_init(&lexer, "1 + 2 * 3");
     lex(&lexer);
 
@@ -561,6 +556,7 @@ void test_parser()
     
     // Test for correct order of operations with parenthesized expressions
     sb = sb_init();
+
     lexer_init(&lexer, "(1 + 2) * 3");
     lex(&lexer);
 
@@ -577,6 +573,7 @@ void test_parser()
 
     // Sequencial unary operators
     sb = sb_init();
+
     lexer_init(&lexer, "----7");
     lex(&lexer);
 
@@ -593,6 +590,7 @@ void test_parser()
 
     // 10 - -7
     sb = sb_init();
+
     lexer_init(&lexer, "10 - -7");
     lex(&lexer);
 
@@ -607,6 +605,306 @@ void test_parser()
     parser_free(&parser);
     lexer_free(&lexer);
 
-    if (not_error) printf("OK\n");
+    if (not_error) printf("PASSED\n");
     else printf("\n");
+}
+
+
+static void test_expression_statement()
+{
+    printf("\tExpression statements...");
+    not_error = true;
+    
+    Lexer lexer;
+    Parser parser;
+    AST_Statement* statement;
+
+    // ---- binary arithmetics
+    lexer_init(&lexer, "1 + 1;");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    statement = parse_statement(&parser);
+
+    assert(statement->kind == STATEMENT_EXPRESSION);
+    assert_binary_expression_integer(statement->expression, TOKEN_PLUS, "1", "1");
+
+    statement_free(statement);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    if (not_error) printf("PASSED\n");
+    else printf("\n");
+}
+
+
+static void test_block_statement()
+{
+    printf("\tBlock statement...");
+    not_error = true;
+
+    Lexer lexer;
+    Parser parser;
+    AST_Statement* statement;
+
+    lexer_init(&lexer, "{ 1 + 2;\n 3 * 4;\nreturn 0; }");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    statement = parse_statement(&parser);
+
+    assert(statement->kind == STATEMENT_BLOCK);
+    assert(statement->block.statements_length == 3);
+
+    statement_free(statement);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    if (not_error) printf("PASSED\n");
+    else printf("\n");
+}
+
+
+static void test_if_statement()
+{
+    printf("\tIf statement...");
+    not_error = true;
+
+    Lexer lexer;
+    Parser parser;
+    AST_Statement* statement;
+
+    lexer_init(&lexer, "if a == b then { do_something; } else { do_else; }");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    statement = parse_statement(&parser);
+
+    assert(statement->kind == STATEMENT_IF);
+    assert(statement->_if.condition->kind == EXPRESSION_BINARY);
+    assert(statement->_if.then->kind = STATEMENT_BLOCK);
+    assert(statement->_if._else->kind = STATEMENT_BLOCK);
+
+    statement_free(statement);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    if (not_error) printf("PASSED\n");
+    else printf("\n");
+}
+
+
+static void test_while_statement()
+{
+    printf("\tWhile statement...");
+    not_error = true;
+
+    Lexer lexer;
+    Parser parser;
+    AST_Statement* statement;
+
+    lexer_init(&lexer, "while a < b do { do_something; }");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    statement = parse_statement(&parser);
+
+    assert(statement->kind == STATEMENT_WHILE);
+    assert(statement->_while.condition->kind == EXPRESSION_BINARY);
+    assert(statement->_while.body->kind = STATEMENT_BLOCK);
+    
+    statement_free(statement);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    if (not_error) printf("PASSED\n");
+    else printf("\n");
+}
+
+
+static void test_break_statement()
+{
+    printf("\tBreak statement...");
+    not_error = true;
+
+    Lexer lexer;
+    Parser parser;
+    AST_Statement* statement;
+
+    lexer_init(&lexer, "break;");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    statement = parse_statement(&parser);
+
+    assert(statement->kind == STATEMENT_BREAK);
+
+    statement_free(statement);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    if (not_error) printf("PASSED\n");
+    else printf("\n");
+}
+
+
+static void test_return_statement()
+{
+    printf("\tReturn statement...");
+    not_error = true;
+
+    Lexer lexer;
+    Parser parser;
+    AST_Statement* statement;
+
+    lexer_init(&lexer, "return 0;");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    statement = parse_statement(&parser);
+
+    assert(statement->kind == STATEMENT_RETURN);
+    assert_literal_expression_integer(statement->_return.value, "0");
+
+    statement_free(statement);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    if (not_error) printf("PASSED\n");
+    else printf("\n");
+}
+
+
+static void test_declaration_statement()
+{
+    printf("\tDeclaration statement...");
+    not_error = true;
+
+    Lexer lexer;
+    Parser parser;
+    AST_Statement* statement;
+
+    lexer_init(&lexer, "BAR: int = 0;");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    statement = parse_statement(&parser);
+
+    assert(statement->kind == STATEMENT_DECLARATION);
+    assert_declaration_variable_integer(statement->declaration, "BAR", TYPE_SPECIFIER_INT, "0");
+
+    statement_free(statement);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    if (not_error) printf("PASSED\n");
+    else printf("\n");
+}
+
+
+static void test_function_declaration()
+{
+    printf("\tFunction declartion...");
+    not_error = true;
+
+    Lexer lexer;
+    Parser parser;
+    AST_Declaration* declaration;
+    const char* source = "main: int = (argc: int, argv: int) => {"
+                         "    return 0;"
+                         "};";
+
+    lexer_init(&lexer, source); 
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    declaration = parse_declaration(&parser);
+
+    assert_declaration_function(declaration, "main", TYPE_SPECIFIER_INT, 2);
+
+    declaration_free(declaration);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    if (not_error) printf("PASSED\n");
+    else printf("\n");
+}
+
+
+static void test_small_program()
+{
+    printf("\tSmall program...");
+    not_error = true;
+
+    Lexer lexer;
+    Parser parser;
+    AST_Statement* statement;
+    AST_Declaration* declaration;
+    const char* source = "main: int = (argc: int, argv: int) => {\n"
+                         "    foo: int = 0;\n"
+                         "    foo := 453;\n"
+                         "\n"
+                         "    return foo;\n"
+                         "};";
+
+    lexer_init(&lexer, source); 
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    declaration = parse_declaration(&parser);
+
+    assert_declaration_function(declaration, "main", TYPE_SPECIFIER_INT, 2);
+    array* statements = declaration->initializer->function.body->block.statements;
+    assert(statements->length == 3);
+
+    statement = (AST_Statement*)*statements->items++;
+    assert(statement->kind == STATEMENT_DECLARATION);
+    assert_declaration_variable_integer(statement->declaration, "foo", TYPE_SPECIFIER_INT, "0");
+
+    statement = (AST_Statement*)*statements->items++;
+    assert(statement->kind == STATEMENT_EXPRESSION);
+    assert_assignment_expression_integer(statement->expression, "foo", "453");
+
+    statement = (AST_Statement*)*statements->items;
+    assert(statement->kind == STATEMENT_RETURN);
+    statements->items -= 2; // rewind the array
+    
+    declaration_free(declaration);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    if (not_error) printf("PASSED\n");
+    else printf("\n");
+}
+
+
+void test_parser()
+{
+    printf("Running parser tests...\n");
+
+    test_literal_expression();
+    test_unary_expression();
+    test_binary_expression_arithmetic();
+    test_binary_expression_comparison();
+    test_logical_expression();
+    test_variable_declaration();
+    test_variable_expression();
+    test_assignment_expression();
+    test_order_of_arithmetic_operations();
+
+    test_expression_statement();
+    test_block_statement();
+    test_if_statement();
+    test_while_statement();
+    test_break_statement();
+    test_return_statement();
+    test_declaration_statement();
+
+    test_function_declaration();
+
+    test_small_program();
+    
+    // TODO(timo): Variable statement expression 'foo;', for now it expects a colon
+    // and type. So we should make sure that also this case is handled so we can
+    // assign variables etc.
 }

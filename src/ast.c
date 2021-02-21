@@ -61,9 +61,18 @@ AST_Statement* if_statement(AST_Expression* condition, AST_Statement* then, AST_
 AST_Statement* while_statement(AST_Expression* condition, AST_Statement* body)
 {
     AST_Statement* statement = xcalloc(1, sizeof (AST_Statement));
-    statement->kind = STATEMENT_IF;
+    statement->kind = STATEMENT_WHILE;
     statement->_while.condition = condition;
     statement->_while.body = body;
+
+    return statement;
+}
+
+
+AST_Statement* break_statement()
+{
+    AST_Statement* statement = xcalloc(1, sizeof (AST_Statement));
+    statement->kind = STATEMENT_BREAK;
 
     return statement;
 }
@@ -170,8 +179,8 @@ void expression_free(AST_Expression* expression)
     switch (expression->kind)
     {
         case EXPRESSION_LITERAL:
-            // NOTE(timo): We can just break and jump to the
-            // end of the function, since there isn't else to free
+            // NOTE(timo); Lexer will free the literal token 
+            // and there is nothing else allocated
             break;
         case EXPRESSION_UNARY:
             expression_free(expression->unary.operand);
@@ -229,6 +238,8 @@ void statement_free(AST_Statement* statement)
         case STATEMENT_WHILE:
             expression_free(statement->_while.condition);
             statement_free(statement->_while.body);
+            break;
+        case STATEMENT_BREAK:
             break;
         case STATEMENT_RETURN:
             expression_free(statement->_return.value);
