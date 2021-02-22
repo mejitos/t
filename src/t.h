@@ -339,6 +339,7 @@ typedef struct Parser
     int index;
     array* tokens;
     Token* current_token;
+    bool panic;
     array* declarations;
 } Parser;
 

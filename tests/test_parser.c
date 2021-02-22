@@ -1016,7 +1016,7 @@ static void test_function_declaration()
     Lexer lexer;
     Parser parser;
     AST_Declaration* declaration;
-    const char* source = "main: int = (argc: int, argv: int) => {"
+    const char* source = "main: int = (argc: int, argv: [int]) => {"
                          "    return 0;"
                          "};";
 
@@ -1046,7 +1046,7 @@ static void test_small_program()
     Parser parser;
     AST_Statement* statement;
     AST_Declaration* declaration;
-    const char* source = "main: int = (argc: int, argv: int) => {\n"
+    const char* source = "main: int = (argc: int, argv: [int]) => {\n"
                          "    foo: int = 0;\n"
                          "    foo := 453;\n"
                          "\n"
@@ -1084,6 +1084,12 @@ static void test_small_program()
 }
 
 
+static void test_panic_mode()
+{
+    //
+}
+
+
 void test_parser()
 {
     printf("Running parser tests...\n");
@@ -1115,6 +1121,8 @@ void test_parser()
     test_function_declaration();
 
     test_small_program();
+    
+    test_panic_mode();
     
     // TODO(timo): Variable statement expression 'foo;', for now it expects a colon
     // and type. So we should make sure that also this case is handled so we can

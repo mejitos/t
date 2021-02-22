@@ -35,6 +35,29 @@ void parser_free(Parser* parser)
 }
 
 
+static void panic_mode(Parser* parser)
+{
+    advance(parser);
+
+    Token_Kind kind;
+
+    while ((kind = parser->current_token->kind) != TOKEN_EOF)
+    {
+        if (kind == TOKEN_SEMICOLON)
+            advance(parser);
+        // NOTE(timo): Panic mode ends when a token for starting new statement or
+        // declaration is being found and parsing continues from that point on.
+        if (kind == TOKEN_IDENTIFIER || kind == TOKEN_IF || kind == TOKEN_WHILE ||
+            kind == TOKEN_RETURN || kind == TOKEN_BREAK)
+            break;
+        else
+            advance(parser);
+    }
+
+    parser->panic = false;
+}
+
+
 static void expect_token(Token* token, Token_Kind kind, const char* lexeme)
 {
     if (token->kind != kind)
@@ -525,8 +548,8 @@ void parse(Parser* parser)
     while (parser->current_token->kind != TOKEN_EOF)
     {
         array_push(parser->declarations, parse_declaration(parser));
-
-        // TODO(timo): Check for errors and panic mode if error is found
+        
+        if (parser->panic) panic_mode(parser);
     }
 
     assert(parser->current_token->kind == TOKEN_EOF);
