@@ -309,13 +309,22 @@ static Type* resolve_function_expression(Resolver* resolver, AST_Expression* exp
 
     // Begin a new scope
 
+    Type* type = type_function();
+
     // Resolve parameters if there is some
     if (expression->function.arity > 0)
     {
         array* parameters = expression->function.parameters;
 
         for (int i = 0; i < parameters->length; i++)
-            scope_declare(resolver->global, symbol_parameter((Parameter*)parameters->items[i]));
+        {
+            Parameter* parameter = parameters->items[i];
+            Type* parameter_type = resolve_type_specifier(parameter->specifier);
+            array_push(type->function.parameters, parameter_type);
+            scope_declare(resolver->global, symbol_parameter(parameter));
+        }
+
+        type->function.arity = type->function.parameters->length;
     }
 
     // Resolve body and return type
@@ -327,39 +336,52 @@ static Type* resolve_function_expression(Resolver* resolver, AST_Expression* exp
 
     // NOTE(timo): Decided to force only single return statement per function, so this can actually 
     // return something. Even though this information could carry inside the context structure.
-    return resolver->context.return_type;
+    type->function.return_type = resolver->context.return_type;
+
+    return type;
 }
 
 
 static Type* resolve_call_expression(Resolver* resolver, AST_Expression* expression)
 {
-    Type* variable_type = resolve_expression(resolver, expression->call.variable);
+    Type* type = resolve_expression(resolver, expression->call.variable);
     array* arguments = expression->call.arguments;
-    Symbol* function = scope_lookup(resolver->global, expression->call.variable->identifier->lexeme);
+    Symbol* symbol = scope_lookup(resolver->global, expression->call.variable->identifier->lexeme);
 
-    // Number of arguments == arity of the called function
-    if (function->arity != arguments->length)
+    // Make sure the called variable is actually callable - a function in our case
+    if (type->kind != TYPE_FUNCTION)
     {
         // TODO(timo): Error
-        printf("Function X expected %d arguments, but %d was given\n", function->arity, arguments->length);
+        printf("Cannot call a non-callable '%s'\n", symbol->identifier);
+        exit(1);
+    }
+
+    // Number of arguments == arity of the called function
+    if (symbol->type->function.arity != arguments->length)
+    {
+        // TODO(timo): Error
+        printf("Function '%s' expected %d arguments, but %d was given\n", 
+               symbol->identifier, symbol->type->function.arity, arguments->length);
         exit(1);
     }
     
-    // TODO(timo): Types of the passed arguments cannot be resolved if we do things like this
-    // since we cannot map the passed arguments to the function parameters.
-    /*
     // types of the arguments == types of the parameters
     for (int i = 0; i < arguments->length; i++)
     {
-        Type* argument_type = resolve_expression(resolve, (Expression*)arguments->items[i]);
-        Symbol* parameter = scope_lookup(resolver->global, 
+        Type* argument_type = resolve_expression(resolver, (AST_Expression*)arguments->items[i]);
+        Type* parameter_type = symbol->type->function.parameters->items[i];
 
-        if 
+        if (argument_type->kind != parameter_type->kind)
+        {
+            // TODO(timo): Error
+            // TODO(timo): We could have the names of the parameters too to give better info for the user
+            printf("Conflicting types in function '%s' parameters\n", symbol->identifier);
+            exit(1);
+        }
     }
-    */
 
     // return the return type of the called function
-    return variable_type;
+    return type->function.return_type;
 }
 
 
@@ -535,54 +557,67 @@ Type* resolve_type_specifier(Type_Specifier specifier)
 }
 
 
+void resolve_variable_declaration(Resolver* resolver, AST_Declaration* declaration)
+{
+    // NOTE(timo): So this type will be the type of the value assigned to the variable 
+    // or if the declaration is function, this will be the type of the return value.
+    Type* expected_type = resolve_type_specifier(declaration->specifier);
+    Type* actual_type = resolve_expression(resolver, declaration->initializer);
+
+    if (expected_type->kind != actual_type->kind)
+    {
+        // TODO(timo): Error
+        printf("Conflicting types in variable declaration\n");
+        exit(1);
+    }
+
+    // Declare the symbol into the current scope
+    Symbol* symbol = symbol_variable(declaration->identifier->lexeme, actual_type);
+    
+    // TODO(timo): Should we take the responsibility of declaring errors of
+    // already diagnosed variables instead of doing it in the scope
+    scope_declare(resolver->global, symbol);
+}
+
+
+void resolve_function_declaration(Resolver* resolver, AST_Declaration* declaration)
+{
+    // NOTE(timo): So this type will be the type of the value assigned to the variable 
+    // or if the declaration is function, this will be the type of the return value.
+    Type* expected_type = resolve_type_specifier(declaration->specifier);
+    Type* actual_type = resolve_expression(resolver, declaration->initializer);
+    
+    // Check if the expected type and the actual type match
+    if (expected_type->kind != actual_type->function.return_type->kind)
+    {
+        // TODO(timo): Error
+        printf("Conflicting types in function declaration\n");
+        exit(1);
+    }
+
+    // Declare the symbol into the current scope
+    Symbol* symbol = symbol_function(declaration->identifier->lexeme, actual_type);
+
+    // TODO(timo): Should we take the responsibility of declaring errors of
+    // already diagnosed variables instead of doing it in the scope
+    scope_declare(resolver->global, symbol);
+}
+
+
 void resolve_declaration(Resolver* resolver, AST_Declaration* declaration)
 {
-    // Declare the symbol into the current scope
-    Symbol* symbol;
-
     switch (declaration->kind)
     {
         case DECLARATION_VARIABLE:
-            symbol = symbol_variable(declaration);
+            resolve_variable_declaration(resolver, declaration);
             break;
         case DECLARATION_FUNCTION:
-            symbol = symbol_function(declaration);
+            resolve_function_declaration(resolver, declaration);
             break;
         default:
             // TODO(timo): Error
             break;
     }
-
-    scope_declare(resolver->global, symbol);
-
-    // Check for the state of the symbol
-    // TODO(timo): This symbol state is not probably needed when we are resolving
-    // things in order?
-    assert(symbol->state == STATE_UNRESOLVED);
-
-    if (symbol->state == STATE_RESOLVED) return;
-    if (symbol->state == STATE_RESOLVING)
-    {
-        // TODO(timo): Error
-        printf("For some reason we are trying to resolve the same declaration\n");
-        exit(1);
-    }
-
-    symbol->state = STATE_RESOLVING;
-
-    // NOTE(timo): So this type will be the type of the value assigned to the variable 
-    // or if the declaration is function, this will be the type of the return value.
-    Type* type = resolve_expression(resolver, declaration->initializer);
-    
-    // Check if the expected type and the actual type match
-    if (symbol->type->kind != type->kind)
-    {
-        printf("Conflicting types in declaration\n");
-        exit(1);
-    }
-    
-    // Symbol resolved
-    symbol->state = STATE_RESOLVED;
 }
 
 

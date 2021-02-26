@@ -371,7 +371,6 @@ void test_resolve_multiple_global_variable_declarations(Lexer* lexer, Parser* pa
     assert(symbol->kind == SYMBOL_VARIABLE);
     assert(strcmp(symbol->identifier, "foo") == 0);
     assert(symbol->type->kind == TYPE_INTEGER);
-    assert(symbol->state == STATE_RESOLVED);
 
     // ---- symbol 2
     declaration = declarations->items[1];
@@ -383,7 +382,6 @@ void test_resolve_multiple_global_variable_declarations(Lexer* lexer, Parser* pa
     assert(symbol->kind == SYMBOL_VARIABLE);
     assert(strcmp(symbol->identifier, "_bar") == 0);
     assert(symbol->type->kind == TYPE_BOOLEAN);
-    assert(symbol->state == STATE_RESOLVED);
 
     // ---- symbol 2
     declaration = declarations->items[2];
@@ -395,7 +393,6 @@ void test_resolve_multiple_global_variable_declarations(Lexer* lexer, Parser* pa
     assert(symbol->kind == SYMBOL_VARIABLE);
     assert(strcmp(symbol->identifier, "FOOBAR") == 0);
     assert(symbol->type->kind == TYPE_INTEGER);
-    assert(symbol->state == STATE_RESOLVED);
     
     // ---- teardown
     resolver_free(resolver);
@@ -501,15 +498,26 @@ static void test_resolve_index_expression()
     Parser parser;
     Resolver resolver;
     AST_Expression* expression;
+    AST_Declaration* declaration;
     
     // TODO(timo): In our case the array subscription needs more context to
     // be used, so therefore the testing needs all that context. We need to
     // handle the resolving of the function expression first
-    /*
     const char* source = "main: int = (argc: int, argv: [int]) => {\n"
-                         "    return argv[0];\n"
+                         "    return 0;\n"
                          "};";
-    */
+
+    lexer_init(&lexer, source); 
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    declaration = parse_declaration(&parser);
+
+    resolver_init(&resolver);
+    resolve_declaration(&resolver, declaration);
+    
+    lexer_free(&lexer);
+    parser_free(&parser);
 
     lexer_init(&lexer, "argv[0]"); 
     lex(&lexer);
@@ -520,7 +528,10 @@ static void test_resolve_index_expression()
     resolver_init(&resolver);
 
     Type* type = resolve_expression(&resolver, expression);
+
+    assert(type->kind == TYPE_INTEGER);
     
+    declaration_free(declaration);
     expression_free(expression);
     resolver_free(&resolver);
     parser_free(&parser);
@@ -540,7 +551,7 @@ static void test_resolve_function_expression()
     Parser parser;
     Resolver resolver;
     AST_Expression* expression;
-    Type* return_type;
+    Type* type;
     char* source;
 
     // with parameters and return
@@ -558,11 +569,12 @@ static void test_resolve_function_expression()
     assert(expression->function.arity == 2);
 
     resolver_init(&resolver);
-    return_type = resolve_expression(&resolver, expression);
+    type = resolve_expression(&resolver, expression);
     
     assert(resolver.global->symbols->length == 2);
     assert(resolver.context.return_type->kind == TYPE_INTEGER);
-    assert(return_type->kind == TYPE_INTEGER);
+    assert(type->kind == TYPE_FUNCTION);
+    assert(type->function.return_type->kind == TYPE_INTEGER);
     
     expression_free(expression);
     resolver_free(&resolver);
@@ -585,11 +597,12 @@ static void test_resolve_function_expression()
     assert(expression->function.arity == 0);
 
     resolver_init(&resolver);
-    return_type = resolve_expression(&resolver, expression);
+    type = resolve_expression(&resolver, expression);
     
     assert(resolver.global->symbols->length == 1);
     assert(resolver.context.return_type->kind == TYPE_INTEGER);
-    assert(return_type->kind == TYPE_INTEGER);
+    assert(type->kind == TYPE_FUNCTION);
+    assert(type->function.return_type->kind == TYPE_INTEGER);
     
     expression_free(expression);
     resolver_free(&resolver);
@@ -636,7 +649,10 @@ static void test_resolve_call_expression()
     expression = parse_expression(&parser);
 
     assert(expression->kind == EXPRESSION_CALL);
+
     Type* type = resolve_expression(&resolver, expression);
+
+    assert(type->kind == TYPE_BOOLEAN);
 
     expression_free(expression);
     resolver_free(&resolver);

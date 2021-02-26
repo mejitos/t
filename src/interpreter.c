@@ -209,7 +209,10 @@ static void evaluate_variable_declaration(Interpreter* interpreter, AST_Declarat
     // Declare the identifier in the current scope
     // Name collisions should've been handled by the resolver,
     // now we are more interested of the value
-    Symbol* symbol = symbol_variable(declaration);
+    // TODO(timo): Since we are interested in different things here in interpreter,
+    // we can't just create the symbols in the same way as in resolver
+    // Symbol* symbol = symbol_variable(declaration);
+    Symbol* symbol = symbol_variable(declaration->identifier->lexeme, NULL);
     symbol->value = evaluate_expression(interpreter, declaration->initializer);
 
     scope_declare(interpreter->global, symbol);

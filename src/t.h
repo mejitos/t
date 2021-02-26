@@ -363,6 +363,8 @@ typedef enum Type_Kind
     TYPE_NONE,
     TYPE_INTEGER,
     TYPE_BOOLEAN,
+    TYPE_FUNCTION,
+    TYPE_ARRAY,
 } Type_Kind;
 
 
@@ -371,12 +373,28 @@ struct Type
     Type_Kind kind;
     size_t size;
     // alignment?
-
+    union {
+        struct {
+            Type* return_type;
+            int arity;
+            // Should this be array of the types of the parameters? probably
+            array* parameters;
+        } function;
+        // NOTE(timo): Even though the only array we have for now is the argv,
+        // it is probably best idea to try to implement it "properly"
+        struct {
+            Type* element_type;
+            int length;
+        } array;
+    };
 };
 
 Type* type_none();
 Type* type_integer();
 Type* type_boolean();
+// Type* type_function(Type* return_type, array* parameters);
+Type* type_function();
+Type* type_array(Type* element_type, int length);
 bool type_is_integer(Type* type);
 bool type_is_boolean(Type* type);
 
@@ -384,7 +402,8 @@ bool type_is_boolean(Type* type);
 /*
  *  Operand
  *
- *  Used to tie the type and the value together
+ *  Used to tie the type and the value together when resolving expressions
+ *  and having most use when doing constant folding.
  *  
  *  HOX! Not used for anything at the moment!
  */
@@ -398,8 +417,8 @@ typedef struct Operand
 /*
  *  Symbol
  *
- *  TODO(timo): Symbols are not in use at the moment, just started
- *  to draft the outlines
+ *  NOTE(timo): Symbol state is not in use at the moment. It is only necessary
+ *  when we have order independent declarations and we don't do that now.
  */
 typedef enum Symbol_Kind
 {
@@ -424,17 +443,16 @@ typedef struct Symbol
     Symbol_State state;
     const char* identifier;
     Type* type;
-    // value?
     Value value;
-    // other?
-
-    // Used by functions only
-    int arity;
 } Symbol;
 
-Symbol* symbol_variable(AST_Declaration* declaration);
+// Symbol* symbol_variable(AST_Declaration* declaration);
+Symbol* symbol_variable(const char* identifier, Type* type);
+// Symbol* symbol_variable(const char* identifier);
 Symbol* symbol_parameter(Parameter* parameter);
-Symbol* symbol_function(AST_Declaration* declaration);
+// Symbol* symbol_function(AST_Declaration* declaration);
+Symbol* symbol_function(const char* identifier, Type* type);
+// Symbol* symbol_function(const char* identifier);
 
 
 /*
@@ -453,6 +471,7 @@ Scope* scope_enter(Scope* enclosing); // returns the entered scope
 Scope* scope_leave(); // returns the closed scope
 Symbol* scope_lookup(Scope* scope, const char* identifier);
 void scope_declare(Scope* scope, Symbol* symbol);
+bool scope_includes(Scope* scope, const char* identifier);
 
 
 /*
@@ -501,6 +520,7 @@ typedef struct Interpreter
 } Interpreter;
 
 void interpreter_init(Interpreter* interpreter);
+void interpreter_free(Interpreter* interpreter);
 Value evaluate_expression(Interpreter* interpreter, AST_Expression* expression);
 void evaluate_statement(Interpreter* interpreter, AST_Statement* statement);
 void evaluate_declaration(Interpreter* interpreter, AST_Declaration* declaration);
