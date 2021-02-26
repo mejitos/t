@@ -245,14 +245,17 @@ AST_Statement* parse_statement(Parser* parser)
             // and assignment since we don't have keywords for declaration.
             // Also the 2nd check is needed to make sure that 'foo;' expresison is
             // handled correctly as a variable expression.
+            // The 3rd check is needed to distinguish declaration and call expression
             // Falls down to the expression statement if the condition is not met.
-            if (peek(parser)->kind != TOKEN_COLON_ASSIGN && peek(parser)->kind != TOKEN_SEMICOLON)
+            if (peek(parser)->kind != TOKEN_COLON_ASSIGN && 
+                peek(parser)->kind != TOKEN_SEMICOLON && 
+                peek(parser)->kind != TOKEN_LEFT_PARENTHESIS)
                 return parse_declaration_statement(parser);
         default:
             return parse_expression_statement(parser);
     }
 
-    printf("Invalid token in parse_statement\n");
+    printf("Invalid token '%s' in parse_statement\n", parser->current_token->lexeme);
     exit(1);
 }
 
@@ -323,7 +326,7 @@ static AST_Expression* primary(Parser* parser)
             }
             break;
         default:
-            printf("Invalid token in primary()\n");
+            printf("Invalid token '%s' in primary()\n", parser->current_token->lexeme);
             exit(1);
     }
 
@@ -338,8 +341,7 @@ static AST_Expression* call(Parser* parser)
     if (parser->current_token->kind == TOKEN_LEFT_BRACKET)
     {
         advance(parser);
-        // TODO(timo): Do we want to force the index to be integer literal
-        // or do we leave that to the resolver? For now we pass it to resolver.
+
         AST_Expression* index = parse_expression(parser);
 
         expect_token(parser->current_token, TOKEN_RIGHT_BRACKET, "]");

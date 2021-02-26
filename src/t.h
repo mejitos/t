@@ -374,6 +374,7 @@ struct Type
 
 };
 
+Type* type_none();
 Type* type_integer();
 Type* type_boolean();
 bool type_is_integer(Type* type);
@@ -404,6 +405,7 @@ typedef enum Symbol_Kind
 {
     SYMBOL_NONE,
     SYMBOL_VARIABLE,
+    SYMBOL_PARAMETER,
     SYMBOL_FUNCTION,
 } Symbol_Kind;
 
@@ -425,9 +427,13 @@ typedef struct Symbol
     // value?
     Value value;
     // other?
+
+    // Used by functions only
+    int arity;
 } Symbol;
 
 Symbol* symbol_variable(AST_Declaration* declaration);
+Symbol* symbol_parameter(Parameter* parameter);
 Symbol* symbol_function(AST_Declaration* declaration);
 
 

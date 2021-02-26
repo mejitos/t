@@ -15,6 +15,9 @@ static void teardown(Resolver* resolver, Parser* parser, Lexer* lexer)
 
 void test_resolve_literal_expression(Lexer* lexer, Parser* parser, Resolver* resolver)
 {
+    printf("\tLiteral expression...");
+    not_error = true;
+
     const char* tests[] =
     {
         "42",
@@ -55,11 +58,17 @@ void test_resolve_literal_expression(Lexer* lexer, Parser* parser, Resolver* res
         parser_free(parser);
         lexer_free(lexer);
     }
+
+    if (not_error) printf("PASSED\n");
+    else printf("\n");
 }
 
 
 void test_resolve_unary_expression(Lexer* lexer, Parser* parser, Resolver* resolver)
 {
+    printf("\tUnary expression...");
+    not_error = true;
+
     const char* tests[] =
     {
         "+42",
@@ -96,11 +105,17 @@ void test_resolve_unary_expression(Lexer* lexer, Parser* parser, Resolver* resol
         parser_free(parser);
         lexer_free(lexer);
     }
+
+    if (not_error) printf("PASSED\n");
+    else printf("\n");
 }
 
 
 void test_resolve_binary_expression(Lexer* lexer, Parser* parser, Resolver* resolver)
 {
+    printf("\tBinary expression...");
+    not_error = true;
+
     const char* tests[] =
     {
         "1 + 2",
@@ -156,11 +171,17 @@ void test_resolve_binary_expression(Lexer* lexer, Parser* parser, Resolver* reso
         parser_free(parser);
         lexer_free(lexer);
     }
+
+    if (not_error) printf("PASSED\n");
+    else printf("\n");
 }
 
 
 void test_resolve_variable_declaration(Lexer* lexer, Parser* parser, Resolver* resolver)
 {
+    printf("\tVariable declaration...");
+    not_error = true;
+
     Symbol* symbol;
     AST_Declaration* declaration;
 
@@ -188,10 +209,6 @@ void test_resolve_variable_declaration(Lexer* lexer, Parser* parser, Resolver* r
     assert(symbol->kind == SYMBOL_VARIABLE);
     assert(strcmp(symbol->identifier, "foo") == 0);
     assert(symbol->type->kind == TYPE_INTEGER);
-    // TODO(timo): How about value? Do we add the value to the symbol itself?
-    // I think that we don't really need the ACTUAL types of these things anywhere
-    // except when doing constant folding and of course it helps interpreter. But
-    // therefore I think we don't need the values for the symbols.
 
     declaration_free(declaration);
     resolver_free(resolver);
@@ -228,11 +245,17 @@ void test_resolve_variable_declaration(Lexer* lexer, Parser* parser, Resolver* r
     resolver_free(resolver);
     parser_free(parser);
     lexer_free(lexer);
+
+    if (not_error) printf("PASSED\n");
+    else printf("\n");
 }
 
 
 void test_resolve_declaration_statement_variable(Lexer* lexer, Parser* parser, Resolver* resolver)
 {
+    printf("\tVariable declaration statement...");
+    not_error = true;
+
     Symbol* symbol;
     AST_Statement* statement;
     AST_Declaration* declaration;
@@ -305,11 +328,17 @@ void test_resolve_declaration_statement_variable(Lexer* lexer, Parser* parser, R
     resolver_free(resolver);
     parser_free(parser);
     lexer_free(lexer);
+
+    if (not_error) printf("PASSED\n");
+    else printf("\n");
 }
 
     
 void test_resolve_multiple_global_variable_declarations(Lexer* lexer, Parser* parser, Resolver* resolver)
 {
+    printf("\tMultiple global variable declarations...");
+    not_error = true;
+
     const char* source = "foo: int = 42;"
                          "_bar: bool = false;"
                          "FOOBAR: int = 0;";
@@ -372,11 +401,17 @@ void test_resolve_multiple_global_variable_declarations(Lexer* lexer, Parser* pa
     resolver_free(resolver);
     parser_free(parser);
     lexer_free(lexer);
+
+    if (not_error) printf("PASSED\n");
+    else printf("\n");
 }
 
 
 void test_resolve_variable_expression(Lexer* lexer, Parser* parser, Resolver* resolver)
 {
+    printf("\tVariable expression...");
+    not_error = true;
+
     const char* source = "{\n    foo: int = 42;\n    foo;\n}";
 
     AST_Statement* statement;
@@ -405,15 +440,20 @@ void test_resolve_variable_expression(Lexer* lexer, Parser* parser, Resolver* re
     
     assert(type->kind == TYPE_INTEGER);
 
-
     resolver_free(resolver);
     parser_free(parser);
     lexer_free(lexer);
+
+    if (not_error) printf("PASSED\n");
+    else printf("\n");
 }
 
 
 void test_resolve_assignment_expression(Lexer* lexer, Parser* parser, Resolver* resolver)
 {
+    printf("\tAssignment expression...");
+    not_error = true;
+
     const char* source = "{\n    foo: int = 42;\n    foo := 7;\n}";
 
     AST_Statement* statement;
@@ -446,6 +486,180 @@ void test_resolve_assignment_expression(Lexer* lexer, Parser* parser, Resolver* 
     resolver_free(resolver);
     parser_free(parser);
     lexer_free(lexer);
+
+    if (not_error) printf("PASSED\n");
+    else printf("\n");
+}
+
+
+static void test_resolve_index_expression()
+{
+    printf("\tIndex expression...");
+    not_error = true;
+
+    Lexer lexer;
+    Parser parser;
+    Resolver resolver;
+    AST_Expression* expression;
+    
+    // TODO(timo): In our case the array subscription needs more context to
+    // be used, so therefore the testing needs all that context. We need to
+    // handle the resolving of the function expression first
+    /*
+    const char* source = "main: int = (argc: int, argv: [int]) => {\n"
+                         "    return argv[0];\n"
+                         "};";
+    */
+
+    lexer_init(&lexer, "argv[0]"); 
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    expression = parse_expression(&parser);
+
+    resolver_init(&resolver);
+
+    Type* type = resolve_expression(&resolver, expression);
+    
+    expression_free(expression);
+    resolver_free(&resolver);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    if (not_error) printf("PASSED\n");
+    else printf("\n");
+}
+
+
+static void test_resolve_function_expression()
+{
+    printf("\tFunction expression...");
+    not_error = true;
+
+    Lexer lexer;
+    Parser parser;
+    Resolver resolver;
+    AST_Expression* expression;
+    Type* return_type;
+    char* source;
+
+    // with parameters and return
+    source = "(argc: int, argv: [int]) => {\n"
+             "    return 0;\n"
+             "};";
+
+    lexer_init(&lexer, source);
+    lex(&lexer);
+    
+    parser_init(&parser, lexer.tokens);
+    expression = parse_expression(&parser);
+
+    assert(expression->kind == EXPRESSION_FUNCTION);
+    assert(expression->function.arity == 2);
+
+    resolver_init(&resolver);
+    return_type = resolve_expression(&resolver, expression);
+    
+    assert(resolver.global->symbols->length == 2);
+    assert(resolver.context.return_type->kind == TYPE_INTEGER);
+    assert(return_type->kind == TYPE_INTEGER);
+    
+    expression_free(expression);
+    resolver_free(&resolver);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    // without parameters and without return
+    source = "() => {\n"
+             "    foo: bool = true;\n"
+             "    return 0;"
+             "};";
+
+    lexer_init(&lexer, source);
+    lex(&lexer);
+    
+    parser_init(&parser, lexer.tokens);
+    expression = parse_expression(&parser);
+
+    assert(expression->kind == EXPRESSION_FUNCTION);
+    assert(expression->function.arity == 0);
+
+    resolver_init(&resolver);
+    return_type = resolve_expression(&resolver, expression);
+    
+    assert(resolver.global->symbols->length == 1);
+    assert(resolver.context.return_type->kind == TYPE_INTEGER);
+    assert(return_type->kind == TYPE_INTEGER);
+    
+    expression_free(expression);
+    resolver_free(&resolver);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    if (not_error) printf("PASSED\n");
+    else printf("\n");
+}
+
+
+static void test_resolve_call_expression()
+{
+    printf("\tCall expression...");
+    not_error = true;
+
+    Lexer lexer;
+    Parser parser;
+    Resolver resolver;
+    AST_Expression* expression;
+    AST_Declaration* declaration;
+    char* source;
+
+    // with arguments 
+    source = "greater: bool = (x: int, y: int) => {\n"
+             "    return x > y;\n"
+             "};";
+
+    lexer_init(&lexer, source); 
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    declaration = parse_declaration(&parser);
+
+    resolver_init(&resolver);
+    resolve_declaration(&resolver, declaration);
+    
+    lexer_free(&lexer);
+    parser_free(&parser);
+
+    lexer_init(&lexer, "greater(1, 0)");
+    lex(&lexer);
+    parser_init(&parser, lexer.tokens);
+    expression = parse_expression(&parser);
+
+    assert(expression->kind == EXPRESSION_CALL);
+    Type* type = resolve_expression(&resolver, expression);
+
+    expression_free(expression);
+    resolver_free(&resolver);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    // TODO(timo): no arguments 
+    /*
+    lexer_init(&lexer, "foo()");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    parse(&parser);
+
+    expression_free(expression);
+    parser_free(&parser);
+    lexer_free(&lexer);
+    */
+
+    // TODO(timo): assigning a value from call expression
+
+    if (not_error) printf("PASSED\n");
+    else printf("\n");
 }
 
 
@@ -485,8 +699,53 @@ void test_resolve_order_independent_global_variable_declarations(Lexer* lexer, P
 */
 
 
-void test_resolve_return_statement()
+static void test_resolve_function_declaration()
 {
+    printf("\tFunction declaration...");
+    not_error = true;
+
+    Lexer lexer;
+    Parser parser;
+    Resolver resolver;
+    AST_Expression* return_value;
+
+    const char* source = "main: int = (argc: int, argv: int) => {\n"
+                         "    return 0;\n"
+                         "};";
+
+    lexer_init(&lexer, source);
+    lex(&lexer);
+    
+    parser_init(&parser, lexer.tokens);
+    parse(&parser);
+
+    assert(parser.declarations->length == 1);
+
+    // TODO(timo): resolver parameters
+
+
+
+    // TODO(timo): resolve body
+
+    resolver_init(&resolver);
+    resolve(&resolver, parser.declarations);
+
+    assert(resolver.context.return_type->kind == TYPE_INTEGER);
+
+    resolver_free(&resolver);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    if (not_error) printf("PASSED\n");
+    else printf("\n");
+}
+
+
+static void test_resolve_return_statement()
+{
+    printf("\tReturn statement...");
+    not_error = true;
+
     Lexer lexer;
     Parser parser;
     Resolver resolver;
@@ -511,42 +770,14 @@ void test_resolve_return_statement()
     parser_free(&parser);
     lexer_free(&lexer);
 
-}
-
-
-void test_resolve_function_return_value()
-{
-    Lexer lexer;
-    Parser parser;
-    Resolver resolver;
-    AST_Expression* return_value;
-
-    const char* source = "main: int = (argc: int, argv: int) => {\n"
-                         "    return 0;\n"
-                         "};";
-
-    lexer_init(&lexer, source);
-    lex(&lexer);
-    
-    parser_init(&parser, lexer.tokens);
-    parse(&parser);
-
-    assert(parser.declarations->length == 1);
-
-    resolver_init(&resolver);
-    resolve(&resolver, parser.declarations);
-
-    assert(resolver.context.return_type->kind == TYPE_INTEGER);
-
-    resolver_free(&resolver);
-    parser_free(&parser);
-    lexer_free(&lexer);
+    if (not_error) printf("PASSED\n");
+    else printf("\n");
 }
 
 
 void test_resolver()
 {
-    printf("Running resolver tests...");
+    printf("Running resolver tests...\n");
 
     Lexer lexer;
     Parser parser;
@@ -564,26 +795,51 @@ void test_resolver()
 
     // TODO(timo): Diagnose errors while resolving binary expressions
 
-    // TODO(timo): You can only use declarations at the top level so no
-    // statements or expressions are allowed at top level.
-    
-    // TODO(timo): We can't use the direct declaration resolving, unless we
-    // create the undeclared symbols in the resolve declaration function itself
-    // test_resolve_variable_declaration(&lexer, &parser, &resolver);
-    test_resolve_declaration_statement_variable(&lexer, &parser, &resolver);
-
-    // TODO(timo): Diagnose errors while resolving variable declarations
-    
-    test_resolve_multiple_global_variable_declarations(&lexer, &parser, &resolver);
-
     test_resolve_variable_expression(&lexer, &parser, &resolver);
 
     // TODO(timo): Diagnose errors while resolving variable expression
 
-    // TODO(timo): Variable assignment
     test_resolve_assignment_expression(&lexer, &parser, &resolver);
 
     // TODO(timo): Diagnose errors while resolving assignment expressions
+
+    test_resolve_index_expression();
+
+    // TODO(timo): Diagnose errors while resolving index expression
+    //      - accessed variable is not array type (LATER)
+    //      - accessed variable is not argv
+    //      - type of the index itself is not integer
+    //      - index value cannot be < 0 or array_length - 1 (argc)
+    
+    test_resolve_function_expression();
+    
+    // TODO(timo): Diagnose errors while resolving function expression
+    // TODO(timo): Diagnose invalid type of the return value
+
+    test_resolve_call_expression();
+
+    // TODO(timo): Diagnose errors while resolving call expression
+    //      - invalid number of arguments
+    //      - invalid type(s) of the argument(s)
+
+    // ----
+
+
+    // test_resolve_type_specifier();
+
+
+    // ----
+    
+
+    // TODO(timo): We can't use the direct declaration resolving, unless we
+    // create the undeclared symbols in the resolve declaration function itself
+    test_resolve_variable_declaration(&lexer, &parser, &resolver);
+
+    // TODO(timo): Diagnose errors while resolving variable declarations
+
+    test_resolve_function_declaration();
+    
+    test_resolve_multiple_global_variable_declarations(&lexer, &parser, &resolver);
 
     // TODO(timo): Resolve order independent global variable declarations
     // TODO(timo): Lets just forget this functionality for now and maybe add it later.
@@ -591,19 +847,29 @@ void test_resolver()
     // test_resolve_order_independent_global_variable_declarations(&lexer, &parser, &resolver);
 
     // TODO(timo); Diagnose errors while resolving order independent global variable declarations
+    
+
+    // ---
+
+
+    // test_resolve_expression_statement()
+
+    test_resolve_declaration_statement_variable(&lexer, &parser, &resolver);
+
+    test_resolve_if_statement();
+    
+    test_resolve_while_statement();
 
     test_resolve_return_statement();
 
     // TODO(timo): Diganose error while resolving return statement (return value is missing)
     
-    test_resolve_function_return_value();
-    
-    // TODO(timo): Diagnose invalid type of the return value
     
     // TODO(timo): Diagnose no break statement outside loops
     // TODO(timo): Diagnose no continue statement outside loops
     // TODO(timo): Diagnose no return statement outside functions
-
-    if (not_error) printf("OK\n");
-    else printf("\n");
+    // TODO(timo): You can only use declarations at the top level so no
+    // statements or expressions are allowed at top level.
+    // TODO(timo): YORO - you only return once
+    // TODO(timo): Functions are allowed only at top level
 }

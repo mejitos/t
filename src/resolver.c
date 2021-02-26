@@ -6,7 +6,6 @@ void resolver_init(Resolver* resolver)
     *resolver = (Resolver){ .global = scope_init(NULL),
                             .context.not_in_loop = true,
                             .context.not_in_function = true, };
-                            // .current_declaration = NULL };
 }
 
 
@@ -25,10 +24,6 @@ void resolver_free(Resolver* resolver)
 static Type* resolve_literal_expression(AST_Expression* expression)
 {
     assert(expression->kind == EXPRESSION_LITERAL);
-    // TODO(timo): But we actually should just return the type of
-    // the expression and not the value. Unless if we are doing
-    // constant folding but even then the values could be accessed
-    // from elsewhere.
     
     Type* type;
     Value value;
@@ -225,13 +220,6 @@ static Type* resolve_variable_expression(Resolver* resolver, AST_Expression* exp
         exit(1);
     }
 
-    // TODO(timo): Should the variable we are trying to access, be already resolved?
-    // Probably should since if we are declaring and using things out or order in the 
-    // top level, for example we should be able to assign the values to the variables 
-    // out of order, and that is something that needs the variables to be resolved
-    // TODO(timo): Order independent declarations will be done at a later stage so this
-    // can be ignored for now
-
     Type* type = symbol->type; 
 
     return type;
@@ -254,40 +242,124 @@ static Type* resolve_assignment_expression(Resolver* resolver, AST_Expression* e
 }
 
 
+static Type* resolve_index_expression(Resolver* resolver, AST_Expression* expression)
+{
+    // NOTE(timo): Index expression at this point is only allowed to be used with
+    // command line arguments so no general array functionality is added for now.
+
+    // Make sure that the accessed variable is argv and nothing else
+    // TODO(timo): Are the program/command line arguments passed to scope?
+    AST_Expression* variable = expression->index.variable;
+    // Type* variable_type = resolve_expression(resolver, variable);
+    // Symbol* argv = scope_lookup(resolver->global, variable->identifier->lexeme);
+    // Symbol* argc = scope_lookup(resolver->global, "argc");
+
+    // TODO(timo): probably should make sure that the variable type is array type so it can actually 
+    // be subscripted. Since we don't have general arrays, we don't need this check for now.
+    // Type* variable_type = resolve_expression(resolver, variable);
+    // if (variable_type->kind != TYPE_ARRAY_INTEGER)
+    
+    /*
+    if (strcmp(argv->identifier, "argv") != 0)
+    {
+        // TODO(timo): error
+        printf("You cannot use index expressions with other values than argv of the main function\n");
+        exit(1);
+    }
+    */
+
+    // we should make sure that the type of the expression is integer
+    Type* index_type = resolve_expression(resolver, expression->index.value);
+
+    if (index_type->kind != TYPE_INTEGER)
+    {
+        // TODO(timo): Error
+        printf("Array subscript cannot be other type than integer\n");
+        exit(1);
+    }
+    
+    /*
+    // the index cannot be < 0 and not > array length - 1
+    Value index_value = expression->index.value->literal.value;
+
+    assert(index_value.type == VALUE_INTEGER);
+
+    if (index_value.integer < 0)
+    {
+        // TODO(timo): Error
+        printf("Array subscript less than zero is not allowed\n");
+        exit(1);
+    }
+    if (index_value.integer > argc->value.integer)
+    {
+        // TODO(timo): Error
+        printf("Array subscript greater than array length\n");
+        exit(1);
+    }
+    */
+
+    return index_type;
+}
+
+
 static Type* resolve_function_expression(Resolver* resolver, AST_Expression* expression)
 {
     resolver->context.not_in_function = false;
+    // resolver->context.return_type = type_none();
+
     // Begin a new scope
 
-    // Resolve parameters
-    /*
-    array* parameters = expression->function.parameters;
+    // Resolve parameters if there is some
+    if (expression->function.arity > 0)
+    {
+        array* parameters = expression->function.parameters;
 
-    for (int i = 0; i < parameters->length; i++)
-        resolve_function_parameter(resolver, parameters->items[i]);
-    */
+        for (int i = 0; i < parameters->length; i++)
+            scope_declare(resolver->global, symbol_parameter((Parameter*)parameters->items[i]));
+    }
 
     // Resolve body and return type
-    // TODO(timo): Take into account that we cannot declare
-    // functions inside functions. At least for now
     resolve_statement(resolver, expression->function.body);
      
     // End scope
     
-    // TODO(timo): We should have some way to detect error if the
-    // type of the return value was incorrect. Since this function
-    // has to return something, we really can't do the expected type
-    // check in the resolve_return_statement
-    // Thats why we might need the special context structure to keep
-    // track of information like this
-    // NOTE(timo): Decided to force only single return statement per
-    // function, so this can actually return something. Even though
-    // this information could carry inside the context structure.
-    Type* return_type = resolver->context.return_type;
-
     resolver->context.not_in_function = true;
+
+    // NOTE(timo): Decided to force only single return statement per function, so this can actually 
+    // return something. Even though this information could carry inside the context structure.
+    return resolver->context.return_type;
+}
+
+
+static Type* resolve_call_expression(Resolver* resolver, AST_Expression* expression)
+{
+    Type* variable_type = resolve_expression(resolver, expression->call.variable);
+    array* arguments = expression->call.arguments;
+    Symbol* function = scope_lookup(resolver->global, expression->call.variable->identifier->lexeme);
+
+    // Number of arguments == arity of the called function
+    if (function->arity != arguments->length)
+    {
+        // TODO(timo): Error
+        printf("Function X expected %d arguments, but %d was given\n", function->arity, arguments->length);
+        exit(1);
+    }
     
-    return return_type;
+    // TODO(timo): Types of the passed arguments cannot be resolved if we do things like this
+    // since we cannot map the passed arguments to the function parameters.
+    /*
+    // types of the arguments == types of the parameters
+    for (int i = 0; i < arguments->length; i++)
+    {
+        Type* argument_type = resolve_expression(resolve, (Expression*)arguments->items[i]);
+        Symbol* parameter = scope_lookup(resolver->global, 
+
+        if 
+    }
+    */
+
+    // return the return type of the called function
+    return variable_type;
 }
 
 
@@ -312,6 +384,12 @@ Type* resolve_expression(Resolver* resolver, AST_Expression* expression)
         case EXPRESSION_BINARY:
             type = resolve_binary_expression(resolver, expression);
             break;
+        case EXPRESSION_INDEX:
+            type = resolve_index_expression(resolver, expression);
+            break;
+        case EXPRESSION_CALL:
+            type = resolve_call_expression(resolver, expression);
+            break;
         case EXPRESSION_FUNCTION:
             type = resolve_function_expression(resolver, expression);
             break;
@@ -333,15 +411,6 @@ void resolve_block_statement(Resolver* resolver, AST_Statement* statement)
         resolve_statement(resolver, statements->items[i]); 
 
     // TODO(timo): leave the scope of the block
-}
-
-
-void resolve_declaration_statement(Resolver* resolver, AST_Statement* statement)
-{
-    Symbol* symbol = symbol_variable(statement->declaration);
-
-    scope_declare(resolver->global, symbol);
-    resolve_declaration(resolver, statement->declaration);
 }
 
 
@@ -392,6 +461,11 @@ void resolve_return_statement(Resolver* resolver, AST_Statement* statement)
         printf("YORO - You only return once\n");
         exit(1);
     }
+    
+    // NOTE(timo): Since we are in return statement, we have something to return
+    // and for now explicit returning without value is not possible.
+    // TODO(timo): There must be a better way
+    // free(resolver->context.return_type);
 
     resolver->context.return_type = resolve_expression(resolver, statement->_return.value);
 }
@@ -423,7 +497,7 @@ void resolve_statement(Resolver* resolver, AST_Statement* statement)
             resolve_block_statement(resolver, statement);
             break;
         case STATEMENT_DECLARATION:
-            resolve_declaration_statement(resolver, statement);
+            resolve_declaration(resolver, statement->declaration);
             break;
         case STATEMENT_RETURN:
             resolve_return_statement(resolver, statement);
@@ -461,13 +535,27 @@ Type* resolve_type_specifier(Type_Specifier specifier)
 
 void resolve_declaration(Resolver* resolver, AST_Declaration* declaration)
 {
-    // TODO(timo): We could also create the symbol in here if the symbol is NULL
-    // That way we could avoid doing the same code twice
+    // Declare the symbol into the current scope
+    Symbol* symbol;
 
-    // Get the symbol from the symbol table
-    Symbol* symbol = scope_lookup(resolver->global, declaration->identifier->lexeme);
+    switch (declaration->kind)
+    {
+        case DECLARATION_VARIABLE:
+            symbol = symbol_variable(declaration);
+            break;
+        case DECLARATION_FUNCTION:
+            symbol = symbol_function(declaration);
+            break;
+        default:
+            // TODO(timo): Error
+            break;
+    }
+
+    scope_declare(resolver->global, symbol);
 
     // Check for the state of the symbol
+    // TODO(timo): This symbol state is not probably needed when we are resolving
+    // things in order?
     assert(symbol->state == STATE_UNRESOLVED);
 
     if (symbol->state == STATE_RESOLVED) return;
@@ -479,15 +567,6 @@ void resolve_declaration(Resolver* resolver, AST_Declaration* declaration)
     }
 
     symbol->state = STATE_RESOLVING;
-
-    // NOTE(timo): This way we can't access the info of the current
-    // declaration context e.g. to check return types
-    // TODO(timo): Should I create a specific Context structure for this
-    // kind of thing? It could be more useful as its own abstraction
-    // resolver->current_declaration = symbol;
-
-    // Declare it in the scope symbol table. Scope handles the possible name collisions
-    // scope_declare(resolver->global, symbol);
 
     // NOTE(timo): So this type will be the type of the value assigned to the variable 
     // or if the declaration is function, this will be the type of the return value.
@@ -508,34 +587,6 @@ void resolve_declaration(Resolver* resolver, AST_Declaration* declaration)
 void resolve(Resolver* resolver, array* declarations)
 {
     // TODO(timo): We probably should create a abstraction for the program itself
-    
-    // Declare all the top level declarations in the global symbol table
-    // TODO(timo): Now things are declared and resolved in the order of
-    // declaration. That order independent declaration came out to be a
-    // bit bigger nut to crack, so it will be pushed to later stage. Therefore
-    // this "double for loop" is kind of unnecessary for now but it will be
-    // used at a later stage
-    for (int i = 0; i < declarations->length; i++)
-    {
-        AST_Declaration* declaration = declarations->items[i];
-        Symbol* symbol;
-
-        switch (declaration->kind)
-        {
-            case DECLARATION_VARIABLE:
-                symbol = symbol_variable(declaration);
-                break;
-            case DECLARATION_FUNCTION:
-                symbol = symbol_function(declaration);
-                break;
-            default:
-                // TODO(timo): Error
-                break;
-        }
-
-        scope_declare(resolver->global, symbol);
-    }
-    
     for (int i = 0; i < declarations->length; i++)
     {
         AST_Declaration* declaration = declarations->items[i];

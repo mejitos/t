@@ -126,6 +126,10 @@ Value evaluate_expression(Interpreter* interpreter, AST_Expression* expression)
             return evaluate_variable_expression(interpreter, expression);
         case EXPRESSION_ASSIGNMENT:
             return evaluate_assignment_expression(interpreter, expression);
+        // TODO(timo):
+        // case EXPRESSION_FUNCTION:
+        // case EXPRESSION_CALL:
+        // case EXPRESSION_INDEX:
         default:
             // TODO(timo): Error
             break;
@@ -251,6 +255,12 @@ void evaluate_declaration(Interpreter* interpreter, AST_Declaration* declaration
 
 void interpret(Interpreter* interpreter)
 {
+    // TODO(timo): We should also pass the finished symbol table at least for the
+    // global symbols to be used by the interpreter. That way we only need the
+    // entry point of the program and we just just interpret that.
+    // TODO(timo): Therefore we really can't have this loop in here but instead
+    // normal routine that handles the program parameters etc. stuff and then 
+    // just starts interpreting the body of the program
     for (int i = 0; i < interpreter->declarations->length; i++)
         evaluate_declaration(interpreter, interpreter->declarations->items[i]);
 }

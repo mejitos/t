@@ -1,6 +1,16 @@
 #include "t.h"
 
 
+Type* type_none()
+{
+    Type* type = xmalloc(sizeof (Type));
+    type->kind = TYPE_NONE;
+    type->size = 0;
+
+    return type;
+}
+
+
 Type* type_integer()
 {
     Type* type = xmalloc(sizeof (Type));
