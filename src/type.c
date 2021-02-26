@@ -44,13 +44,14 @@ Type* type_function()
 }
 
 
-Type* type_array(Type* element_type, int length)
+// Type* type_array(Type* element_type, int length)
+Type* type_array(Type* element_type)
 {
     Type* type = xmalloc(sizeof (Type));
     type->kind = TYPE_ARRAY;
     // TODO(timo): Size can be calculated with the size of the element type * length
     type->array.element_type = element_type;
-    type->array.length = length;
+    type->array.length = 0;
 
     return type;
 }

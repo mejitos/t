@@ -244,33 +244,32 @@ static Type* resolve_assignment_expression(Resolver* resolver, AST_Expression* e
 
 static Type* resolve_index_expression(Resolver* resolver, AST_Expression* expression)
 {
-    // NOTE(timo): Index expression at this point is only allowed to be used with
-    // command line arguments so no general array functionality is added for now.
-
     // Make sure that the accessed variable is argv and nothing else
     // TODO(timo): Are the program/command line arguments passed to scope?
     AST_Expression* variable = expression->index.variable;
-    // Type* variable_type = resolve_expression(resolver, variable);
-    // Symbol* argv = scope_lookup(resolver->global, variable->identifier->lexeme);
-    // Symbol* argc = scope_lookup(resolver->global, "argc");
-
-    // TODO(timo): probably should make sure that the variable type is array type so it can actually 
-    // be subscripted. Since we don't have general arrays, we don't need this check for now.
-    // Type* variable_type = resolve_expression(resolver, variable);
-    // if (variable_type->kind != TYPE_ARRAY_INTEGER)
     
-    /*
-    if (strcmp(argv->identifier, "argv") != 0)
+    // Make sure the subscript target is an array type
+    Type* variable_type = resolve_expression(resolver, variable);
+    Symbol* symbol = scope_lookup(resolver->global, variable->identifier->lexeme);
+
+    if (variable_type->kind != TYPE_ARRAY)
     {
-        // TODO(timo): error
+        // TODO(timo): Error
+        printf("Only array types are subscriptable\n");
+        exit(1);
+    }
+    // TODO(timo): We should also make sure that the current context is the main functions context
+    if (strcmp(symbol->identifier, "argv") != 0)
+    {
+        // TODO(timo): Error
         printf("You cannot use index expressions with other values than argv of the main function\n");
         exit(1);
     }
-    */
 
     // we should make sure that the type of the expression is integer
     Type* index_type = resolve_expression(resolver, expression->index.value);
-
+    
+    // TODO(timo): We also have the element_type member in the array type, can/should we use it for something?
     if (index_type->kind != TYPE_INTEGER)
     {
         // TODO(timo): Error
@@ -278,11 +277,8 @@ static Type* resolve_index_expression(Resolver* resolver, AST_Expression* expres
         exit(1);
     }
     
-    /*
     // the index cannot be < 0 and not > array length - 1
     Value index_value = expression->index.value->literal.value;
-
-    assert(index_value.type == VALUE_INTEGER);
 
     if (index_value.integer < 0)
     {
@@ -290,6 +286,8 @@ static Type* resolve_index_expression(Resolver* resolver, AST_Expression* expres
         printf("Array subscript less than zero is not allowed\n");
         exit(1);
     }
+    // TODO(timo): We don't have a way to get the value of the argc for now
+    /*
     if (index_value.integer > argc->value.integer)
     {
         // TODO(timo): Error
@@ -297,7 +295,8 @@ static Type* resolve_index_expression(Resolver* resolver, AST_Expression* expres
         exit(1);
     }
     */
-
+    
+    // TODO(timo): Should we return the type of the index or the element type
     return index_type;
 }
 
@@ -550,6 +549,8 @@ Type* resolve_type_specifier(Type_Specifier specifier)
             return type_integer();
         case TYPE_SPECIFIER_BOOL:
             return type_boolean();
+        case TYPE_SPECIFIER_ARRAY_INT:
+            return type_array(type_integer());
         default:
             // TODO(timo): Error
             break;

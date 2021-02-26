@@ -525,8 +525,6 @@ static void test_resolve_index_expression()
     parser_init(&parser, lexer.tokens);
     expression = parse_expression(&parser);
 
-    resolver_init(&resolver);
-
     Type* type = resolve_expression(&resolver, expression);
 
     assert(type->kind == TYPE_INTEGER);
@@ -736,12 +734,6 @@ static void test_resolve_function_declaration()
     parse(&parser);
 
     assert(parser.declarations->length == 1);
-
-    // TODO(timo): resolver parameters
-
-
-
-    // TODO(timo): resolve body
 
     resolver_init(&resolver);
     resolve(&resolver, parser.declarations);

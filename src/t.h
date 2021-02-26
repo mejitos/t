@@ -394,7 +394,8 @@ Type* type_integer();
 Type* type_boolean();
 // Type* type_function(Type* return_type, array* parameters);
 Type* type_function();
-Type* type_array(Type* element_type, int length);
+// Type* type_array(Type* element_type, int length);
+Type* type_array(Type* element_type);
 bool type_is_integer(Type* type);
 bool type_is_boolean(Type* type);
 
