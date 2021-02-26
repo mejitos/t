@@ -741,6 +741,81 @@ static void test_resolve_function_declaration()
 }
 
 
+static void test_resolve_if_statement()
+{
+    printf("\tIf statement...");
+    not_error = true;
+
+    Lexer lexer;
+    Parser parser;
+    Resolver resolver;
+    AST_Statement* statement;
+    
+    // If with then
+    lexer_init(&lexer, "if 0 < 1 then { }");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    statement = parse_statement(&parser);
+
+    assert(statement->kind == STATEMENT_IF);
+
+    resolver_init(&resolver);
+
+    Type* condition_type = resolve_expression(&resolver, statement->_if.condition);
+    assert(condition_type->kind == TYPE_BOOLEAN);
+
+    resolve_statement(&resolver, statement);
+    
+    statement_free(statement);
+    resolver_free(&resolver);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    // TODO(timo): If with then and else
+    // TODO(timo): If with else ifs
+    // TODO(timo): multiple ifs with one else at end
+
+    if (not_error) printf("PASSED\n");
+    else printf("\n");
+}
+
+
+static void test_resolve_while_statement()
+{
+    printf("\tWhile statement...");
+    not_error = true;
+
+    Lexer lexer;
+    Parser parser;
+    Resolver resolver;
+    AST_Statement* statement;
+    
+    lexer_init(&lexer, "while 0 < 1 do { }");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    statement = parse_statement(&parser);
+
+    assert(statement->kind == STATEMENT_WHILE);
+
+    resolver_init(&resolver);
+
+    Type* condition_type = resolve_expression(&resolver, statement->_while.condition);
+    assert(condition_type->kind == TYPE_BOOLEAN);
+
+    resolve_statement(&resolver, statement);
+    
+    statement_free(statement);
+    resolver_free(&resolver);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    if (not_error) printf("PASSED\n");
+    else printf("\n");
+}
+
+
 static void test_resolve_return_statement()
 {
     printf("\tReturn statement...");

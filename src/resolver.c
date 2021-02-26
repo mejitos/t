@@ -426,7 +426,8 @@ void resolve_if_statement(Resolver* resolver, AST_Statement* statement)
 
     resolve_statement(resolver, statement->_if.then);
 
-    if (statement->_if._else) resolve_statement(resolver, statement->_if._else);
+    if (statement->_if._else) 
+        resolve_statement(resolver, statement->_if._else);
 }
 
 
@@ -520,6 +521,7 @@ void resolve_statement(Resolver* resolver, AST_Statement* statement)
 
 Type* resolve_type_specifier(Type_Specifier specifier)
 {
+    // TODO(timo): Array types
     switch (specifier)
     {
         case TYPE_SPECIFIER_INT:
