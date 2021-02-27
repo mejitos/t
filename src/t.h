@@ -528,4 +528,58 @@ void evaluate_declaration(Interpreter* interpreter, AST_Declaration* declaration
 void interpret(Interpreter* interpreter);
 
 
+/*
+ *  Intermediate representation
+ *
+ *  File(s): ir_generator.c
+ *           ir_runner.c
+ */
+typedef enum Instruction_Kind
+{
+    INSTRUCTION_NO_OP,
+    INSTRUCTION_ADD_I,
+    INSTRUCTION_SUB_I,
+    INSTRUCTION_MUL_I,
+    INSTRUCTION_DIV_I,
+} Instruction_Kind;
+
+
+typedef enum Operation
+{
+    OP_NOOP,
+    OP_ADD,
+    OP_SUB,
+    OP_MUL,
+    OP_DIV,
+} Operation;
+
+
+typedef struct Instruction
+{
+    Instruction_Kind kind;
+
+    Operation operation;
+    Operand left;
+    Operand right;
+} Instruction;
+
+
+typedef struct Basic_Block
+{
+    array* instructions;
+} Basic_Block;
+
+
+typedef struct IR_Generator
+{
+    FILE* output_file;
+    array* blocks;
+    int label;
+    int temp;
+} IR_Generator;
+
+// void emit_expression(IR_Generator* generator, AST_Expression* expression);
+char* emit_expression(IR_Generator* generator, AST_Expression* expression);
+
+
 #endif
