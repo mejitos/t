@@ -188,7 +188,7 @@ static AST_Statement* parse_if_statement(Parser* parser)
     advance(parser);
 
     AST_Statement* then = parse_block_statement(parser);
-    AST_Statement* _else;
+    AST_Statement* _else = NULL;
 
     if (parser->current_token->kind == TOKEN_ELSE)
     {

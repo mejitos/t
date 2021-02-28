@@ -262,9 +262,9 @@ void statement_free(AST_Statement* statement)
             expression_free(statement->expression);
             break;
         case STATEMENT_BLOCK:
-            for (int i = 0; i < statement->block.statements_length; i++)
+            for (int i = 0; i < statement->block.statements->length; i++)
             {
-                statement_free(statement->block.statements->items[i]);
+                statement_free((AST_Statement*)statement->block.statements->items[i]);
                 statement->block.statements->items[i] = NULL;
             }
 
@@ -273,7 +273,7 @@ void statement_free(AST_Statement* statement)
         case STATEMENT_IF:
             expression_free(statement->_if.condition);
             statement_free(statement->_if.then);
-            if (statement->_if._else)
+            if (statement->_if._else != NULL)
                 statement_free(statement->_if._else);
             break;
         case STATEMENT_WHILE:

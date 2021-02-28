@@ -554,13 +554,127 @@ typedef enum Operation
 } Operation;
 
 
+
+// Label
+// Symbolic labels used to alter the flow of control
+// Represents the index of a three address instruction in the sequence of instructions
+// Actual indexes can be substituted for the labels either by making separate pass or backpatching
+//
+// Running numbers for the instructions could also be used. I think I'll use the labels
+// since they are the closest to the general assembly and in general they just make more sense
+
+
+// Temp
+
+
+// NOTE(timo): The three address codes are made of addresses and instructions
+//
+// So it the instruction part the operation itself and therefore e.g. the 
+// assignment binary instruction consist of addresses y and z
+//
+// The common three address instructions
+//
+//  1. Assignment (binary): 
+//      x = y op z
+//          where
+//              op      = binary arithmetic or logical operation
+//              x, y, z = addresses
+//
+//  2. Assignment (unary):
+//      x = op y
+//          where
+//              op      = unary operation e.g. unary minus, logical negation, casts
+//              x, y    = addresses
+//
+//  3. Copy instruction:
+//      x = y
+//          where
+//              x is assigned the value of y
+//
+//  4. Unconditional jump:
+//      goto L
+//          where
+//              L = three address instruction with label L is the next to be 
+//                  executed e.g. goto l1 or goto func_main
+//
+//  5. Conditional jump:
+//      if x goto L
+//
+//      ifFalse x goto L
+//          where
+//              executes the instruction with label L next if x is true and false,
+//              respectively
+//
+//  6. Conditional jump:
+//      if x relational_op y goto L
+//          where
+//              relational_op = <, <=, >, >=, ==, !=
+//              x, y = addresses
+//              L =
+//
+//      if x stands in relation relational_op to y e.g. is true, executes the
+//      instruction with label L, else the instruction next in sequence will
+//      be executed
+//
+//  7. 
+//  8. 
+//  9.
+//
+
+// NOTE(timo): Address can be a name, a constant or a compiler generated temporary
+//
+// name:        program name, pointer to the names symbol table entry where 
+//              all the information of the name is kept
+// constant:    constant value but seems like it can be a variable too?
+// temp:        the "_t0" etc. temporary variables with rolling number
+typedef struct Address
+{
+    union {
+        // Symbol* name;
+        // Operand constant;
+        // Instruction* temp; // pointer to result of operation x op y, which is assigned to temp variable
+    };
+} Address;
+
+
+// Instruction
+//
+// id: temp1 (probably not needed as field since we can reference to each other with pointers)
+// position:
+// op: +
+// arg1: 1
+// arg2: 2
+//
+//
+// === 
+//
+// t1 = 1 + 2
+//
+//
+
+// This should probably be called a triple? And the instruction should be just some
+// subclass or even plain enumeration
+//
+// When using triples, the result of the operation x op y is referred by its position
+// rather than by an explicit temporary name
 typedef struct Instruction
 {
+    // Should I still have a running number for the position of the instruction?
+    // int position;
+
     Instruction_Kind kind;
 
     Operation operation;
+    Address arg1;
+    Address arg2;
+
+    // Label label; // Where the jump happens to
+
+    /*
+    Operation operation;
     Operand left;
     Operand right;
+    */
 } Instruction;
 
 
