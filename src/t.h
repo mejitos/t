@@ -536,11 +536,20 @@ void interpret(Interpreter* interpreter);
  */
 typedef enum Instruction_Kind
 {
-    INSTRUCTION_NO_OP,
-    INSTRUCTION_ADD_I,
-    INSTRUCTION_SUB_I,
-    INSTRUCTION_MUL_I,
-    INSTRUCTION_DIV_I,
+    INSTRUCTION_NOOP,
+    INSTRUCTION_BINARY,
+    INSTRUCTION_UNARY,
+    INSTRUCTION_COPY,
+    INSTRUCTION_GOTO,
+    INSTRUCTION_GOTO_IF,
+    INSTRUCTION_GOTO_IF_TRUE,
+    INSTRUCTION_GOTO_IF_FALSE,
+    INSTRUCTION_FUNCTION_BEGIN,
+    INSTRUCTION_FUNCTION_END,
+    INSTRUCTION_PARAM_PUSH,
+    INSTRUCTION_PARAM_POP,
+    INSTRUCTION_FUNCTION_CALL,
+    INSTRUCTION_RETURN,
 } Instruction_Kind;
 
 
@@ -551,6 +560,15 @@ typedef enum Operation
     OP_SUB,
     OP_MUL,
     OP_DIV,
+    OP_LT,
+    OP_LTE,
+    OP_GT,
+    OP_GTE,
+    OP_AND,
+    OP_OR,
+    OP_MINUS,
+    OP_NOT,
+    OP_ASSIGN,
 } Operation;
 
 
@@ -591,6 +609,8 @@ typedef enum Operation
 //          where
 //              x is assigned the value of y
 //
+//      This is basically the assignment expression
+//
 //  4. Unconditional jump:
 //      goto L
 //          where
@@ -621,7 +641,10 @@ typedef enum Operation
 //  9.
 //
 
+typedef struct Instruction Instruction;
+
 // NOTE(timo): Address can be a name, a constant or a compiler generated temporary
+// These are pretty much the operands used in some literature
 //
 // name:        program name, pointer to the names symbol table entry where 
 //              all the information of the name is kept
@@ -630,11 +653,18 @@ typedef enum Operation
 typedef struct Address
 {
     union {
-        // Symbol* name;
-        // Operand constant;
-        // Instruction* temp; // pointer to result of operation x op y, which is assigned to temp variable
+        Symbol* name;
+        Value constant;
+        Instruction* temp; // pointer to result of operation x op y, which is assigned to temp variable
     };
 } Address;
+
+
+typedef struct Label
+{
+    const char* identifier;
+    int number;
+} Label;
 
 
 // Instruction
@@ -657,25 +687,35 @@ typedef struct Address
 //
 // When using triples, the result of the operation x op y is referred by its position
 // rather than by an explicit temporary name
-typedef struct Instruction
+struct Instruction
 {
-    // Should I still have a running number for the position of the instruction?
-    // int position;
-
+    int position; // address or the index in the array of instructions
     Instruction_Kind kind;
 
-    Operation operation;
-    Address arg1;
-    Address arg2;
-
-    // Label label; // Where the jump happens to
-
-    /*
-    Operation operation;
-    Operand left;
-    Operand right;
-    */
-} Instruction;
+    union {
+        Label label; // unconditional goto
+        struct {
+            Operation operation;
+            Address arg1;
+            Address arg2;
+        } binary;
+        struct {
+            Operation operation;
+            Address arg;
+        } unary;
+        struct {
+            Address variable;
+            Address value;
+        } copy;
+        struct {
+            Address address;
+            Label label;
+            // Label true;
+            // Label false;
+            // condition?!?
+        } goto_if;
+    };
+};
 
 
 typedef struct Basic_Block
@@ -692,8 +732,9 @@ typedef struct IR_Generator
     int temp;
 } IR_Generator;
 
-// void emit_expression(IR_Generator* generator, AST_Expression* expression);
-char* emit_expression(IR_Generator* generator, AST_Expression* expression);
+char* generate_expression(IR_Generator* generator, AST_Expression* expression);
+void generate_statement(IR_Generator* generator, AST_Statement* statement);
+void generate_declaration(IR_Generator* generator, AST_Declaration* declaration);
 
 
 #endif
