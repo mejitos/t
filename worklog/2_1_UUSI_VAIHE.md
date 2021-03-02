@@ -1,4 +1,4 @@
-# 2.1. Välikielenhuoltoa
+# 2.1. Uusi vaihe 
 
 Aika aloittaa kokonaan uusi jakso tässä projektissa ja lyödä tavotteita seuraavaksi kuukaudeksi.
 Viime viikon loppu lähti vähän käsistä, kun piti keskittyä olemassa olevien palikoiden 
