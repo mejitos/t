@@ -11,6 +11,18 @@ Scope* scope_init(Scope* enclosing)
 }
 
 
+void scope_free(Scope* scope)
+{
+    for (int i = 0; i < scope->symbols->length; i++)
+        symbol_free(scope->symbols->items[i]);
+
+    array_free(scope->symbols);
+
+    free(scope);
+    scope = NULL;
+}
+
+
 /*
 void scope_enter(Scope* enclosing)
 {

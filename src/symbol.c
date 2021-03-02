@@ -35,3 +35,13 @@ Symbol* symbol_parameter(Parameter* parameter)
 
     return symbol;
 }
+
+
+void symbol_free(Symbol* symbol)
+{
+    // TODO(timo): Should the identifier be freed?
+    // TODO(timo): Freeing the type?
+
+    free(symbol);
+    symbol = NULL;
+}

@@ -13,26 +13,28 @@ static void test_generate_literal_expression()
     Lexer lexer;
     Parser parser;
     Resolver resolver;
-    IR_Generator generator = (IR_Generator) { .label = 0, .temp = 0 };
+    IR_Generator generator;
 
     // integer literal
     lexer_init(&lexer, "42");
     lex(&lexer);
 
     parser_init(&parser, lexer.tokens);
-
     AST_Expression* expression = parse_expression(&parser);
 
     resolver_init(&resolver);
     resolve_expression(&resolver, expression);
 
+    generator_init(&generator);
     char* result = generate_expression(&generator, expression);
     
     // assert(strcmp(result, "42") == 0);
+    dump_instructions(generator.instructions);
 
     // TODO(timo): boolean literals
 
     expression_free(expression);
+    generator_free(&generator);
     resolver_free(&resolver);
     parser_free(&parser);
     lexer_free(&lexer);
@@ -50,7 +52,7 @@ static void test_generate_unary_expression()
     Lexer lexer;
     Parser parser;
     Resolver resolver;
-    IR_Generator generator = (IR_Generator) { .label = 0, .temp = 0 };
+    IR_Generator generator;
     AST_Expression* expression;
 
     lexer_init(&lexer, "-42");
@@ -63,9 +65,13 @@ static void test_generate_unary_expression()
     resolver_init(&resolver);
     resolve_expression(&resolver, expression);
 
+    generator_init(&generator);
     generate_expression(&generator, expression);
 
+    dump_instructions(generator.instructions);
+
     expression_free(expression);
+    generator_free(&generator);
     resolver_free(&resolver);
     parser_free(&parser);
     lexer_free(&lexer);
@@ -82,10 +88,14 @@ static void test_generate_unary_expression()
 
     resolver_init(&resolver);
     resolve_expression(&resolver, expression);
-
+    
+    generator_init(&generator);
     generate_expression(&generator, expression);
 
+    dump_instructions(generator.instructions);
+
     expression_free(expression);
+    generator_free(&generator);
     resolver_free(&resolver);
     parser_free(&parser);
     lexer_free(&lexer);
@@ -102,7 +112,7 @@ static void test_generate_binary_expression()
     Lexer lexer;
     Parser parser;
     Resolver resolver;
-    IR_Generator generator = (IR_Generator) { .label = 0, .temp = 0 };
+    IR_Generator generator;
     AST_Expression* expression;
 
     // binary arithmetic +
@@ -110,69 +120,85 @@ static void test_generate_binary_expression()
     lex(&lexer);
 
     parser_init(&parser, lexer.tokens);
-
     expression = parse_expression(&parser);
 
     resolver_init(&resolver);
     resolve_expression(&resolver, expression);
-
+    
+    generator_init(&generator);
     generate_expression(&generator, expression);
+
+    dump_instructions(generator.instructions);
     
     expression_free(expression);
+    generator_free(&generator);
     resolver_free(&resolver);
     parser_free(&parser);
     lexer_free(&lexer);
+
+    printf("--------\n");
 
     // binary arithmetic -
     lexer_init(&lexer, "3 - 4");
     lex(&lexer);
 
     parser_init(&parser, lexer.tokens);
-
     expression = parse_expression(&parser);
 
     resolver_init(&resolver);
     resolve_expression(&resolver, expression);
 
+    generator_init(&generator);
     generate_expression(&generator, expression);
+
+    dump_instructions(generator.instructions);
     
     expression_free(expression);
     resolver_free(&resolver);
     parser_free(&parser);
     lexer_free(&lexer);
+
+    printf("--------\n");
 
     // binary arithmetic *
     lexer_init(&lexer, "5 * 6");
     lex(&lexer);
 
     parser_init(&parser, lexer.tokens);
-
     expression = parse_expression(&parser);
 
     resolver_init(&resolver);
     resolve_expression(&resolver, expression);
 
+    generator_init(&generator);
     generate_expression(&generator, expression);
+
+    dump_instructions(generator.instructions);
     
     expression_free(expression);
     resolver_free(&resolver);
     parser_free(&parser);
     lexer_free(&lexer);
 
+    printf("--------\n");
+
     // binary arithmetic /
     lexer_init(&lexer, "7 / 8");
     lex(&lexer);
 
     parser_init(&parser, lexer.tokens);
-
     expression = parse_expression(&parser);
 
     resolver_init(&resolver);
     resolve_expression(&resolver, expression);
 
+    generator_init(&generator);
     generate_expression(&generator, expression);
+
+    dump_instructions(generator.instructions);
     
     expression_free(expression);
+    generator_free(&generator);
     resolver_free(&resolver);
     parser_free(&parser);
     lexer_free(&lexer);
@@ -190,7 +216,7 @@ static void test_generate_variable_expression()
     Lexer lexer;
     Parser parser;
     Resolver resolver;
-    IR_Generator generator = (IR_Generator) { .label = 0, .temp = 0 };
+    IR_Generator generator;
     AST_Expression* expression;
     AST_Statement* statement;
     char* source;
@@ -201,20 +227,22 @@ static void test_generate_variable_expression()
     lex(&lexer);
 
     parser_init(&parser, lexer.tokens);
-
     statement = parse_statement(&parser);
 
     resolver_init(&resolver);
     resolve_statement(&resolver, statement);
+
+    generator_init(&generator);
     
     expression = ((AST_Statement*)statement->block.statements->items[1])->expression;
     char* result = generate_expression(&generator, expression);
-
-    assert(strcmp(result, "foo") == 0);
+    // assert(strcmp(result, "foo") == 0);
+    dump_instructions(generator.instructions);
     
     // This expression will be free'd with the statement
     // expression_free(expression);
     statement_free(statement);
+    generator_free(&generator);
     resolver_free(&resolver);
     parser_free(&parser);
     lexer_free(&lexer);
@@ -232,7 +260,7 @@ static void test_generate_assignment_expression()
     Lexer lexer;
     Parser parser;
     Resolver resolver;
-    IR_Generator generator = (IR_Generator) { .label = 0, .temp = 0 };
+    IR_Generator generator;
     AST_Expression* expression;
     AST_Statement* statement;
     char* source;
@@ -243,18 +271,21 @@ static void test_generate_assignment_expression()
     lex(&lexer);
 
     parser_init(&parser, lexer.tokens);
-
     statement = parse_statement(&parser);
 
     resolver_init(&resolver);
     resolve_statement(&resolver, statement);
     
+    generator_init(&generator);
     expression = ((AST_Statement*)statement->block.statements->items[1])->expression;
     generate_expression(&generator, expression);
+
+    dump_instructions(generator.instructions);
     
     // This expression will be free'd with the statement
     // expression_free(expression);
     statement_free(statement);
+    generator_free(&generator);
     resolver_free(&resolver);
     parser_free(&parser);
     lexer_free(&lexer);
@@ -268,18 +299,21 @@ static void test_generate_assignment_expression()
     lex(&lexer);
 
     parser_init(&parser, lexer.tokens);
-
     statement = parse_statement(&parser);
 
     resolver_init(&resolver);
     resolve_statement(&resolver, statement);
     
+    generator_init(&generator);
     expression = ((AST_Statement*)statement->block.statements->items[3])->expression;
     generate_expression(&generator, expression);
+
+    dump_instructions(generator.instructions);
 
     // This expression will be free'd with the statement
     // expression_free(expression);
     statement_free(statement);
+    generator_free(&generator);
     resolver_free(&resolver);
     parser_free(&parser);
     lexer_free(&lexer);
@@ -307,7 +341,7 @@ static void test_generate_function_expression()
     Lexer lexer;
     Parser parser;
     Resolver resolver;
-    IR_Generator generator = (IR_Generator) { .label = 0, .temp = 0 };
+    IR_Generator generator;
     AST_Expression* expression;
 
     lexer_init(&lexer, "(a: int, b: int) => { b := a + b; return b; }");
@@ -319,10 +353,13 @@ static void test_generate_function_expression()
     resolver_init(&resolver);
     resolve_expression(&resolver, expression);
     
-    printf("\n");
+    generator_init(&generator);
     generate_expression(&generator, expression);
+
+    dump_instructions(generator.instructions);
     
-    // expression_free(expression);
+    expression_free(expression);
+    generator_free(&generator);
     resolver_free(&resolver);
     parser_free(&parser);
     lexer_free(&lexer);
@@ -335,12 +372,13 @@ static void test_generate_function_expression()
 static void test_generate_call_expression()
 {
     printf("\tCall expression...");
+    printf("\n");
     not_error = true;
 
     Lexer lexer;
     Parser parser;
     Resolver resolver;
-    IR_Generator generator = (IR_Generator) { .label = 0, .temp = 0 };
+    IR_Generator generator;
     AST_Expression* expression;
     AST_Declaration* declaration;
     char* source;
@@ -365,19 +403,20 @@ static void test_generate_call_expression()
 
     assert(strcmp(expression->call.variable->identifier->lexeme, "cube") == 0);
     
-    printf("\n");
+    generator_init(&generator);
     generate_expression(&generator, expression);
+
+    dump_instructions(generator.instructions);
     
     // declaration_free(declaration);
     // expression_free(expression);
+    generator_free(&generator);
     resolver_free(&resolver);
     parser_free(&parser);
     lexer_free(&lexer);
 
     printf("----------\n");
 
-    generator = (IR_Generator) { .label = 0, .temp = 0 };
-    
     source = "max: int = (x: int, y: int) => { if x > y then { return x; } else { return y; } };\n"
              "main: int = (argc: int, argv: [int]) => { max(0, 1); };";
 
@@ -398,11 +437,14 @@ static void test_generate_call_expression()
 
     assert(strcmp(expression->call.variable->identifier->lexeme, "max") == 0);
     
-    printf("\n");
+    generator_init(&generator);
     generate_expression(&generator, expression);
+
+    dump_instructions(generator.instructions);
     
     // declaration_free(declaration);
     // expression_free(expression);
+    generator_free(&generator);
     resolver_free(&resolver);
     parser_free(&parser);
     lexer_free(&lexer);
@@ -415,27 +457,31 @@ static void test_generate_call_expression()
 static void test_generate_arithmetics()
 {
     printf("\tArithmetics...");
+    printf("\n");
     not_error = true;
 
     Lexer lexer;
     Parser parser;
     Resolver resolver;
-    IR_Generator generator = (IR_Generator) { .label = 0, .temp = 0 };
+    IR_Generator generator;
     AST_Expression* expression;
 
     lexer_init(&lexer, "1 + 2 * 3");
     lex(&lexer);
 
     parser_init(&parser, lexer.tokens);
-
     expression = parse_expression(&parser);
 
     resolver_init(&resolver);
     resolve_expression(&resolver, expression);
-
+    
+    generator_init(&generator);
     generate_expression(&generator, expression);
 
+    dump_instructions(generator.instructions);
+
     expression_free(expression);
+    generator_free(&generator);
     resolver_free(&resolver);
     parser_free(&parser);
     lexer_free(&lexer);
@@ -447,15 +493,18 @@ static void test_generate_arithmetics()
     lex(&lexer);
 
     parser_init(&parser, lexer.tokens);
-
     expression = parse_expression(&parser);
 
     resolver_init(&resolver);
     resolve_expression(&resolver, expression);
 
+    generator_init(&generator);
     generate_expression(&generator, expression);
 
+    dump_instructions(generator.instructions);
+
     expression_free(expression);
+    generator_free(&generator);
     resolver_free(&resolver);
     parser_free(&parser);
     lexer_free(&lexer);
@@ -467,15 +516,18 @@ static void test_generate_arithmetics()
     lex(&lexer);
 
     parser_init(&parser, lexer.tokens);
-
     expression = parse_expression(&parser);
 
     resolver_init(&resolver);
     resolve_expression(&resolver, expression);
 
+    generator_init(&generator);
     generate_expression(&generator, expression);
 
+    dump_instructions(generator.instructions);
+
     expression_free(expression);
+    generator_free(&generator);
     resolver_free(&resolver);
     parser_free(&parser);
     lexer_free(&lexer);
@@ -488,12 +540,13 @@ static void test_generate_arithmetics()
 static void test_generate_if_statement()
 {
     printf("\tIf statement...");
+    printf("\n");
     not_error = true;
 
     Lexer lexer;
     Parser parser;
     Resolver resolver;
-    IR_Generator generator = (IR_Generator) { .label = 0, .temp = 0 };
+    IR_Generator generator;
     AST_Statement* statement;
     char* source;
     
@@ -517,10 +570,13 @@ static void test_generate_if_statement()
     resolver_init(&resolver);
     resolve_statement(&resolver, statement);
     
-    printf("\n");
+    generator_init(&generator);
     generate_statement(&generator, statement);
 
+    dump_instructions(generator.instructions);
+
     statement_free(statement);
+    generator_free(&generator);
     resolver_free(&resolver);
     parser_free(&parser);
     lexer_free(&lexer);
@@ -538,10 +594,13 @@ static void test_generate_if_statement()
     resolver_init(&resolver);
     resolve_statement(&resolver, statement);
     
-    printf("\n");
+    generator_init(&generator);
     generate_statement(&generator, statement);
 
+    dump_instructions(generator.instructions);
+
     statement_free(statement);
+    generator_free(&generator);
     resolver_free(&resolver);
     parser_free(&parser);
     lexer_free(&lexer);
@@ -556,12 +615,13 @@ static void test_generate_if_statement()
 static void test_generate_while_statement()
 {
     printf("\tWhile statement...");
+    printf("\n");
     not_error = true;
 
     Lexer lexer;
     Parser parser;
     Resolver resolver;
-    IR_Generator generator = (IR_Generator) { .label = 0, .temp = 0 };
+    IR_Generator generator;
     AST_Statement* statement;
 
     lexer_init(&lexer, "while 0 < 1 do { 1 + 2; 3 - 4; }");
@@ -573,10 +633,13 @@ static void test_generate_while_statement()
     resolver_init(&resolver);
     resolve_statement(&resolver, statement);
     
-    printf("\n");
+    generator_init(&generator);
     generate_statement(&generator, statement);
 
+    dump_instructions(generator.instructions);
+
     statement_free(statement);
+    generator_free(&generator);
     resolver_free(&resolver);
     parser_free(&parser);
     lexer_free(&lexer);
@@ -586,27 +649,100 @@ static void test_generate_while_statement()
 }
 
 
-static void test_generate_small_program()
+static void test_generate_return_statement()
 {
-    printf("\tSmall program...");
+    printf("\tReturn statement...");
+    printf("\n");
     not_error = true;
 
     Lexer lexer;
     Parser parser;
     Resolver resolver;
-    IR_Generator generator = (IR_Generator) { .label = 0, .temp = 0 };
-    AST_Expression* expression;
+    IR_Generator generator;
+    AST_Statement* statement;
+
+    lexer_init(&lexer, "return 0;");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    statement = parse_statement(&parser);
+    
+    /*
+    resolver_init(&resolver);
+    resolve_statement(&resolver, statement);
+    */
+    
+    generator_init(&generator);
+    generate_statement(&generator, statement);
+
+    dump_instructions(generator.instructions);
+
+    statement_free(statement);
+    generator_free(&generator);
+    // resolver_free(&resolver);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+
+    if (not_error) printf("PASSED\n");
+    else printf("\n");
+}
+
+
+static void test_generate_function_declaration()
+{
+    printf("\tFunction declaration...");
+    printf("\n");
+    not_error = true;
+
+    Lexer lexer;
+    Parser parser;
+    Resolver resolver;
+    IR_Generator generator;
     AST_Declaration* declaration;
     char* source;
     
-    /*
-    source = "max: int = (x: int, y: int) => { if x > y then { return x; } else { return y; } };\n"
-             "main: int = (argc: int, argv: [int]) => { result: int = max(0, 1); return result; };";
-    */
+    source = "max: int = (x: int, y: int) => { if x > y then { return x; } else { return y; } };";
+
+    lexer_init(&lexer, source);
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    declaration = parse_declaration(&parser);
+
+    resolver_init(&resolver);
+    resolve(&resolver, parser.declarations);
+
+    generator_init(&generator);
+    generate_declaration(&generator, declaration);
     
-    // TODO(timo): For some reason this segfaults
-    source = "max: int = (x: int, y: int) => { if x > y then { return x; } else { return y; } };\n"
-             "main: int = (argc: int, argv: [int]) => { return max(0, 1); };";
+    dump_instructions(generator.instructions);
+
+    declaration_free(declaration);
+    generator_free(&generator);
+    resolver_free(&resolver);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+
+    if (not_error) printf("PASSED\n");
+    else printf("\n");
+}
+
+
+static void test_generate_small_program()
+{
+    printf("\tSmall program...");
+    printf("\n");
+    not_error = true;
+
+    Lexer lexer;
+    Parser parser;
+    Resolver resolver;
+    IR_Generator generator;
+    
+    const char* source = "max: int = (x: int, y: int) => { if x > y then { return x; } else { return y; } };\n"
+                         "main: int = (argc: int, argv: [int]) => { return max(0, 1); };";
 
     lexer_init(&lexer, source);
     lex(&lexer);
@@ -616,15 +752,15 @@ static void test_generate_small_program()
 
     resolver_init(&resolver);
     resolve(&resolver, parser.declarations);
+
+    generator_init(&generator);
     
-    printf("\n");
     for (int i = 0; i < parser.declarations->length; i++)
         generate_declaration(&generator, parser.declarations->items[i]);
-
-    //generate(&generator, expression);
     
-    // declaration_free(declaration);
-    // expression_free(expression);
+    dump_instructions(generator.instructions);
+
+    generator_free(&generator);
     resolver_free(&resolver);
     parser_free(&parser);
     lexer_free(&lexer);
@@ -652,9 +788,9 @@ void test_ir_generator()
 
     test_generate_if_statement();
     test_generate_while_statement();
-    // test_generate_return_statement();
+    test_generate_return_statement();
     
-    // test_generate_function_declaration();
+    test_generate_function_declaration();
 
     test_generate_small_program();
 }

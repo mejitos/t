@@ -454,6 +454,7 @@ Symbol* symbol_parameter(Parameter* parameter);
 // Symbol* symbol_function(AST_Declaration* declaration);
 Symbol* symbol_function(const char* identifier, Type* type);
 // Symbol* symbol_function(const char* identifier);
+void symbol_free(Symbol* symbol);
 
 
 /*
@@ -468,6 +469,7 @@ struct Scope
 };
 
 Scope* scope_init(Scope* enclosing); // returns the created scope
+void scope_free(Scope* scope);
 Scope* scope_enter(Scope* enclosing); // returns the entered scope
 Scope* scope_leave(); // returns the closed scope
 Symbol* scope_lookup(Scope* scope, const char* identifier);
@@ -534,44 +536,40 @@ void interpret(Interpreter* interpreter);
  *  File(s): ir_generator.c
  *           ir_runner.c
  */
-typedef enum Instruction_Kind
-{
-    INSTRUCTION_NOOP,
-    INSTRUCTION_BINARY,
-    INSTRUCTION_UNARY,
-    INSTRUCTION_COPY,
-    INSTRUCTION_GOTO,
-    INSTRUCTION_GOTO_IF,
-    INSTRUCTION_GOTO_IF_TRUE,
-    INSTRUCTION_GOTO_IF_FALSE,
-    INSTRUCTION_FUNCTION_BEGIN,
-    INSTRUCTION_FUNCTION_END,
-    INSTRUCTION_PARAM_PUSH,
-    INSTRUCTION_PARAM_POP,
-    INSTRUCTION_FUNCTION_CALL,
-    INSTRUCTION_RETURN,
-} Instruction_Kind;
-
-
 typedef enum Operation
 {
     OP_NOOP,
+    // binary
     OP_ADD,
     OP_SUB,
     OP_MUL,
     OP_DIV,
+    // unary
+    OP_MINUS, // unary minus
+    OP_NEG, // logical negation
+    // relational 
     OP_LT,
     OP_LTE,
     OP_GT,
     OP_GTE,
+    OP_EQ,
+    OP_NEQ,
     OP_AND,
     OP_OR,
-    OP_MINUS,
-    OP_NOT,
-    OP_ASSIGN,
+    // other
+    OP_COPY, // assign / move / store
+    OP_GOTO, // jump
+    OP_GOTO_IF, // branch
+    OP_GOTO_IF_FALSE,
+    OP_GOTO_IF_TRUE,
+    OP_FUNCTION_BEGIN,
+    OP_FUNCTION_END,
+    OP_PARAM_PUSH,
+    OP_PARAM_POP,
+    OP_CALL,
+    OP_RETURN,
+    OP_LABEL,
 } Operation;
-
-
 
 // Label
 // Symbolic labels used to alter the flow of control
@@ -581,66 +579,6 @@ typedef enum Operation
 // Running numbers for the instructions could also be used. I think I'll use the labels
 // since they are the closest to the general assembly and in general they just make more sense
 
-
-// Temp
-
-
-// NOTE(timo): The three address codes are made of addresses and instructions
-//
-// So it the instruction part the operation itself and therefore e.g. the 
-// assignment binary instruction consist of addresses y and z
-//
-// The common three address instructions
-//
-//  1. Assignment (binary): 
-//      x = y op z
-//          where
-//              op      = binary arithmetic or logical operation
-//              x, y, z = addresses
-//
-//  2. Assignment (unary):
-//      x = op y
-//          where
-//              op      = unary operation e.g. unary minus, logical negation, casts
-//              x, y    = addresses
-//
-//  3. Copy instruction:
-//      x = y
-//          where
-//              x is assigned the value of y
-//
-//      This is basically the assignment expression
-//
-//  4. Unconditional jump:
-//      goto L
-//          where
-//              L = three address instruction with label L is the next to be 
-//                  executed e.g. goto l1 or goto func_main
-//
-//  5. Conditional jump:
-//      if x goto L
-//
-//      ifFalse x goto L
-//          where
-//              executes the instruction with label L next if x is true and false,
-//              respectively
-//
-//  6. Conditional jump:
-//      if x relational_op y goto L
-//          where
-//              relational_op = <, <=, >, >=, ==, !=
-//              x, y = addresses
-//              L =
-//
-//      if x stands in relation relational_op to y e.g. is true, executes the
-//      instruction with label L, else the instruction next in sequence will
-//      be executed
-//
-//  7. 
-//  8. 
-//  9.
-//
-
 typedef struct Instruction Instruction;
 
 // NOTE(timo): Address can be a name, a constant or a compiler generated temporary
@@ -649,77 +587,50 @@ typedef struct Instruction Instruction;
 // name:        program name, pointer to the names symbol table entry where 
 //              all the information of the name is kept
 // constant:    constant value but seems like it can be a variable too?
-// temp:        the "_t0" etc. temporary variables with rolling number
+// label:       just label
 typedef struct Address
 {
+    // TODO(timo): I think we don't need this abstraction, since the goal is
+    // just to get everything into the symbol table. But we could keep this,
+    // in case of situation there is labels or something else than symbols
     union {
         Symbol* name;
-        Value constant;
-        Instruction* temp; // pointer to result of operation x op y, which is assigned to temp variable
+        // Value constant; // These can be fetched from the symbol table?
+        const char* label;
     };
 } Address;
 
 
-typedef struct Label
-{
-    const char* identifier;
-    int number;
-} Label;
-
-
-// Instruction
-//
-// id: temp1 (probably not needed as field since we can reference to each other with pointers)
-// position:
-// op: +
-// arg1: 1
-// arg2: 2
-//
-//
-// === 
-//
-// t1 = 1 + 2
-//
-//
-
-// This should probably be called a triple? And the instruction should be just some
-// subclass or even plain enumeration
-//
 // When using triples, the result of the operation x op y is referred by its position
 // rather than by an explicit temporary name
-struct Instruction
+//
+// Quads are easier to handle and undestand for now, so we use quads
+struct Instruction 
 {
-    int position; // address or the index in the array of instructions
-    Instruction_Kind kind;
+    // position / line / index?
+    Operation operation;
+    char* arg1;
+    char* arg2;
+    char* result;
 
     union {
-        Label label; // unconditional goto
-        struct {
-            Operation operation;
-            Address arg1;
-            Address arg2;
-        } binary;
-        struct {
-            Operation operation;
-            Address arg;
-        } unary;
-        struct {
-            Address variable;
-            Address value;
-        } copy;
-        struct {
-            Address address;
-            Label label;
-            // Label true;
-            // Label false;
-            // condition?!?
-        } goto_if;
-    };
+        int integer; // this is used to compute sizes, alignments etc. info like that
+        const char* string; // Field for label value?
+    } value;
+    // Instruction* next; // Linked list for this one since it is easier to modify?
 };
 
 
+/*
+ *  Code in basic block has only one entry point and one exit point, meaning
+ *  there is no jump destinations inside the block and that only last instruction
+ *  can start executing next block
+ *
+ */
 typedef struct Basic_Block
 {
+    // start, end?
+    // leader?
     array* instructions;
 } Basic_Block;
 
@@ -727,14 +638,21 @@ typedef struct Basic_Block
 typedef struct IR_Generator
 {
     FILE* output_file;
-    array* blocks;
+    // array* blocks;
+    array* instructions;
     int label;
     int temp;
+    Scope* symbol_table;
 } IR_Generator;
 
+
+void generator_init(IR_Generator* generator);
+void generator_free(IR_Generator* generator);
 char* generate_expression(IR_Generator* generator, AST_Expression* expression);
 void generate_statement(IR_Generator* generator, AST_Statement* statement);
 void generate_declaration(IR_Generator* generator, AST_Declaration* declaration);
+
+void dump_instructions(array* instructions);
 
 
 #endif

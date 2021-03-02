@@ -12,9 +12,7 @@ void resolver_init(Resolver* resolver)
 void resolver_free(Resolver* resolver)
 {
     // TODO(timo): We also should free the contents of the symbol table
-    // scope_free(resolver->global)
-    free(resolver->global);
-    resolver->global = NULL;
+    scope_free(resolver->global);
 
     // NOTE(timo): The resolver itself is not being freed since it is
     // being initialized to the stack in the top level function
