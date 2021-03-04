@@ -27,22 +27,6 @@ typedef struct AST_Expression AST_Expression;
 
 
 /*
- *  Errors used in the compiler
- *
- */
-
-void error(Position position, const char* fmt, ...);
-
-
-/*
- *  The main routine of the compiler called from the entry point main.c
- *
- *  File: t.c
- */
-void compile(const char* source);
-
-
-/*
  *  General position struct for everyone to use
  *
  *  Since for now we will only support compiling of single file, there is no need to add the
@@ -55,6 +39,39 @@ struct Position
     int line_end;
     int column_end;
 };
+
+
+/*
+ *  Diagnostics
+ *
+ *  File(s): diagnostics.c
+ */
+typedef enum Diagnostic_Kind
+{
+    DIAGNOSTIC_ERROR,
+    DIAGNOSTIC_WARGNING,
+} Diagnostic_Kind;
+
+
+typedef struct Diagnostic
+{
+    Diagnostic_Kind kind;
+    Position position;
+    const char* message;
+} Diagnostic;
+
+
+Diagnostic* diagnostic(Diagnostic_Kind kind, Position position, const char* message, ...);
+void print_diagnostics(array* diagnostic);
+void print_diagnostic(Diagnostic* diagnostic);
+
+
+/*
+ *  The main routine of the compiler called from the entry point main.c
+ *
+ *  File: t.c
+ */
+void compile(const char* source);
 
 
 /*
@@ -125,6 +142,7 @@ Token* token(Token_Kind kind, const char* lexeme, int lexeme_length, Position po
 typedef struct Lexer
 {
     const char* stream;
+    array* diagnostics;
     array* tokens;
     Position position;
 } Lexer;
@@ -337,6 +355,7 @@ void expression_free(AST_Expression* expression);
  */
 typedef struct Parser
 {
+    array* diagnostics;
     int index;
     array* tokens;
     Token* current_token;
