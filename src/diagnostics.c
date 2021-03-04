@@ -25,10 +25,12 @@ Diagnostic* diagnostic(Diagnostic_Kind kind, Position position, const char* mess
 
 void print_diagnostic(Diagnostic* diagnostic)
 {
-    printf("file.t:%d:%d%s", diagnostic->position.line_start, diagnostic->position.column_start, diagnostic->message);
+    printf("file.t:%d:%d%s\n", diagnostic->position.line_start, diagnostic->position.column_start, diagnostic->message);
 }
 
 
-void print_diagnostics(array* diagnostic)
+void print_diagnostics(array* diagnostics)
 {
+    for (int i = 0; i < diagnostics->length; i++)
+        print_diagnostic(diagnostics->items[i]);
 }
