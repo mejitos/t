@@ -26,7 +26,7 @@ void assert_token(Token* token, Token_Kind kind, const char* lexeme)
 // that has positions but so be it.
 void assert_position(Position position, int line_start, int column_start, int line_end, int column_end)
 {
-    if (line_start)
+    if (line_start != 0)
     {
         if (position.line_start != line_start)
         {
@@ -34,7 +34,7 @@ void assert_position(Position position, int line_start, int column_start, int li
             not_error = false;
         }
     }
-    if (column_start)
+    if (column_start != 0)
     {
         if (position.column_start != column_start)
         {
@@ -42,7 +42,7 @@ void assert_position(Position position, int line_start, int column_start, int li
             not_error = false;
         }
     }
-    if (line_end)
+    if (line_end != 0)
     {
         if (position.line_end != line_end)
         {
@@ -50,7 +50,7 @@ void assert_position(Position position, int line_start, int column_start, int li
             not_error = false;
         }
     }
-    if (column_end)
+    if (column_end != 0)
     {
         if (position.column_end != column_end)
         {
@@ -486,6 +486,88 @@ static void test_sequential_comparison_operators()
 }
 
 
+static void test_diagnose_invalid_character()
+{
+    printf("\tDiagnose invalid character...");
+
+    Lexer lexer;
+    char* message;
+    Diagnostic* diagnostic;
+    
+    // general
+    lexer_init(&lexer, "foo.bar");
+    lex(&lexer);
+
+    assert(lexer.tokens->length == 3);
+    assert(lexer.diagnostics->length == 1);
+
+    diagnostic = lexer.diagnostics->items[0];
+    
+    message = ":LEXER - SyntaxError: Invalid character '.'";
+
+    assert(strcmp(diagnostic->message, message) == 0);
+    assert_position(diagnostic->position, 1, 4, 1, 4);
+
+    lexer_free(&lexer);
+
+    // expecting '=' after '!'
+    lexer_init(&lexer, "foo ! 1");
+    lex(&lexer);
+
+    assert(lexer.tokens->length == 3);
+    assert(lexer.diagnostics->length == 1);
+
+    diagnostic = lexer.diagnostics->items[0];
+    
+    message = ":LEXER - SyntaxError: Invalid character ' ', expected '='";
+
+    assert(strcmp(diagnostic->message, message) == 0);
+    assert_position(diagnostic->position, 1, 5, 0, 0);
+
+    lexer_free(&lexer);
+
+    if (not_error) printf("PASSED\n");
+    else printf("\n");
+}
+
+
+static void test_multiple_diagnostics()
+{
+    printf("\tDiagnosing multiple diagnostics...");
+    not_error = true;
+
+    Lexer lexer;
+    char* message;
+    Diagnostic* diagnostic;
+
+    lexer_init(&lexer, "foo.bar ! foo&baz");
+    lex(&lexer);
+
+    assert(lexer.tokens->length == 5);
+    assert(lexer.diagnostics->length == 3);
+
+    diagnostic = lexer.diagnostics->items[0];
+    message = ":LEXER - SyntaxError: Invalid character '.'";
+    assert(strcmp(diagnostic->message, message) == 0);
+    assert_position(diagnostic->position, 1, 4, 0, 0);
+
+    diagnostic = lexer.diagnostics->items[1];
+    message = ":LEXER - SyntaxError: Invalid character ' ', expected '='";
+    assert(strcmp(diagnostic->message, message) == 0);
+    assert_position(diagnostic->position, 1, 9, 0, 0);
+
+    diagnostic = lexer.diagnostics->items[2];
+    message = ":LEXER - SyntaxError: Invalid character '&'";
+    assert(strcmp(diagnostic->message, message) == 0);
+    assert_position(diagnostic->position, 1, 14, 0, 0);
+
+    lexer_free(&lexer);
+
+    if (not_error) printf("PASSED\n");
+    else printf("\n");
+}
+
+
 void test_lexer()
 {
     printf("Running lexer tests...\n");
@@ -504,6 +586,6 @@ void test_lexer()
     test_sequential_arithmetic_operators();
     test_sequential_comparison_operators();
 
-    // TODO(timo): Testing of error diagnosing
-    //      - unknown character
+    test_diagnose_invalid_character();
+    test_multiple_diagnostics();
 }

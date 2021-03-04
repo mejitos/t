@@ -10,12 +10,26 @@ void lexer_init(Lexer* lexer, const char* source)
     *lexer = (Lexer){ .stream = source, 
                       .position.line_end = 1, 
                       .position.column_end = 1,
+                      .diagnostics = array_init(sizeof (Diagnostic*)),
                       .tokens = array_init(sizeof (Token*)) };
 }
 
 
 void lexer_free(Lexer* lexer)
 {
+    for (int i = 0; i < lexer->diagnostics->length; i++)
+    {
+        Diagnostic* diagnostic = lexer->diagnostics->items[i];
+
+        free((char*)diagnostic->message);
+        diagnostic->message = NULL;
+
+        free(diagnostic);
+        diagnostic = NULL;
+    }
+
+    array_free(lexer->diagnostics);
+
     // NOTE(timo): It is the callers responsibility to "unwind" the array
     // to the beginning so this iteration can be done.
     for (int i = 0; i < lexer->tokens->length; i++)
@@ -297,9 +311,9 @@ void lex(Lexer* lexer)
                     advance(lexer, 1);
                     continue;
                 }
-                // NOTE(timo): If there is no equal symbol, let it go down to default and error
-                // TODO(timo): We should actually notify the user about this one and not
-                // let it flush down to the default.
+                advance(lexer, 1);
+                array_push(lexer->diagnostics, diagnostic(DIAGNOSTIC_ERROR, lexer->position, ":LEXER - SyntaxError: Invalid character '%c', expected '='", *lexer->stream));
+                continue;
             case '<':
                 if (*(lexer->stream + 1) == '=')
                 {
@@ -323,10 +337,9 @@ void lex(Lexer* lexer)
                 advance(lexer, 1);
                 continue;
             default:
-                error(lexer->position, "[LEXER] - SyntaxError: Invalid character '%c'", *lexer->stream);
-                // TODO(timo): Maybe exit is too harsh, so create solution where we can
-                // actually lex the whole file. Not absolutely necessary though
-                exit(1);
+                array_push(lexer->diagnostics, diagnostic(DIAGNOSTIC_ERROR, lexer->position, ":LEXER - SyntaxError: Invalid character '%c'", *lexer->stream));
+                advance(lexer, 1);
+                continue;
         }
     }
     
