@@ -10,6 +10,7 @@
 #include <stdarg.h>     // for varargs
 
 #include "array.h"      // for my dynamic arrays
+#include "hashtable.h"  // for my hashtable implementation
 #include "memory.h"     // for custom x-allocators
 
 

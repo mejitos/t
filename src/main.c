@@ -1,4 +1,5 @@
 #include "t.h"
+#define T_HASHTABLE_IMPLEMENTATION
 
 
 int main(int argc, char** argv)
