@@ -71,8 +71,14 @@ static void panic_mode(Parser* parser)
 }
 
 
-static void expect_token(Parser* parser, Token_Kind kind, const char* lexeme)
+static void expect_token(Parser* parser, Token_Kind kind, const char* lexeme, bool panic)
 {
+    // NOTE(timo): The boolean 'panic' tells whether it is time to panic or not.
+    // There is a lot of situations where that isn't actually necessary e.g.
+    // when parsing while statement and the 'do' keyword is missing. That is
+    // not so critical mistake, that actual error recovery is needed.
+    // TODO(timo): Create better solution or at least go through with care all
+    // the situations where the error recovery is really not needed
     if (parser->current_token->kind != kind)
     {
         Diagnostic* _diagnostic = diagnostic(
@@ -80,7 +86,7 @@ static void expect_token(Parser* parser, Token_Kind kind, const char* lexeme)
                 ":PARSER - SyntaxError: Invalid token '%s', expected '%s'\n", 
                 parser->current_token->lexeme, lexeme);
         array_push(parser->diagnostics, _diagnostic); 
-        parser->panic = true;
+        parser->panic = panic;
     }
     else
         advance(parser);
@@ -128,9 +134,9 @@ Type_Specifier parse_type_specifier(Parser* parser)
             // NOTE(timo): Since we will only have arrays of int at this point
             // of time, we will force it here at the parsing stage already
             // TODO(timo): This needs more descriptive error message though
-            expect_token(parser, TOKEN_INT, "int");
+            expect_token(parser, TOKEN_INT, "int", true);
             // advance(parser);
-            expect_token(parser, TOKEN_RIGHT_BRACKET, "]");
+            expect_token(parser, TOKEN_RIGHT_BRACKET, "]", true);
             // advance(parser);
 
             specifier = TYPE_SPECIFIER_ARRAY_INT;
@@ -158,7 +164,7 @@ static AST_Statement* parse_return_statement(Parser* parser)
 {
     advance(parser); // skip the keyword
     AST_Expression* value = parse_expression(parser);
-    expect_token(parser, TOKEN_SEMICOLON, ";");
+    expect_token(parser, TOKEN_SEMICOLON, ";", false);
 
     return return_statement(value);
 }
@@ -168,7 +174,7 @@ static AST_Statement* parse_block_statement(Parser* parser)
 {
     // NOTE(timo): This expect is important later when we can just assign
     // any statement to if and while statements and to function expressions
-    expect_token(parser, TOKEN_LEFT_CURLYBRACE, "{");
+    expect_token(parser, TOKEN_LEFT_CURLYBRACE, "{", true);
 
     array* statements = array_init(sizeof (AST_Statement*));
 
@@ -179,7 +185,7 @@ static AST_Statement* parse_block_statement(Parser* parser)
         if (parser->panic) panic_mode(parser);
     }
 
-    expect_token(parser, TOKEN_RIGHT_CURLYBRACE, "}");
+    expect_token(parser, TOKEN_RIGHT_CURLYBRACE, "}", true);
 
     return block_statement(statements, statements->length);
 }
@@ -191,7 +197,7 @@ static AST_Statement* parse_expression_statement(Parser* parser)
     // e.g. literal expression cannot be expression statement and therefore before
     // the expect_token() we need like expect_expression() or something like that
     AST_Expression* expression = parse_expression(parser);
-    expect_token(parser, TOKEN_SEMICOLON, ";");
+    expect_token(parser, TOKEN_SEMICOLON, ";", true);
 
     return expression_statement(expression);
 }
@@ -209,11 +215,8 @@ static AST_Statement* parse_declaration_statement(Parser* parser)
 static AST_Statement* parse_if_statement(Parser* parser)
 {
     advance(parser); // skip the keyword
-
     AST_Expression* condition = parse_expression(parser);
-
-    expect_token(parser, TOKEN_THEN, "then");
-
+    expect_token(parser, TOKEN_THEN, "then", false);
     AST_Statement* then = parse_block_statement(parser);
     AST_Statement* _else = NULL;
 
@@ -231,7 +234,7 @@ static AST_Statement* parse_while_statement(Parser* parser)
 {
     advance(parser); // skip the keyword
     AST_Expression* condition = parse_expression(parser);
-    expect_token(parser, TOKEN_DO, "do");
+    expect_token(parser, TOKEN_DO, "do", false);
     AST_Statement* body = parse_block_statement(parser);
 
     return while_statement(condition, body);
@@ -241,7 +244,7 @@ static AST_Statement* parse_while_statement(Parser* parser)
 static AST_Statement* parse_break_statement(Parser* parser)
 {
     advance(parser); // skip the keyword
-    expect_token(parser, TOKEN_SEMICOLON, ";");
+    expect_token(parser, TOKEN_SEMICOLON, ";", false);
 
     return break_statement();
 }
@@ -314,27 +317,27 @@ static AST_Expression* primary(Parser* parser)
                     
                     Token* identifier = parser->current_token;
                     advance(parser);
-                    expect_token(parser, TOKEN_COLON, ":");
+                    expect_token(parser, TOKEN_COLON, ":", true);
                     Type_Specifier specifier = parse_type_specifier(parser);
                     array_push(parameters, function_parameter(identifier, specifier));
                 } while (parser->current_token->kind == TOKEN_COMMA);
                 
-                expect_token(parser, TOKEN_RIGHT_PARENTHESIS, ")");
-                expect_token(parser, TOKEN_ARROW, "=>");
+                expect_token(parser, TOKEN_RIGHT_PARENTHESIS, ")", true);
+                expect_token(parser, TOKEN_ARROW, "=>", false);
                 AST_Statement* body = parse_statement(parser);
                 expression = function_expression(parameters, parameters->length, body);
             }
             else if (parser->current_token->kind == TOKEN_RIGHT_PARENTHESIS)
             {
                 advance(parser);     
-                expect_token(parser, TOKEN_ARROW, "=>");
+                expect_token(parser, TOKEN_ARROW, "=>", false);
                 AST_Statement* body = parse_statement(parser);
                 expression = function_expression(NULL, 0, body);
             }
             else
             {
                 expression = parse_expression(parser);
-                expect_token(parser, TOKEN_RIGHT_PARENTHESIS, ")");
+                expect_token(parser, TOKEN_RIGHT_PARENTHESIS, ")", true);
             }
             break;
         default:
@@ -362,7 +365,7 @@ static AST_Expression* call(Parser* parser)
     {
         advance(parser);
         AST_Expression* index = parse_expression(parser);
-        expect_token(parser, TOKEN_RIGHT_BRACKET, "]");
+        expect_token(parser, TOKEN_RIGHT_BRACKET, "]", true);
         expression = index_expression(expression, index);
     }
     else if (parser->current_token->kind == TOKEN_LEFT_PARENTHESIS)
@@ -382,7 +385,7 @@ static AST_Expression* call(Parser* parser)
             }
         }
 
-        expect_token(parser, TOKEN_RIGHT_PARENTHESIS, ")");
+        expect_token(parser, TOKEN_RIGHT_PARENTHESIS, ")", true);
         expression = call_expression(expression, arguments);
     }
 
@@ -545,16 +548,16 @@ AST_Declaration* parse_declaration(Parser* parser)
 {
     Token* identifier = parser->current_token;
 
-    expect_token(parser, TOKEN_IDENTIFIER, "identifier");
-    expect_token(parser, TOKEN_COLON, ":");
+    expect_token(parser, TOKEN_IDENTIFIER, "identifier", true);
+    expect_token(parser, TOKEN_COLON, ":", true);
 
     Type_Specifier specifier = parse_type_specifier(parser);
 
-    expect_token(parser, TOKEN_EQUAL, "=");
+    expect_token(parser, TOKEN_EQUAL, "=", true);
     
     AST_Expression* initializer = parse_expression(parser);
 
-    expect_token(parser, TOKEN_SEMICOLON, ";");
+    expect_token(parser, TOKEN_SEMICOLON, ";", true);
 
     if (initializer->kind == EXPRESSION_FUNCTION)
         return function_declaration(identifier, specifier, initializer);

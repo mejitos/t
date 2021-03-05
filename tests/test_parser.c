@@ -1300,6 +1300,137 @@ static void test_diagnose_missing_semicolon()
 }
 
 
+static void test_diagnose_missing_closing_curlybrace()
+{
+    printf("\tDiagnose missing closing curlybrace...");
+    not_error = true;
+
+    Lexer lexer;
+    Parser parser;
+    AST_Statement* statement;
+    Diagnostic* diagnostic;
+    char* message;
+
+    lexer_init(&lexer, "{\n    foo: int = 42;\n    foo := 7;\n");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    statement = parse_statement(&parser);
+    message = ":PARSER - SyntaxError: Invalid token '<EoF>', expected '}'\n";
+
+    assert(parser.diagnostics->length == 1);
+    diagnostic = parser.diagnostics->items[0];
+    assert(strcmp(diagnostic->message, message) == 0);
+
+    statement_free(statement);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    if (not_error) printf("PASSED\n");
+    else printf("\n");
+}
+
+
+static void test_diagnose_missing_closing_parenthesis()
+{
+    printf("\tDiagnose missing closing parenthesis...");
+    not_error = true;
+
+    Lexer lexer;
+    Parser parser;
+    AST_Statement* statement;
+    Diagnostic* diagnostic;
+    char* message;
+
+    // TODO(timo): parenthesized expressions
+
+    // call expression statement
+    lexer_init(&lexer, "foo(3, true;");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    statement = parse_statement(&parser);
+    message = ":PARSER - SyntaxError: Invalid token ';', expected ')'\n";
+
+    assert(parser.diagnostics->length == 1);
+    diagnostic = parser.diagnostics->items[0];
+    assert(strcmp(diagnostic->message, message) == 0);
+
+    statement_free(statement);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    // TODO(timo): function parameters
+
+    if (not_error) printf("PASSED\n");
+    else printf("\n");
+}
+
+
+static void test_diagnose_invalid_while_statement()
+{
+    printf("\tDiagnose invalid while statement...");
+    not_error = true;
+
+    Lexer lexer;
+    Parser parser;
+    AST_Statement* statement;
+    Diagnostic* diagnostic;
+    char* message;
+
+    // missing 'do' keyword
+    lexer_init(&lexer, "while a < b {\n    a := a + b;\n}");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    statement = parse_statement(&parser);
+    message = ":PARSER - SyntaxError: Invalid token '{', expected 'do'\n";
+
+    assert(parser.diagnostics->length == 1);
+    diagnostic = parser.diagnostics->items[0];
+    assert(strcmp(diagnostic->message, message) == 0);
+
+    statement_free(statement);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    if (not_error) printf("PASSED\n");
+    else printf("\n");
+}
+
+
+static void test_diagnose_invalid_if_statement()
+{
+    printf("\tDiagnose invalid if statement...");
+    not_error = true;
+
+    Lexer lexer;
+    Parser parser;
+    AST_Statement* statement;
+    Diagnostic* diagnostic;
+    char* message;
+
+    // missing 'then' keyword
+    lexer_init(&lexer, "if a < b {\n    a := a + b;\n}");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    statement = parse_statement(&parser);
+    message = ":PARSER - SyntaxError: Invalid token '{', expected 'then'\n";
+
+    assert(parser.diagnostics->length == 1);
+    diagnostic = parser.diagnostics->items[0];
+    assert(strcmp(diagnostic->message, message) == 0);
+
+    statement_free(statement);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    if (not_error) printf("PASSED\n");
+    else printf("\n");
+}
+
+
 static void test_panic_mode_statement()
 {
     printf("\tPanic mode at statement level...");
@@ -1520,6 +1651,10 @@ void test_parser()
     test_diagnose_invalid_primary_expression_starter();
     test_diagnose_invalid_assignment_target();
     test_diagnose_missing_semicolon();
+    test_diagnose_missing_closing_curlybrace();
+    test_diagnose_missing_closing_parenthesis();
+    test_diagnose_invalid_while_statement();
+    test_diagnose_invalid_if_statement();
      
     test_panic_mode_statement();
     test_panic_mode_declaration();
