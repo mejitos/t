@@ -278,23 +278,17 @@ typedef enum Expression_Kind
 } Expression_Kind;
 
 
-typedef struct AST_Literal
-{
-    Token* literal;
-    Value value;
-} AST_Literal;
-
-
 struct AST_Expression
 {
     Expression_Kind kind;
     // Position position;
     // TODO(timo): Is this type actually needed for every expression?
     Type* type;
+    Value value;
 
     union {
         Token* identifier;
-        AST_Literal literal;
+        Token* literal;
         struct {
             Token* _operator;
             AST_Expression* operand;
@@ -343,6 +337,7 @@ AST_Expression* index_expression(AST_Expression* variable, AST_Expression* value
 Parameter* function_parameter(Token* identifier, Type_Specifier specifier);
 AST_Expression* function_expression(array* parameters, int arity, AST_Statement* body);
 AST_Expression* call_expression(AST_Expression* variable, array* arguments);
+AST_Expression* error_expression();
 void declaration_free(AST_Declaration* declaration);
 void statement_free(AST_Statement* statement);
 void expression_free(AST_Expression* expression);

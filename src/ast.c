@@ -102,7 +102,7 @@ AST_Expression* literal_expression(Token* literal)
 {
     AST_Expression* expression = xcalloc(1, sizeof (AST_Expression));
     expression->kind = EXPRESSION_LITERAL;
-    expression->literal.literal = literal;
+    expression->literal = literal;
 
     return expression;
 }
@@ -196,6 +196,15 @@ AST_Expression* call_expression(AST_Expression* variable, array* arguments)
 }
 
 
+AST_Expression* error_expression()
+{
+    AST_Expression* expression = xmalloc(sizeof (AST_Expression));
+    expression->kind = EXPRESSION_NONE;
+
+    return expression;
+}
+
+
 void expression_free(AST_Expression* expression)
 {
     switch (expression->kind)
@@ -246,6 +255,8 @@ void expression_free(AST_Expression* expression)
                 expression->call.arguments->items[i] = NULL;
             }
             array_free(expression->call.arguments);
+            break;
+        case EXPRESSION_NONE:
             break;
     }
 

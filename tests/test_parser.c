@@ -25,7 +25,7 @@ stringbuilder* expression_to_string(AST_Expression* expression, stringbuilder* s
     switch (expression->kind)
     {
         case EXPRESSION_LITERAL:
-            sb_append(sb, expression->literal.literal->lexeme);
+            sb_append(sb, expression->literal->lexeme);
             break;
         case EXPRESSION_BINARY:
             sb_append(sb, "(");
@@ -69,16 +69,16 @@ void assert_literal_expression_integer(AST_Expression* expression, const char* v
         printf("\n\t\tInvalid expression kind '%s', expected literal expression", expression_kinds[expression->kind]);
         not_error = false;
     }
-    assert(expression->literal.literal->kind == TOKEN_INTEGER_LITERAL);
-    assert(strcmp(expression->literal.literal->lexeme, value) == 0);
+    assert(expression->literal->kind == TOKEN_INTEGER_LITERAL);
+    assert(strcmp(expression->literal->lexeme, value) == 0);
 }
 
 
 void assert_literal_expression_boolean(AST_Expression* expression, const char* value)
 {
     assert(expression->kind == EXPRESSION_LITERAL);
-    assert(expression->literal.literal->kind == TOKEN_BOOLEAN_LITERAL);
-    assert(strcmp(expression->literal.literal->lexeme, value) == 0);
+    assert(expression->literal->kind == TOKEN_BOOLEAN_LITERAL);
+    assert(strcmp(expression->literal->lexeme, value) == 0);
 }
 
 
@@ -1084,16 +1084,394 @@ static void test_small_program()
 }
 
 
-static void test_panic_mode()
+static void test_diagnose_invalid_type_specifier()
 {
-    //
+    printf("\tDiagnose invalid type specifier...");
+    not_error = true;
+
+    Lexer lexer;
+    Parser parser;
+    Type_Specifier specifier;
+    AST_Statement* statement;
+    AST_Declaration* declaration;
+    Diagnostic* diagnostic;
+    char* message;
+    
+    lexer_init(&lexer, "type");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    specifier = parse_type_specifier(&parser);
+    message = ":PARSER - SyntaxError: Expected type specifier, got 'type'\n";
+
+    assert(specifier == TYPE_SPECIFIER_NONE);
+    assert(parser.diagnostics->length == 1);
+    diagnostic = parser.diagnostics->items[0];
+    
+    assert(strcmp(diagnostic->message, message) == 0);
+
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    // in top level declaration
+    lexer_init(&lexer, "foo: type = 32;");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    declaration = parse_declaration(&parser);
+    message = ":PARSER - SyntaxError: Expected type specifier, got 'type'\n";
+
+    // assert(specifier == TYPE_SPECIFIER_NONE);
+    assert(parser.diagnostics->length == 1);
+    diagnostic = parser.diagnostics->items[0];
+    
+    assert(strcmp(diagnostic->message, message) == 0);
+    
+    declaration_free(declaration);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    // in declaration statement
+    lexer_init(&lexer, "foo: type = 32;");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    statement = parse_statement(&parser);
+    message = ":PARSER - SyntaxError: Expected type specifier, got 'type'\n";
+
+    // assert(specifier == TYPE_SPECIFIER_NONE);
+    assert(parser.diagnostics->length == 1);
+    diagnostic = parser.diagnostics->items[0];
+    
+    assert(strcmp(diagnostic->message, message) == 0);
+    
+    statement_free(statement);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    if (not_error) printf("PASSED\n");
+    else printf("\n");
+}
+
+
+static void test_diagnose_invalid_primary_expression_starter()
+{
+    printf("\tDiagnose invalid primay expression starter...");
+    not_error = true;
+
+    Lexer lexer;
+    Parser parser;
+    AST_Expression* expression;
+    Diagnostic* diagnostic;
+    char* message;
+
+    lexer_init(&lexer, "1 + while");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    expression = parse_expression(&parser);
+    message = ":PARSER - SyntaxError: Invalid token 'while' in primary expression\n";
+
+    assert(expression->kind == EXPRESSION_BINARY);
+
+    assert(parser.diagnostics->length == 1);
+    diagnostic = parser.diagnostics->items[0];
+
+    assert(strcmp(diagnostic->message, message) == 0);
+    
+    expression_free(expression);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    if (not_error) printf("PASSED\n");
+    else printf("\n");
+}
+
+
+static void test_diagnose_invalid_assignment_target()
+{
+    printf("\tDiagnose invalid assignment target...");
+    not_error = true;
+
+    Lexer lexer;
+    Parser parser;
+    AST_Expression* expression;
+    Diagnostic* diagnostic;
+    char* message;
+    
+    lexer_init(&lexer, "1 := 42");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    expression = parse_expression(&parser);
+    message = ":PARSER - SyntaxError: Invalid assignment target, expected a variable.\n";
+
+    assert(parser.diagnostics->length == 1);
+    diagnostic = parser.diagnostics->items[0];
+    assert(strcmp(diagnostic->message, message) == 0);
+
+    expression_free(expression);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    // ---
+
+    lexer_init(&lexer, "true := false");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    expression = parse_expression(&parser);
+    message = ":PARSER - SyntaxError: Invalid assignment target, expected a variable.\n";
+
+    assert(parser.diagnostics->length == 1);
+    diagnostic = parser.diagnostics->items[0];
+    assert(strcmp(diagnostic->message, message) == 0);
+
+    expression_free(expression);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    if (not_error) printf("PASSED\n");
+    else printf("\n");
+}
+
+
+static void test_diagnose_missing_semicolon()
+{
+    printf("\tDiagnose missing semicolon...");
+    not_error = true;
+
+    Lexer lexer;
+    Parser parser;
+    AST_Statement* statement;
+    Diagnostic* diagnostic;
+    char* message;
+    
+    // ---
+    lexer_init(&lexer, "1 + 1");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    statement = parse_statement(&parser);
+    message = ":PARSER - SyntaxError: Invalid token '<EoF>', expected ';'\n";
+
+    assert(parser.diagnostics->length == 1);
+    diagnostic = parser.diagnostics->items[0];
+    assert(strcmp(diagnostic->message, message) == 0);
+
+    statement_free(statement);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    // ---
+    lexer_init(&lexer, "return 0");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    statement = parse_statement(&parser);
+    message = ":PARSER - SyntaxError: Invalid token '<EoF>', expected ';'\n";
+
+    assert(parser.diagnostics->length == 1);
+    diagnostic = parser.diagnostics->items[0];
+    assert(strcmp(diagnostic->message, message) == 0);
+
+    statement_free(statement);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    // ---
+    lexer_init(&lexer, "return 0 foo");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    statement = parse_statement(&parser);
+    message = ":PARSER - SyntaxError: Invalid token 'foo', expected ';'\n";
+
+    assert(parser.diagnostics->length == 1);
+    diagnostic = parser.diagnostics->items[0];
+    assert(strcmp(diagnostic->message, message) == 0);
+
+    statement_free(statement);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    if (not_error) printf("PASSED\n");
+    else printf("\n");
+}
+
+
+static void test_panic_mode_statement()
+{
+    printf("\tPanic mode at statement level...");
+    not_error = true;
+
+    Lexer lexer;
+    Parser parser;
+    AST_Statement* statement;
+    Diagnostic* diagnostic;
+    char* message;
+    char* source;
+
+    // declaration statements missing a semicolon between
+    source = "{\n"
+             "    foo: int = 42\n"
+             "    bar: bool = true;"
+             "}";
+
+    lexer_init(&lexer, source);
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    statement = parse_statement(&parser);
+    
+    assert(statement->block.statements->length == 2);
+    assert(parser.diagnostics->length == 1);
+
+    message = ":PARSER - SyntaxError: Invalid token 'bar', expected ';'\n";
+    diagnostic = parser.diagnostics->items[0];
+
+    assert(strcmp(diagnostic->message, message) == 0);
+
+    statement_free(statement);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    // some weird things
+    source = "{\n"
+             "    : int = 42\n"
+             "    bar: bool = true;"
+             "}";
+
+    lexer_init(&lexer, source);
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    statement = parse_statement(&parser);
+    
+    assert(statement->block.statements->length == 2);
+    assert(parser.diagnostics->length == 2);
+
+    message = ":PARSER - SyntaxError: Invalid token ':' in primary expression\n";
+    diagnostic = parser.diagnostics->items[0];
+
+    assert(strcmp(diagnostic->message, message) == 0);
+    
+    // NOTE(timo): This is not the correct behaviour
+    /*
+    message = ":PARSER - SyntaxError: Invalid token 'int', expected ';'\n";
+    diagnostic = parser.diagnostics->items[1];
+
+    assert(strcmp(diagnostic->message, message) == 0);
+    */
+
+    statement_free(statement);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    if (not_error) printf("PASSED\n");
+    else printf("\n");
+}
+
+
+static void test_panic_mode_declaration()
+{
+    printf("\tPanic mode at declaration level...");
+    not_error = true;
+
+    Lexer lexer;
+    Parser parser;
+    AST_Declaration* declaration;
+    Diagnostic* diagnostic;
+    char* message;
+    char* source;
+    
+    // missing semicolon between two declarations
+    source = "foo: int = 42\n"
+             "bar: bool = true\n;";
+
+    lexer_init(&lexer, source);
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    parse(&parser);
+
+    assert(parser.declarations->length == 2);
+
+    message = ":PARSER - SyntaxError: Invalid token 'bar', expected ';'\n";
+
+    assert(parser.diagnostics->length == 1);
+    diagnostic = parser.diagnostics->items[0];
+    assert(strcmp(diagnostic->message, message) == 0);
+
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    // bigger mistake
+    source = "foo: int 42\n"
+             "bar: bool = true\n;";
+
+    lexer_init(&lexer, source);
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    parse(&parser);
+
+    assert(parser.declarations->length == 2);
+    assert(parser.diagnostics->length == 2);
+
+    message = ":PARSER - SyntaxError: Invalid token '42', expected '='\n";
+
+    diagnostic = parser.diagnostics->items[0];
+    assert(strcmp(diagnostic->message, message) == 0);
+
+    message = ":PARSER - SyntaxError: Invalid token 'bar', expected ';'\n";
+
+    diagnostic = parser.diagnostics->items[1];
+    assert(strcmp(diagnostic->message, message) == 0);
+
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    // even bigger mistake
+    source = ": int 42\n"
+             "bar: bool = true\n;";
+
+    lexer_init(&lexer, source);
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    parse(&parser);
+
+    assert(parser.declarations->length == 2);
+    assert(parser.diagnostics->length == 3);
+
+    message = ":PARSER - SyntaxError: Invalid token ':', expected 'identifier'\n";
+
+    diagnostic = parser.diagnostics->items[0];
+    assert(strcmp(diagnostic->message, message) == 0);
+
+    message = ":PARSER - SyntaxError: Invalid token '42', expected '='\n";
+
+    diagnostic = parser.diagnostics->items[1];
+    assert(strcmp(diagnostic->message, message) == 0);
+
+    message = ":PARSER - SyntaxError: Invalid token 'bar', expected ';'\n";
+
+    diagnostic = parser.diagnostics->items[2];
+    assert(strcmp(diagnostic->message, message) == 0);
+
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    if (not_error) printf("PASSED\n");
+    else printf("\n");
 }
 
 
 void test_parser()
 {
     printf("Running parser tests...\n");
-
+    
     test_literal_expression();
     test_unary_expression();
     test_binary_expression_arithmetic();
@@ -1106,25 +1484,43 @@ void test_parser()
     test_call_expression();
 
     test_order_of_arithmetic_operations();
+    // TODO(timo): correctly parsed expressions as string
 
     test_expression_statement();
+    // TODO(timo): Variable statement expression 'foo;', for now it expects a colon
+    // and type. So we should make sure that also this case is handled so we can
+    // assign variables etc.
+    // TODO(timo): test_expression_statement_variable();
+    // - 'foo' => starts to parse declaration if there is nothing else after the identifier
+    // - foo; => variable, not declaration
+    // - foo(); => call, not declaration
+    // - a := foo; => assignment, not declaration
+    // - a: int = foo; declaration,
+    // Also the 2nd check is needed to make sure that 'foo;' expresison is
+    // handled correctly as a variable expression.
+    // The 3rd check is needed to distinguish declaration and call expression
+    // Falls down to the expression statement if the condition is not met.
     test_block_statement();
     test_if_statement();
     test_while_statement();
     test_break_statement();
     test_return_statement();
     test_declaration_statement();
+    // TODO(timo): correctly parsed statements as string
 
     test_type_specifier();
 
     test_variable_declaration();
     test_function_declaration();
+    // TODO(timo): correctly parsed declarations as string
 
     test_small_program();
-    
-    test_panic_mode();
-    
-    // TODO(timo): Variable statement expression 'foo;', for now it expects a colon
-    // and type. So we should make sure that also this case is handled so we can
-    // assign variables etc.
+
+    test_diagnose_invalid_type_specifier();
+    test_diagnose_invalid_primary_expression_starter();
+    test_diagnose_invalid_assignment_target();
+    test_diagnose_missing_semicolon();
+     
+    test_panic_mode_statement();
+    test_panic_mode_declaration();
 }
