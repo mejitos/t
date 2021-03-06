@@ -10,6 +10,8 @@ void parser_init(Parser* parser, array* tokens)
 {
     *parser = (Parser){ .tokens = tokens,
                         .index = 0,
+                        .position.line_end = 1,
+                        .position.column_end = 1,
                         .diagnostics = array_init(sizeof (Diagnostic*)),
                         .declarations = array_init(sizeof (AST_Declaration*)) };
 
@@ -110,6 +112,21 @@ static inline void advance(Parser* parser)
 }
 
 
+// TODO(timo): Is there way to mangle these into the advance function?
+static inline void statement_start(Parser* parser)
+{
+    parser->position.line_start = parser->current_token->position.line_start;
+    parser->position.column_start = parser->current_token->position.column_start;
+}
+
+
+static inline void statement_end(Parser* parser)
+{
+    parser->position.line_end = parser->current_token->position.line_end;
+    parser->position.column_end = parser->current_token->position.column_end;
+}
+
+
 Type_Specifier parse_type_specifier(Parser* parser)
 {
     Type_Specifier specifier;
@@ -162,9 +179,11 @@ Type_Specifier parse_type_specifier(Parser* parser)
 
 static AST_Statement* parse_return_statement(Parser* parser)
 {
+    // Statement start
     advance(parser); // skip the keyword
     AST_Expression* value = parse_expression(parser);
     expect_token(parser, TOKEN_SEMICOLON, ";", false);
+    // Statement end
 
     return return_statement(value);
 }
@@ -172,6 +191,7 @@ static AST_Statement* parse_return_statement(Parser* parser)
 
 static AST_Statement* parse_block_statement(Parser* parser)
 {
+    // Statement start
     // NOTE(timo): This expect is important later when we can just assign
     // any statement to if and while statements and to function expressions
     expect_token(parser, TOKEN_LEFT_CURLYBRACE, "{", true);
@@ -186,6 +206,7 @@ static AST_Statement* parse_block_statement(Parser* parser)
     }
 
     expect_token(parser, TOKEN_RIGHT_CURLYBRACE, "}", true);
+    // Statement end
 
     return block_statement(statements, statements->length);
 }
@@ -193,11 +214,13 @@ static AST_Statement* parse_block_statement(Parser* parser)
 
 static AST_Statement* parse_expression_statement(Parser* parser)
 {
+    // Statement start
     // TODO(timo): We could check here for all the allowed expression statements
     // e.g. literal expression cannot be expression statement and therefore before
     // the expect_token() we need like expect_expression() or something like that
     AST_Expression* expression = parse_expression(parser);
     expect_token(parser, TOKEN_SEMICOLON, ";", true);
+    // Statement end
 
     return expression_statement(expression);
 }
@@ -276,9 +299,9 @@ AST_Statement* parse_statement(Parser* parser)
     }
 
     Diagnostic* _diagnostic = diagnostic(
-            DIAGNOSTIC_ERROR, parser->current_token->position, 
-            ":PARSER - Unreachable: Expected statement starter, got '%s'\n",
-            parser->current_token->lexeme);
+        DIAGNOSTIC_ERROR, parser->current_token->position, 
+        ":PARSER - Unreachable: Expected statement starter, got '%s'\n",
+        parser->current_token->lexeme);
     array_push(parser->diagnostics, _diagnostic); 
     parser->panic = true;
 
@@ -343,11 +366,12 @@ static AST_Expression* primary(Parser* parser)
         default:
         {
             Diagnostic* _diagnostic = diagnostic(
-                    DIAGNOSTIC_ERROR, parser->current_token->position, 
-                    ":PARSER - SyntaxError: Invalid token '%s' in primary expression\n",
-                    parser->current_token->lexeme);
+                DIAGNOSTIC_ERROR, parser->current_token->position, 
+                ":PARSER - SyntaxError: Invalid token '%s' in primary expression\n",
+                parser->current_token->lexeme);
             array_push(parser->diagnostics, _diagnostic); 
             parser->panic = true;
+
             expression = error_expression();
             advance(parser);
         }
@@ -371,7 +395,6 @@ static AST_Expression* call(Parser* parser)
     else if (parser->current_token->kind == TOKEN_LEFT_PARENTHESIS)
     {
         advance(parser);
-
         array* arguments = array_init(sizeof (AST_Expression*));
         // TODO(timo): Should probably check for end of file too
         if (parser->current_token->kind != TOKEN_RIGHT_PARENTHESIS)
@@ -384,7 +407,7 @@ static AST_Expression* call(Parser* parser)
                 array_push(arguments, parse_expression(parser));
             }
         }
-
+        
         expect_token(parser, TOKEN_RIGHT_PARENTHESIS, ")", true);
         expression = call_expression(expression, arguments);
     }
@@ -524,11 +547,12 @@ static AST_Expression* assignment(Parser* parser)
         if (expression->kind != EXPRESSION_VARIABLE)
         {
             Diagnostic* _diagnostic = diagnostic(
-                    DIAGNOSTIC_ERROR, parser->current_token->position, 
-                    ":PARSER - SyntaxError: Invalid assignment target, expected a variable.\n",
-                    parser->current_token->lexeme);
+                    DIAGNOSTIC_ERROR, expression->position, 
+                    ":PARSER - SyntaxError: Invalid assignment target, expected a variable.\n");
             array_push(parser->diagnostics, _diagnostic); 
-            parser->panic = true;
+            // NOTE(timo): In case of invalid assignment target there is really no need
+            // for error recovery.
+            // parser->panic = true;
         }
 
         return assignment_expression(expression, value);
@@ -546,6 +570,7 @@ AST_Expression* parse_expression(Parser* parser)
 
 AST_Declaration* parse_declaration(Parser* parser)
 {
+    // Declaration start
     Token* identifier = parser->current_token;
 
     expect_token(parser, TOKEN_IDENTIFIER, "identifier", true);
@@ -558,6 +583,7 @@ AST_Declaration* parse_declaration(Parser* parser)
     AST_Expression* initializer = parse_expression(parser);
 
     expect_token(parser, TOKEN_SEMICOLON, ";", true);
+    // Declaration end
 
     if (initializer->kind == EXPRESSION_FUNCTION)
         return function_declaration(identifier, specifier, initializer);

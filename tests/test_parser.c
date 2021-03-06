@@ -1,3 +1,4 @@
+#include "asserts.h"
 #include "tests.h"
 #include "../src/t.h"
 #include "../src/stringbuilder.h"
@@ -548,6 +549,7 @@ static void test_assignment_expression()
     expression = parse_expression(&parser);
 
     assert_assignment_expression_integer(expression, "foo", "345");
+    assert_position(expression->position, 1, 1, 1, 10); 
     
     expression_free(expression);
     parser_free(&parser);

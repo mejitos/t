@@ -5,6 +5,10 @@ AST_Declaration* function_declaration(Token* identifier, Type_Specifier specifie
 {
     AST_Declaration* declaration = xcalloc(1, sizeof (AST_Declaration));
     declaration->kind = DECLARATION_FUNCTION;
+    declaration->position = (Position) { .line_start = identifier->position.line_start,
+                                         .column_start = identifier->position.column_start,
+                                         .line_end = initializer->position.line_end,
+                                         .column_end = initializer->position.column_end };
     declaration->identifier = identifier;
     declaration->specifier = specifier;
     declaration->initializer = initializer;
@@ -17,6 +21,10 @@ AST_Declaration* variable_declaration(Token* identifier, Type_Specifier specifie
 {
     AST_Declaration* declaration = xcalloc(1, sizeof (AST_Declaration));
     declaration->kind = DECLARATION_VARIABLE;
+    declaration->position = (Position) { .line_start = identifier->position.line_start,
+                                         .column_start = identifier->position.column_start,
+                                         .line_end = initializer->position.line_end,
+                                         .column_end = initializer->position.column_end };
     declaration->identifier = identifier;
     declaration->specifier = specifier;
     declaration->initializer = initializer;
@@ -102,6 +110,7 @@ AST_Expression* literal_expression(Token* literal)
 {
     AST_Expression* expression = xcalloc(1, sizeof (AST_Expression));
     expression->kind = EXPRESSION_LITERAL;
+    expression->position = literal->position;
     expression->literal = literal;
 
     return expression;
@@ -112,6 +121,10 @@ AST_Expression* unary_expression(Token* _operator, AST_Expression* operand)
 {
     AST_Expression* expression = xcalloc(1, sizeof (AST_Expression));
     expression->kind = EXPRESSION_UNARY;
+    expression->position = (Position) { .line_start = _operator->position.line_start,
+                                        .column_start = _operator->position.column_start,
+                                        .line_end = operand->position.line_end,
+                                        .column_end = operand->position.column_end };
     expression->unary._operator = _operator;
     expression->unary.operand = operand;
 
@@ -123,6 +136,10 @@ AST_Expression* binary_expression(AST_Expression* left, Token* _operator, AST_Ex
 {
     AST_Expression* expression = xcalloc(1, sizeof (AST_Expression));
     expression->kind = EXPRESSION_BINARY;
+    expression->position = (Position) { .line_start = left->position.line_start,
+                                        .column_start = left->position.column_start,
+                                        .line_end = right->position.line_end,
+                                        .column_end = right->position.column_end };
     expression->binary.left = left;
     expression->binary._operator = _operator;
     expression->binary.right = right;
@@ -135,6 +152,7 @@ AST_Expression* variable_expression(Token* identifier)
 {
     AST_Expression* expression = xcalloc(1, sizeof (AST_Expression));
     expression->kind = EXPRESSION_VARIABLE;
+    expression->position = identifier->position;
     expression->identifier = identifier;
 
     return expression;
@@ -145,6 +163,10 @@ AST_Expression* assignment_expression(AST_Expression* variable, AST_Expression* 
 {
     AST_Expression* expression = xcalloc(1, sizeof (AST_Expression));
     expression->kind = EXPRESSION_ASSIGNMENT;
+    expression->position = (Position) { .line_start = variable->position.line_start,
+                                        .column_start = variable->position.column_start,
+                                        .line_end = value->position.line_end,
+                                        .column_end = value->position.column_end };
     expression->assignment.variable = variable;
     expression->assignment.value = value;
 
@@ -156,6 +178,10 @@ AST_Expression* index_expression(AST_Expression* variable, AST_Expression* value
 {
     AST_Expression* expression = xcalloc(1, sizeof (AST_Expression));
     expression->kind = EXPRESSION_INDEX;
+    expression->position = (Position) { .line_start = variable->position.line_start,
+                                        .column_start = variable->position.column_start,
+                                        .line_end = value->position.line_end,
+                                        .column_end = value->position.column_end };
     expression->index.variable = variable;
     expression->index.value = value;
 
@@ -166,6 +192,8 @@ AST_Expression* index_expression(AST_Expression* variable, AST_Expression* value
 Parameter* function_parameter(Token* identifier, Type_Specifier specifier)
 {
     Parameter* parameter = xcalloc(1, sizeof (Parameter));
+    // TODO(timo): This position doesn't take into account the type specifier part
+    parameter->position = identifier->position;
     parameter->identifier = identifier;
     parameter->specifier = specifier;
 
@@ -177,6 +205,8 @@ AST_Expression* function_expression(array* parameters, int arity, AST_Statement*
 {
     AST_Expression* expression = xcalloc(1, sizeof (AST_Expression));
     expression->kind = EXPRESSION_FUNCTION;
+    // TODO(timo): This position doesn't take into account the parameter list part
+    expression->position = body->position;
     expression->function.parameters = parameters;
     expression->function.arity = arity;
     expression->function.body = body;
@@ -189,6 +219,8 @@ AST_Expression* call_expression(AST_Expression* variable, array* arguments)
 {
     AST_Expression* expression = xcalloc(1, sizeof (AST_Expression));
     expression->kind = EXPRESSION_CALL;
+    // TODO(timo): This position doesn't take into account the argument list part
+    expression->position = variable->position;
     expression->call.variable = variable;
     expression->call.arguments = arguments;
 
@@ -196,6 +228,7 @@ AST_Expression* call_expression(AST_Expression* variable, array* arguments)
 }
 
 
+// TODO(timo): Should this get at least a position?
 AST_Expression* error_expression()
 {
     AST_Expression* expression = xmalloc(sizeof (AST_Expression));

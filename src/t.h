@@ -212,6 +212,7 @@ typedef enum Type_Specifier
 struct AST_Declaration
 {
     Declaration_Kind kind;
+    Position position;
     Type_Specifier specifier;
     Token* identifier;
     AST_Expression* initializer;
@@ -234,6 +235,8 @@ typedef enum Statement_Kind
 struct AST_Statement
 {
     Statement_Kind kind;
+    Position position;
+
     union {
         AST_Expression* expression;
         AST_Declaration* declaration;
@@ -259,6 +262,7 @@ struct AST_Statement
 
 typedef struct Parameter
 {
+    Position position;
     Token* identifier;
     Type_Specifier specifier;
 } Parameter;
@@ -281,8 +285,7 @@ typedef enum Expression_Kind
 struct AST_Expression
 {
     Expression_Kind kind;
-    // Position position;
-    // TODO(timo): Is this type actually needed for every expression?
+    Position position;
     Type* type;
     Value value;
 
@@ -351,11 +354,12 @@ void expression_free(AST_Expression* expression);
 typedef struct Parser
 {
     array* diagnostics;
+    Position position;
     int index;
     array* tokens;
     Token* current_token;
-    bool panic;
     array* declarations;
+    bool panic;
 } Parser;
 
 
@@ -392,8 +396,7 @@ struct Type
         struct {
             Type* return_type;
             int arity;
-            // Should this be array of the types of the parameters? probably
-            array* parameters;
+            array* parameters; // array of pointers to parameter symbols
         } function;
         // NOTE(timo): Even though the only array we have for now is the argv,
         // it is probably best idea to try to implement it "properly"
@@ -462,13 +465,10 @@ typedef struct Symbol
     Value value;
 } Symbol;
 
-// Symbol* symbol_variable(AST_Declaration* declaration);
+
 Symbol* symbol_variable(const char* identifier, Type* type);
-// Symbol* symbol_variable(const char* identifier);
-Symbol* symbol_parameter(Parameter* parameter);
-// Symbol* symbol_function(AST_Declaration* declaration);
+Symbol* symbol_parameter(const char* identifier, Type* type);
 Symbol* symbol_function(const char* identifier, Type* type);
-// Symbol* symbol_function(const char* identifier);
 void symbol_free(Symbol* symbol);
 
 
@@ -480,8 +480,9 @@ void symbol_free(Symbol* symbol);
 struct Scope
 {
     Scope* enclosing;
-    array* symbols;
+    hashtable* symbols;
 };
+
 
 Scope* scope_init(Scope* enclosing); // returns the created scope
 void scope_free(Scope* scope);
@@ -499,8 +500,11 @@ bool scope_includes(Scope* scope, const char* identifier);
  */
 typedef struct Resolver
 {
+    array* diagnostics;
     Scope* global;
     Scope* local; // the current scope
+    // NOTE(timo): This scopes variable is probably not necessary since I actually
+    // have only two scopes: global and local.
     array* scopes; // the scope stack TODO(timo): push and pop functions
     struct {
         bool not_in_loop;
@@ -515,7 +519,7 @@ void resolver_free(Resolver* resolver);
 Type* resolve_expression(Resolver* resolver, AST_Expression* expression);
 void resolve_statement(Resolver* resolver, AST_Statement* statement);
 void resolve_declaration(Resolver* resolver, AST_Declaration* declaration);
-Type* resolve_type_specifier(Type_Specifier specifier);
+Type* resolve_type_specifier(Resolver* resolver, Type_Specifier specifier);
 void resolve(Resolver* resolver, array* declarations);
 
 
