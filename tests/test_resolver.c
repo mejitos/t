@@ -1,3 +1,4 @@
+#include "asserts.h"
 #include "tests.h"
 #include "../src/t.h"
 
@@ -13,7 +14,7 @@ static void teardown(Resolver* resolver, Parser* parser, Lexer* lexer)
 }
 
 
-void test_resolve_literal_expression(Lexer* lexer, Parser* parser, Resolver* resolver)
+static void test_resolve_literal_expression(Lexer* lexer, Parser* parser, Resolver* resolver)
 {
     printf("\tLiteral expression...");
     not_error = true;
@@ -49,9 +50,9 @@ void test_resolve_literal_expression(Lexer* lexer, Parser* parser, Resolver* res
         assert(expression->type->kind == results[i][0]);
 
         if (expression->type->kind == TYPE_INTEGER)
-            assert(expression->literal.value.integer == results[i][1]);
+            assert(expression->value.integer == results[i][1]);
         else if (expression->type->kind == TYPE_BOOLEAN)
-            assert(expression->literal.value.boolean == results[i][1]);
+            assert(expression->value.boolean == results[i][1]);
 
         expression_free(expression);
         resolver_free(resolver);
@@ -63,8 +64,44 @@ void test_resolve_literal_expression(Lexer* lexer, Parser* parser, Resolver* res
     else printf("\n");
 }
 
+static void test_diagnose_integer_overflow_literal()
+{
+    printf("\tDiagnose integer overflow in integer literal...");
+    not_error = true;
 
-void test_resolve_unary_expression(Lexer* lexer, Parser* parser, Resolver* resolver)
+    Lexer lexer;
+    Parser parser;
+    Resolver resolver;
+    AST_Expression* expression;
+    Diagnostic* diagnostic;
+    char* message;
+
+    lexer_init(&lexer, "2147483648");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    expression = parse_expression(&parser);
+
+    resolver_init(&resolver);
+    resolve_expression(&resolver, expression);
+
+    assert(resolver.diagnostics->length == 1);
+
+    diagnostic = resolver.diagnostics->items[0];
+    message = ":RESOLVER - OverflowError: Integer overflow in integer literal. Maximum integer value is abs(2147483647)";
+    assert(strcmp(diagnostic->message, message) == 0);
+
+    expression_free(expression);
+    resolver_free(&resolver);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    if (not_error) printf("PASSED\n");
+    else printf("\n");
+}
+
+
+static void test_resolve_unary_expression(Lexer* lexer, Parser* parser, Resolver* resolver)
 {
     printf("\tUnary expression...");
     not_error = true;
@@ -111,7 +148,59 @@ void test_resolve_unary_expression(Lexer* lexer, Parser* parser, Resolver* resol
 }
 
 
-void test_resolve_binary_expression(Lexer* lexer, Parser* parser, Resolver* resolver)
+static void test_diagnose_invalid_operand_types_unary_expression()
+{
+    printf("\tDiagnose invalid operand types in unary expression...");
+    not_error = true;
+
+    const char* tests[] =
+    {
+        "+true",
+        "-false",
+        "not 42",
+    };
+
+    const char* results[] =
+    {
+        ":RESOLVER - TypeError: Unsupported operand type 'bool' for unary '+'",
+        ":RESOLVER - TypeError: Unsupported operand type 'bool' for unary '-'",
+        ":RESOLVER - TypeError: Unsupported operand type 'int' for unary 'not'",
+    };
+
+    Lexer lexer;
+    Parser parser;
+    Resolver resolver;
+    AST_Expression* expression;
+    Diagnostic* diagnostic;
+
+    for (size_t i = 0; i < sizeof (tests) / sizeof (*tests); i++)
+    {
+        lexer_init(&lexer, tests[i]);
+        lex(&lexer);
+
+        parser_init(&parser, lexer.tokens);
+        expression = parse_expression(&parser);
+
+        resolver_init(&resolver);
+        resolve_expression(&resolver, expression);
+
+        assert(resolver.diagnostics->length == 1);
+
+        diagnostic = resolver.diagnostics->items[0];
+        assert(strcmp(diagnostic->message, results[i]) == 0);
+
+        expression_free(expression);
+        resolver_free(&resolver);
+        parser_free(&parser);
+        lexer_free(&lexer);
+    }
+
+    if (not_error) printf("PASSED\n");
+    else printf("\n");
+}
+
+
+static void test_resolve_binary_expression(Lexer* lexer, Parser* parser, Resolver* resolver)
 {
     printf("\tBinary expression...");
     not_error = true;
@@ -177,7 +266,73 @@ void test_resolve_binary_expression(Lexer* lexer, Parser* parser, Resolver* reso
 }
 
 
-void test_resolve_variable_declaration(Lexer* lexer, Parser* parser, Resolver* resolver)
+static void test_diagnose_invalid_operand_types_binary_expression()
+{
+    printf("\tDiagnose invalid operand types in binary expression...");
+    not_error = true;
+
+    const char* tests[] =
+    {
+        "1 + true",
+        "false - 42",
+        "true * false",
+        "false / false",
+        "42 == false",
+        "7 != true",
+        "true < false",
+        "true <= 4",
+        "0 > false",
+        "true >= false",
+    };
+
+    const char* results[] =
+    {
+        ":RESOLVER - TypeError: Unsupported operand types 'int' and 'bool' for binary '+'",
+        ":RESOLVER - TypeError: Unsupported operand types 'bool' and 'int' for binary '-'",
+        ":RESOLVER - TypeError: Unsupported operand types 'bool' and 'bool' for binary '*'",
+        ":RESOLVER - TypeError: Unsupported operand types 'bool' and 'bool' for binary '/'",
+        ":RESOLVER - TypeError: Unsupported operand types 'int' and 'bool' for binary '=='",
+        ":RESOLVER - TypeError: Unsupported operand types 'int' and 'bool' for binary '!='",
+        ":RESOLVER - TypeError: Unsupported operand types 'bool' and 'bool' for binary '<'",
+        ":RESOLVER - TypeError: Unsupported operand types 'bool' and 'int' for binary '<='",
+        ":RESOLVER - TypeError: Unsupported operand types 'int' and 'bool' for binary '>'",
+        ":RESOLVER - TypeError: Unsupported operand types 'bool' and 'bool' for binary '>='",
+    };
+
+    Lexer lexer;
+    Parser parser;
+    Resolver resolver;
+    AST_Expression* expression;
+    Diagnostic* diagnostic;
+
+    for (size_t i = 0; i < sizeof (tests) / sizeof (*tests); i++)
+    {
+        lexer_init(&lexer, tests[i]);
+        lex(&lexer);
+
+        parser_init(&parser, lexer.tokens);
+        expression = parse_expression(&parser);
+
+        resolver_init(&resolver);
+        resolve_expression(&resolver, expression);
+
+        assert(resolver.diagnostics->length == 1);
+
+        diagnostic = resolver.diagnostics->items[0];
+        assert(strcmp(diagnostic->message, results[i]) == 0);
+
+        expression_free(expression);
+        resolver_free(&resolver);
+        parser_free(&parser);
+        lexer_free(&lexer);
+    }
+
+    if (not_error) printf("PASSED\n");
+    else printf("\n");
+}
+
+
+static void test_resolve_variable_declaration(Lexer* lexer, Parser* parser, Resolver* resolver)
 {
     printf("\tVariable declaration...");
     not_error = true;
@@ -199,12 +354,11 @@ void test_resolve_variable_declaration(Lexer* lexer, Parser* parser, Resolver* r
 
     resolve_declaration(resolver, declaration);
 
-    assert(resolver->global->symbols->length == 1);
+    assert(resolver->global->symbols->count == 1);
+    assert(declaration->initializer->literal->kind == TOKEN_INTEGER_LITERAL);
+    assert(declaration->initializer->value.integer == 42);
 
-    assert(declaration->initializer->literal.literal->kind == TOKEN_INTEGER_LITERAL);
-    assert(declaration->initializer->literal.value.integer == 42);
-
-    symbol = resolver->global->symbols->items[0];
+    symbol = scope_lookup(resolver->global, "foo");
 
     assert(symbol->kind == SYMBOL_VARIABLE);
     assert(strcmp(symbol->identifier, "foo") == 0);
@@ -214,7 +368,6 @@ void test_resolve_variable_declaration(Lexer* lexer, Parser* parser, Resolver* r
     resolver_free(resolver);
     parser_free(parser);
     lexer_free(lexer);
-
 
     // ---- bool
     lexer_init(lexer, "_bar: bool = false;");
@@ -230,12 +383,11 @@ void test_resolve_variable_declaration(Lexer* lexer, Parser* parser, Resolver* r
 
     resolve_declaration(resolver, declaration);
 
-    assert(resolver->global->symbols->length == 1);
+    assert(resolver->global->symbols->count == 1);
+    assert(declaration->initializer->literal->kind == TOKEN_BOOLEAN_LITERAL);
+    assert(declaration->initializer->value.boolean == false);
 
-    assert(declaration->initializer->literal.literal->kind == TOKEN_BOOLEAN_LITERAL);
-    assert(declaration->initializer->literal.value.boolean == false);
-
-    symbol = resolver->global->symbols->items[0];
+    symbol = scope_lookup(resolver->global, "_bar");
 
     assert(symbol->kind == SYMBOL_VARIABLE);
     assert(strcmp(symbol->identifier, "_bar") == 0);
@@ -272,16 +424,16 @@ void test_resolve_declaration_statement_variable(Lexer* lexer, Parser* parser, R
     declaration = statement->declaration;
     assert(declaration->kind == DECLARATION_VARIABLE);
     assert(declaration->specifier == TYPE_SPECIFIER_INT);
-    assert(declaration->initializer->literal.literal->kind == TOKEN_INTEGER_LITERAL);
+    assert(declaration->initializer->literal->kind == TOKEN_INTEGER_LITERAL);
 
     resolve_statement(resolver, statement);
 
     // TODO(timo): assert that the value is null before resolving
     // Even though for now it didn't seem to be possible
-    assert(declaration->initializer->literal.value.integer == 42);
-    assert(resolver->global->symbols->length == 1);
+    assert(declaration->initializer->value.integer == 42);
+    assert(resolver->global->symbols->count == 1);
 
-    symbol = resolver->global->symbols->items[0];
+    symbol = scope_lookup(resolver->global, "foo");
 
     assert(symbol->kind == SYMBOL_VARIABLE);
     assert(strcmp(symbol->identifier, "foo") == 0);
@@ -309,16 +461,16 @@ void test_resolve_declaration_statement_variable(Lexer* lexer, Parser* parser, R
     declaration = statement->declaration;
     assert(declaration->kind == DECLARATION_VARIABLE);
     assert(declaration->specifier == TYPE_SPECIFIER_BOOL);
-    assert(declaration->initializer->literal.literal->kind == TOKEN_BOOLEAN_LITERAL);
+    assert(declaration->initializer->literal->kind == TOKEN_BOOLEAN_LITERAL);
 
     resolve_statement(resolver, statement);
     
     // TODO(timo): assert that the value is null before resolving
     // Even though for now it didn't seem to be possible
-    assert(declaration->initializer->literal.value.boolean == false);
-    assert(resolver->global->symbols->length == 1);
+    assert(declaration->initializer->value.boolean == false);
+    assert(resolver->global->symbols->count == 1);
 
-    symbol = resolver->global->symbols->items[0];
+    symbol = scope_lookup(resolver->global, "_bar");
 
     assert(symbol->kind == SYMBOL_VARIABLE);
     assert(strcmp(symbol->identifier, "_bar") == 0);
@@ -359,14 +511,14 @@ void test_resolve_multiple_global_variable_declarations(Lexer* lexer, Parser* pa
     resolver_init(resolver);
     resolve(resolver, declarations);
 
-    assert(resolver->global->symbols->length == 3);
+    assert(resolver->global->symbols->count == 3);
 
     // ---- symbol 1
     declaration = declarations->items[0];
-    symbol = resolver->global->symbols->items[0];
+    symbol = scope_lookup(resolver->global, "foo");
 
-    assert(declaration->initializer->literal.literal->kind == TOKEN_INTEGER_LITERAL);
-    assert(declaration->initializer->literal.value.integer == 42);
+    assert(declaration->initializer->literal->kind == TOKEN_INTEGER_LITERAL);
+    assert(declaration->initializer->value.integer == 42);
 
     assert(symbol->kind == SYMBOL_VARIABLE);
     assert(strcmp(symbol->identifier, "foo") == 0);
@@ -374,10 +526,10 @@ void test_resolve_multiple_global_variable_declarations(Lexer* lexer, Parser* pa
 
     // ---- symbol 2
     declaration = declarations->items[1];
-    symbol = resolver->global->symbols->items[1];
+    symbol = scope_lookup(resolver->global, "_bar");
 
-    assert(declaration->initializer->literal.literal->kind == TOKEN_BOOLEAN_LITERAL);
-    assert(declaration->initializer->literal.value.boolean == false);
+    assert(declaration->initializer->literal->kind == TOKEN_BOOLEAN_LITERAL);
+    assert(declaration->initializer->value.boolean == false);
 
     assert(symbol->kind == SYMBOL_VARIABLE);
     assert(strcmp(symbol->identifier, "_bar") == 0);
@@ -385,10 +537,10 @@ void test_resolve_multiple_global_variable_declarations(Lexer* lexer, Parser* pa
 
     // ---- symbol 2
     declaration = declarations->items[2];
-    symbol = resolver->global->symbols->items[2];
+    symbol = scope_lookup(resolver->global, "FOOBAR");
 
-    assert(declaration->initializer->literal.literal->kind == TOKEN_INTEGER_LITERAL);
-    assert(declaration->initializer->literal.value.integer == 0);
+    assert(declaration->initializer->literal->kind == TOKEN_INTEGER_LITERAL);
+    assert(declaration->initializer->value.integer == 0);
 
     assert(symbol->kind == SYMBOL_VARIABLE);
     assert(strcmp(symbol->identifier, "FOOBAR") == 0);
@@ -404,7 +556,7 @@ void test_resolve_multiple_global_variable_declarations(Lexer* lexer, Parser* pa
 }
 
 
-void test_resolve_variable_expression(Lexer* lexer, Parser* parser, Resolver* resolver)
+static void test_resolve_variable_expression(Lexer* lexer, Parser* parser, Resolver* resolver)
 {
     printf("\tVariable expression...");
     not_error = true;
@@ -425,10 +577,9 @@ void test_resolve_variable_expression(Lexer* lexer, Parser* parser, Resolver* re
     assert(statements->length == 2);
     
     resolver_init(resolver);
-
     resolve_statement(resolver, statements->items[0]);
 
-    assert(resolver->global->symbols->length == 1);
+    assert(resolver->global->symbols->count == 1);
     
     statement = statements->items[1];
     assert(statement->kind == STATEMENT_EXPRESSION);
@@ -446,7 +597,45 @@ void test_resolve_variable_expression(Lexer* lexer, Parser* parser, Resolver* re
 }
 
 
-void test_resolve_assignment_expression(Lexer* lexer, Parser* parser, Resolver* resolver)
+static void test_diagnose_referencing_variable_before_declaring()
+{
+    printf("\tDiagnose referensing variable before declaring it...");
+    not_error = true;
+
+    Lexer lexer;
+    Parser parser;
+    Resolver resolver;
+    AST_Expression* expression;
+    Diagnostic* diagnostic;
+    char* message;
+
+    lexer_init(&lexer, "foo");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    expression = parse_expression(&parser);
+
+    resolver_init(&resolver);
+    resolve_expression(&resolver, expression);
+
+    assert(resolver.diagnostics->length == 1);
+    
+    diagnostic = resolver.diagnostics->items[0];
+    message = ":RESOLVER - SyntaxError: Referencing identifier 'foo' before declaring it";
+
+    assert(strcmp(diagnostic->message, message) == 0);
+    
+    expression_free(expression);
+    resolver_free(&resolver);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    if (not_error) printf("PASSED\n");
+    else printf("\n");
+}
+
+
+static void test_resolve_assignment_expression(Lexer* lexer, Parser* parser, Resolver* resolver)
 {
     printf("\tAssignment expression...");
     not_error = true;
@@ -471,7 +660,7 @@ void test_resolve_assignment_expression(Lexer* lexer, Parser* parser, Resolver* 
     statement = statements->items[0];
     resolve_statement(resolver, statement);
 
-    assert(resolver->global->symbols->length == 1);
+    assert(resolver->global->symbols->count == 1);
 
     statement = statements->items[1];
     assert(statement->kind == STATEMENT_EXPRESSION);
@@ -483,6 +672,50 @@ void test_resolve_assignment_expression(Lexer* lexer, Parser* parser, Resolver* 
     resolver_free(resolver);
     parser_free(parser);
     lexer_free(lexer);
+
+    if (not_error) printf("PASSED\n");
+    else printf("\n");
+}
+
+
+static void test_diagnose_conflicting_types_assignment_expression()
+{
+    printf("\tDiagnose conflicting types in assignment expression...");
+    not_error = true;
+
+    Lexer lexer;
+    Parser parser;
+    Resolver resolver;
+    AST_Statement* statement;
+    AST_Expression* expression;
+    Diagnostic* diagnostic;
+    char* message;
+
+    const char* source = "{\n"
+                         "    foo: int = 42;\n"
+                         "    foo := true;"
+                         "}";
+
+    lexer_init(&lexer, source);
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    statement = parse_statement(&parser);
+
+    resolver_init(&resolver);
+    resolve_statement(&resolver, statement);
+    
+    assert(resolver.diagnostics->length == 1);
+
+    message = ":RESOLVER - TypeError: Conflicting types in assignment expression. Assigning to 'int' from 'bool'";
+    diagnostic = resolver.diagnostics->items[0];
+
+    assert(strcmp(diagnostic->message, message) == 0);
+    
+    statement_free(statement);
+    resolver_free(&resolver);
+    parser_free(&parser);
+    lexer_free(&lexer);
 
     if (not_error) printf("PASSED\n");
     else printf("\n");
@@ -517,26 +750,79 @@ static void test_resolve_index_expression()
     resolve_declaration(&resolver, declaration);
     
     // TODO(timo): For some reason the argv is not resolved
-    /*
-    lexer_free(&lexer);
-    parser_free(&parser);
+    // lexer_free(&lexer);
+    // parser_free(&parser);
     
-    lexer_init(&lexer, "argv[0]"); 
-    lex(&lexer);
+    // lexer_init(&lexer, "argv[0]"); 
+    // lex(&lexer);
 
-    parser_init(&parser, lexer.tokens);
-    expression = parse_expression(&parser);
+    // parser_init(&parser, lexer.tokens);
+    // expression = parse_expression(&parser);
 
-    Type* type = resolve_expression(&resolver, expression);
+    // Type* type = resolve_expression(&resolver, expression);
 
-    assert(type->kind == TYPE_INTEGER);
-    */
+    // assert(type->kind == TYPE_INTEGER);
     
     declaration_free(declaration);
     // expression_free(expression);
     resolver_free(&resolver);
     parser_free(&parser);
     lexer_free(&lexer);
+
+    if (not_error) printf("PASSED\n");
+    else printf("\n");
+}
+
+
+static void test_diagnose_variable_is_not_subsriptable()
+{
+    printf("\tDiagnose variable is not subscriptable...");
+    not_error = true;
+
+    Lexer lexer;
+    Parser parser;
+    Resolver resolver;
+    AST_Statement* statement;
+
+    printf("\n\t\tNOT IMPLEMENTED");
+    not_error = false;
+
+    // ":RESOLVER - TypeError: '%s' is not subscriptable.",
+
+    if (not_error) printf("PASSED\n");
+    else printf("\n");
+}
+
+
+static void test_diagnose_invalid_array_subscript()
+{
+    printf("\tDiagnose invalid array subscript...");
+    not_error = true;
+
+    Lexer lexer;
+    Parser parser;
+    Resolver resolver;
+    AST_Statement* statement;
+
+    printf("\n\t\tNOT IMPLEMENTED");
+    not_error = false;
+
+    // ":RESOLVER - TypeError: Array subscripts must be integers.",
+
+    if (not_error) printf("PASSED\n");
+    else printf("\n");
+}
+
+
+static void test_diagnose_invalid_array_subscript_boundaries()
+{
+    printf("\tDiagnose invalid array subscript boundaries...");
+    not_error = true;
+
+    printf("\n\t\tNOT IMPLEMENTED");
+    not_error = false;
+
+    // ":RESOLVER - IndexError: Array subscript less than zero.",
 
     if (not_error) printf("PASSED\n");
     else printf("\n");
@@ -572,7 +858,7 @@ static void test_resolve_function_expression()
     resolver_init(&resolver);
     type = resolve_expression(&resolver, expression);
     
-    assert(resolver.global->symbols->length == 2);
+    assert(resolver.global->symbols->count == 2);
     assert(resolver.context.return_type->kind == TYPE_INTEGER);
     assert(type->kind == TYPE_FUNCTION);
     assert(type->function.return_type->kind == TYPE_INTEGER);
@@ -600,7 +886,7 @@ static void test_resolve_function_expression()
     resolver_init(&resolver);
     type = resolve_expression(&resolver, expression);
     
-    assert(resolver.global->symbols->length == 1);
+    assert(resolver.global->symbols->count == 1);
     assert(resolver.context.return_type->kind == TYPE_INTEGER);
     assert(type->kind == TYPE_FUNCTION);
     assert(type->function.return_type->kind == TYPE_INTEGER);
@@ -630,54 +916,169 @@ static void test_resolve_call_expression()
     // with arguments 
     source = "greater: bool = (x: int, y: int) => {\n"
              "    return x > y;\n"
+             "};"
+             "\n"
+             "main: int = (argc: int, argv: [int]) => {\n"
+             "   greater(1, 0);\n"
+             "   return 0;"
              "};";
 
     lexer_init(&lexer, source); 
     lex(&lexer);
 
     parser_init(&parser, lexer.tokens);
-    declaration = parse_declaration(&parser);
+    parse(&parser);
 
     resolver_init(&resolver);
-    resolve_declaration(&resolver, declaration);
+    resolve(&resolver, parser.declarations);
+
+    assert(resolver.diagnostics->length == 0);
     
-    // TODO(timo): For some reason this doesn't work when running
-    // things without valgrind.
-    /*
-    lexer_free(&lexer);
-    parser_free(&parser);
-
-    lexer_init(&lexer, "greater(1, 0)");
-    lex(&lexer);
-    parser_init(&parser, lexer.tokens);
-    expression = parse_expression(&parser);
-
-    assert(expression->kind == EXPRESSION_CALL);
-
-    Type* type = resolve_expression(&resolver, expression);
-
-    assert(type->kind == TYPE_BOOLEAN);
-
-    expression_free(expression);
-    */
     resolver_free(&resolver);
     parser_free(&parser);
     lexer_free(&lexer);
 
     // TODO(timo): no arguments 
-    /*
-    lexer_init(&lexer, "foo()");
+
+    // TODO(timo): assigning a value from call expression
+
+    if (not_error) printf("PASSED\n");
+    else printf("\n");
+}
+
+
+static void test_diagnose_callee_is_not_callable()
+{
+    printf("\tDiagnose callee is not callable...");
+    not_error = true;
+
+    Lexer lexer;
+    Parser parser;
+    Resolver resolver;
+    AST_Expression* expression;
+    AST_Declaration* declaration;
+    Diagnostic* diagnostic;
+    char* message;
+
+    const char* source = "greater: bool = true;\n"
+                         "main: int = (argc: int, argv: [int]) => {\n"
+                         "   greater(1, 0);\n"
+                         "   return 0;"
+                         "};";
+
+    lexer_init(&lexer, source); 
     lex(&lexer);
 
     parser_init(&parser, lexer.tokens);
     parse(&parser);
 
-    expression_free(expression);
+    resolver_init(&resolver);
+    resolve(&resolver, parser.declarations);
+
+    assert(resolver.diagnostics->length == 1);
+
+    diagnostic = resolver.diagnostics->items[0];
+    message = ":RESOLVER - TypeError: 'greater' is not callable.";
+
+    assert(strcmp(diagnostic->message, message) == 0);
+    
+    resolver_free(&resolver);
     parser_free(&parser);
     lexer_free(&lexer);
-    */
 
-    // TODO(timo): assigning a value from call expression
+    if (not_error) printf("PASSED\n");
+    else printf("\n");
+}
+
+
+static void test_diagnose_invalid_number_of_arguments()
+{
+    printf("\tDiagnose invalid number of function arguments...");
+    not_error = true;
+
+    Lexer lexer;
+    Parser parser;
+    Resolver resolver;
+    AST_Expression* expression;
+    AST_Declaration* declaration;
+    Diagnostic* diagnostic;
+    char* message;
+
+    const char* source = "greater: bool = (x: int, y: int) => {\n"
+                         "    return x > y;\n"
+                         "};"
+                         "\n"
+                         "main: int = (argc: int, argv: [int]) => {\n"
+                         "   greater(1);\n"
+                         "   return 0;"
+                         "};";
+
+    lexer_init(&lexer, source); 
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    parse(&parser);
+
+    resolver_init(&resolver);
+    resolve(&resolver, parser.declarations);
+
+    assert(resolver.diagnostics->length == 1);
+
+    diagnostic = resolver.diagnostics->items[0];
+    message = ":RESOLVER - TypeError: Function 'greater' expected 2 arguments, but 1 was given\n", 
+
+    assert(strcmp(diagnostic->message, message) == 0);
+    
+    resolver_free(&resolver);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    if (not_error) printf("PASSED\n");
+    else printf("\n");
+}
+
+
+static void test_diagnose_invalid_type_of_argument()
+{
+    printf("\tDiagnose invalid type(s) of argument(s)...");
+    not_error = true;
+
+    Lexer lexer;
+    Parser parser;
+    Resolver resolver;
+    AST_Expression* expression;
+    AST_Declaration* declaration;
+    Diagnostic* diagnostic;
+    char* message;
+
+    const char* source = "greater: bool = (x: int, y: int) => {\n"
+                         "    return x > y;\n"
+                         "};"
+                         "\n"
+                         "main: int = (argc: int, argv: [int]) => {\n"
+                         "   greater(1, true);\n"
+                         "   return 0;"
+                         "};";
+
+    lexer_init(&lexer, source); 
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    parse(&parser);
+
+    resolver_init(&resolver);
+    resolve(&resolver, parser.declarations);
+
+    assert(resolver.diagnostics->length == 1);
+
+    diagnostic = resolver.diagnostics->items[0];
+    message = ":RESOLVER - TypeError: Parameter 'y' is of type 'int', but argument of type 'bool' was given.", 
+
+    assert(strcmp(diagnostic->message, message) == 0);
+    
+    resolver_free(&resolver);
+    parser_free(&parser);
+    lexer_free(&lexer);
 
     if (not_error) printf("PASSED\n");
     else printf("\n");
@@ -865,6 +1266,67 @@ static void test_resolve_return_statement()
 }
 
 
+static void test_resolve_break_statement()
+{
+    printf("\tResolve break statement...");
+    not_error = true;
+
+    // assert(resolver.context.not_in_loop == true)
+    // or just no diagnostics collected if we cannot get into the context
+    printf("\n\t\tNOT IMPLEMENTD");
+    not_error = false;
+
+    if (not_error) printf("PASSED\n");
+    else printf("\n");
+}
+
+
+static void test_diagnose_no_break_statement_outside_loops()
+{
+    printf("\tDiagnose no break statement outside loops...");
+    not_error = true;
+
+    Lexer lexer;
+    Parser parser;
+    Resolver resolver;
+    AST_Statement* statement;
+    Diagnostic* diagnostic;
+    
+    const char* tests[] =
+    {
+        "{ break; }",
+        "if 1 < 0 then { break; }",
+    };
+
+    const char* result = ":RESOLVER - SyntaxError: Cant't break outside of loops.";
+
+    for (int i = 0; i < sizeof (tests) / sizeof (*tests); i++)
+    {
+        lexer_init(&lexer, tests[i]);
+        lex(&lexer);
+        
+        parser_init(&parser, lexer.tokens);
+        statement = parse_statement(&parser);
+
+        resolver_init(&resolver);
+        resolve_statement(&resolver, statement);
+
+        assert(resolver.diagnostics->length == 1);
+
+        diagnostic = resolver.diagnostics->items[0];
+
+        assert(strcmp(diagnostic->message, result) == 0);
+        
+        statement_free(statement);
+        resolver_free(&resolver);
+        parser_free(&parser);
+        lexer_free(&lexer);
+    }
+
+    if (not_error) printf("PASSED\n");
+    else printf("\n");
+}
+
 void test_resolver()
 {
     printf("Running resolver tests...\n");
@@ -874,62 +1336,52 @@ void test_resolver()
     Resolver resolver;
 
     test_resolve_literal_expression(&lexer, &parser, &resolver);
-
-    // TODO(timo): Diagnose errors while resolving literal expressions
+    test_diagnose_integer_overflow_literal();
 
     test_resolve_unary_expression(&lexer, &parser, &resolver);
-
-    // TODO(timo): Diagnose errors while resolving unary expressions
+    test_diagnose_invalid_operand_types_unary_expression();
+    // TODO(timo): Integer overflow checks (positive and negative)
 
     test_resolve_binary_expression(&lexer, &parser, &resolver);
-
-    // TODO(timo): Diagnose errors while resolving binary expressions
+    test_diagnose_invalid_operand_types_binary_expression();
+    // TODO(timo): Integer overflow checks (positive and negative)
 
     test_resolve_variable_expression(&lexer, &parser, &resolver);
-
-    // TODO(timo): Diagnose errors while resolving variable expression
+    test_diagnose_referencing_variable_before_declaring();
 
     test_resolve_assignment_expression(&lexer, &parser, &resolver);
-
-    // TODO(timo): Diagnose errors while resolving assignment expressions
+    test_diagnose_conflicting_types_assignment_expression();
 
     test_resolve_index_expression();
-
-    // TODO(timo): Diagnose errors while resolving index expression
-    //      - accessed variable is not array type (LATER)
-    //      - accessed variable is not argv
-    //      - type of the index itself is not integer
-    //      - index value cannot be < 0 or array_length - 1 (argc)
+    test_diagnose_variable_is_not_subsriptable();
+    test_diagnose_invalid_array_subscript();
+    test_diagnose_invalid_array_subscript_boundaries();
+    // TODO(timo): accessed variable is not argv
     
     test_resolve_function_expression();
-    
-    // TODO(timo): Diagnose errors while resolving function expression
     // TODO(timo): Diagnose invalid type of the return value
 
     test_resolve_call_expression();
-
-    // TODO(timo): Diagnose errors while resolving call expression
-    //      - invalid number of arguments
-    //      - invalid type(s) of the argument(s)
+    test_diagnose_callee_is_not_callable();
+    test_diagnose_invalid_number_of_arguments();
+    test_diagnose_invalid_type_of_argument();
 
     // ----
-
 
     // test_resolve_type_specifier();
 
-
     // ----
-    
 
-    // TODO(timo): We can't use the direct declaration resolving, unless we
-    // create the undeclared symbols in the resolve declaration function itself
     test_resolve_variable_declaration(&lexer, &parser, &resolver);
+
+    test_resolve_multiple_global_variable_declarations(&lexer, &parser, &resolver);
 
     // TODO(timo): Diagnose errors while resolving variable declarations
 
     test_resolve_function_declaration();
-    
-    test_resolve_multiple_global_variable_declarations(&lexer, &parser, &resolver);
+    // TODO(timo): Functions are allowed only at top level
+    // TODO(timo): Function HAS to have a return statement e.g. it has to return value
+    // TODO(timo): YORO - you only return once
 
     // TODO(timo): Resolve order independent global variable declarations
     // TODO(timo): Lets just forget this functionality for now and maybe add it later.
@@ -937,29 +1389,21 @@ void test_resolver()
     // test_resolve_order_independent_global_variable_declarations(&lexer, &parser, &resolver);
 
     // TODO(timo); Diagnose errors while resolving order independent global variable declarations
-    
 
     // ---
 
-
     // test_resolve_expression_statement()
-
     test_resolve_declaration_statement_variable(&lexer, &parser, &resolver);
-
     test_resolve_if_statement();
-    
     test_resolve_while_statement();
-
     test_resolve_return_statement();
+    test_resolve_break_statement();
+
+    test_diagnose_no_break_statement_outside_loops();
 
     // TODO(timo): Diganose error while resolving return statement (return value is missing)
-    
-    
-    // TODO(timo): Diagnose no break statement outside loops
     // TODO(timo): Diagnose no continue statement outside loops
     // TODO(timo): Diagnose no return statement outside functions
     // TODO(timo): You can only use declarations at the top level so no
     // statements or expressions are allowed at top level.
-    // TODO(timo): YORO - you only return once
-    // TODO(timo): Functions are allowed only at top level
 }

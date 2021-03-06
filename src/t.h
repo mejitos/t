@@ -173,7 +173,7 @@ struct Value
 {
     Value_Type type;
     union {
-        int integer;
+        uint64_t integer;
         bool boolean;
     };
 };

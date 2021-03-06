@@ -1,9 +1,13 @@
 #include "t.h"
 
+#define INTEGER_MAX 2147483647;
+#define INTEGER_MIN 2147483648; // absolute value
+
 
 void resolver_init(Resolver* resolver)
 {
     *resolver = (Resolver){ .global = scope_init(NULL),
+                            .diagnostics = array_init(sizeof (Diagnostic*)),
                             .context.not_in_loop = true,
                             .context.not_in_function = true, };
 }
@@ -16,6 +20,20 @@ void resolver_free(Resolver* resolver)
 
     // NOTE(timo): The resolver itself is not being freed since it is
     // being initialized to the stack in the top level function
+}
+
+
+const char* type_as_string(Type_Kind type)
+{
+    switch (type)
+    {
+        case TYPE_INTEGER:
+            return "int";
+        case TYPE_BOOLEAN:
+            return "bool";
+        default:
+            return "unknown type";
+    }
 }
 
 
@@ -32,27 +50,26 @@ static Type* resolve_literal_expression(Resolver* resolver, AST_Expression* expr
         case TOKEN_INTEGER_LITERAL:
         {
             const char* lexeme = literal->lexeme;
-            int integer_value = 0;
+            uint64_t integer_value = 0;
 
             while (*lexeme != '\0') 
             { 
-                // TODO(timo): We should actually make sure that the character is a digit
-
                 // Converts ascii digit to corresponding number
                 int digit = *lexeme - '0';
-
-                // Check for integer overflow in integer literal
-                // TODO(timo): We probably should handle the negative overflow too?
-                // like value < INT_MIN - digit
-                // TODO(timo): Make separate functions out of these overflow checks
-                if (integer_value > INT_MAX - digit) 
-                {   
-                    // TODO(timo): Error
-                    printf("Integer overflow\n");
-                    exit(1);
+                integer_value *= 10; 
+                
+                // NOTE(timo): We can only check for the overflow of the literal in compile time, 
+                // rest of the expressions are being evaluated and therefore we cannot know the value.
+                // We just decieded that our maximum integer value is abs(2147483647)
+                if (integer_value > INT_MAX - digit)
+                {
+                    Diagnostic* _diagnostic = diagnostic(
+                        DIAGNOSTIC_ERROR, expression->position,
+                        ":RESOLVER - OverflowError: Integer overflow in integer literal. Maximum integer value is abs(2147483647)");
+                    array_push(resolver->diagnostics, _diagnostic);
+                    break;
                 }
 
-                integer_value *= 10; 
                 integer_value += digit;
                 lexeme++;
             }
@@ -94,24 +111,11 @@ static Type* resolve_literal_expression(Resolver* resolver, AST_Expression* expr
 }
 
 
-const char* type_as_string(Type_Kind type)
-{
-    switch (type)
-    {
-        case TYPE_INTEGER:
-            return "int";
-        case TYPE_BOOLEAN:
-            return "bool";
-        default:
-            return "unknown type";
-    }
-}
-
-
 static Type* resolve_unary_expression(Resolver* resolver, AST_Expression* expression)
 {
-    Type* operand_type = resolve_expression(resolver, expression->unary.operand);
+    AST_Expression* operand = expression->unary.operand;
     Token* _operator = expression->unary._operator;
+    Type* operand_type = resolve_expression(resolver, operand);
 
     switch (_operator->kind)
     {
@@ -123,8 +127,18 @@ static Type* resolve_unary_expression(Resolver* resolver, AST_Expression* expres
                     ":RESOLVER - TypeError: Unsupported operand type '%s' for unary '+'",
                     type_as_string(operand_type->kind));
                 array_push(resolver->diagnostics, _diagnostic);
+                break;
             }
-            break;
+            /*
+            if (operand->kind == EXPRESSION_LITERAL && operand->value.integer > INTEGER_MAX)
+            {
+                Diagnostic* _diagnostic = diagnostic(
+                    DIAGNOSTIC_ERROR, expression->position,
+                    ":RESOLVER - OverflowError: Integer overflow in integer literal. Maximum integer value is 2147483647");
+                array_push(resolver->diagnostics, _diagnostic);
+                break;
+            }
+            */
         case TOKEN_MINUS:
             if (operand_type->kind != TYPE_INTEGER)
             {
@@ -133,11 +147,18 @@ static Type* resolve_unary_expression(Resolver* resolver, AST_Expression* expres
                     ":RESOLVER - TypeError: Unsupported operand type '%s' for unary '-'",
                     type_as_string(operand_type->kind));
                 array_push(resolver->diagnostics, _diagnostic);
+                break;
             }
-            // TODO(timo): Check for the negative integer overflow
-            // The smallest 32-bit integer is -2147483648
-            // The biggest 32-bit integer is 2147483647
-            break;
+            /*
+            if (operand->kind == EXPRESSION_LITERAL && operand->value.integer > INTEGER_MIN)
+            {
+                Diagnostic* _diagnostic = diagnostic(
+                    DIAGNOSTIC_ERROR, expression->position,
+                    ":RESOLVER - OverflowError: Integer overflow in integer literal. Minimum integer value is 2147483648");
+                array_push(resolver->diagnostics, _diagnostic);
+                break;
+            }
+            */
         case TOKEN_NOT:
             if (operand_type->kind != TYPE_BOOLEAN)
             {
@@ -167,21 +188,19 @@ static Type* resolve_unary_expression(Resolver* resolver, AST_Expression* expres
 
 static Type* resolve_binary_expression(Resolver* resolver, AST_Expression* expression)
 {
-    // TODO(timo): Since the integer overlows can happen with these operations
-    // too, we should check them in here also => make some utility function
     Type* type_left = resolve_expression(resolver, expression->binary.left);
     Type* type_right = resolve_expression(resolver, expression->binary.right);
     Token* _operator = expression->binary._operator;
     
     Type* type;
-    
+
     switch (_operator->kind)
     {
         case TOKEN_PLUS:
         case TOKEN_MINUS:
         case TOKEN_MULTIPLY:
         case TOKEN_DIVIDE:
-            if (type_left->kind != TYPE_INTEGER && type_right->kind != TYPE_INTEGER)
+            if (type_left->kind != TYPE_INTEGER || type_right->kind != TYPE_INTEGER)
             {
                 Diagnostic* _diagnostic = diagnostic(
                     DIAGNOSTIC_ERROR, expression->position,
@@ -189,7 +208,6 @@ static Type* resolve_binary_expression(Resolver* resolver, AST_Expression* expre
                     type_as_string(type_left->kind), type_as_string(type_right->kind), _operator->lexeme);
                 array_push(resolver->diagnostics, _diagnostic);
             }
-            // TODO(timo): Check for integer overflow here too
             type = type_left;
             break;
         case TOKEN_IS_EQUAL:
@@ -211,7 +229,7 @@ static Type* resolve_binary_expression(Resolver* resolver, AST_Expression* expre
         case TOKEN_GREATER_THAN_EQUAL:
             // TODO(timo): Operand/values has to be scalar types e.g. integers
             // in this case for the ordering expression
-            if (type_left->kind == TYPE_INTEGER && type_right->kind != TYPE_INTEGER)
+            if (type_left->kind != TYPE_INTEGER || type_right->kind != TYPE_INTEGER)
             {
                 Diagnostic* _diagnostic = diagnostic(
                     DIAGNOSTIC_ERROR, expression->position,
@@ -405,7 +423,42 @@ static Type* resolve_call_expression(Resolver* resolver, AST_Expression* express
     Symbol* symbol = scope_lookup(resolver->global, expression->call.variable->identifier->lexeme);
 
     // Make sure the called variable is actually callable - a function in our case
-    if (type->kind != TYPE_FUNCTION)
+    if (type->kind == TYPE_FUNCTION)
+    {
+        // Number of arguments == arity of the called function
+        if (symbol->type->function.arity != arguments->length)
+        {
+            Diagnostic* _diagnostic = diagnostic(
+                DIAGNOSTIC_ERROR, expression->position,
+                ":RESOLVER - TypeError: Function '%s' expected %d arguments, but %d was given\n", 
+                symbol->identifier, symbol->type->function.arity, arguments->length);
+            array_push(resolver->diagnostics, _diagnostic);
+            // TODO(timo): return type none?
+        }
+        
+        // types of the arguments == types of the parameters
+        for (int i = 0; i < arguments->length; i++)
+        {
+            AST_Expression* argument = (AST_Expression*)arguments->items[i];
+            Symbol* parameter = symbol->type->function.parameters->items[i];
+
+            Type* argument_type = resolve_expression(resolver, argument);
+            Type* parameter_type = parameter->type;
+
+            if (argument_type->kind != parameter_type->kind)
+            {
+                Diagnostic* _diagnostic = diagnostic(
+                    DIAGNOSTIC_ERROR, expression->position,
+                    ":RESOLVER - TypeError: Parameter '%s' is of type '%s', but argument of type '%s' was given.", 
+                    parameter->identifier, type_as_string(parameter_type->kind), type_as_string(argument_type->kind));
+                array_push(resolver->diagnostics, _diagnostic);
+            }
+        }
+
+        // return the return type of the called function
+        return type->function.return_type;
+    }
+    else
     {
         Diagnostic* _diagnostic = diagnostic(
             DIAGNOSTIC_ERROR, expression->position,
@@ -413,40 +466,8 @@ static Type* resolve_call_expression(Resolver* resolver, AST_Expression* express
             symbol->identifier);
         array_push(resolver->diagnostics, _diagnostic);
         // TODO(timo): return type none?
+        return type_none();
     }
-
-    // Number of arguments == arity of the called function
-    if (symbol->type->function.arity != arguments->length)
-    {
-        Diagnostic* _diagnostic = diagnostic(
-            DIAGNOSTIC_ERROR, expression->position,
-            ":RESOLVER - TypeError: Function '%s' expected %d arguments, but %d was given\n", 
-            symbol->identifier, symbol->type->function.arity, arguments->length);
-        array_push(resolver->diagnostics, _diagnostic);
-        // TODO(timo): return type none?
-    }
-    
-    // types of the arguments == types of the parameters
-    for (int i = 0; i < arguments->length; i++)
-    {
-        AST_Expression* argument = (AST_Expression*)arguments->items[i];
-        Symbol* parameter = symbol->type->function.parameters->items[i];
-
-        Type* argument_type = resolve_expression(resolver, argument);
-        Type* parameter_type = parameter->type;
-
-        if (argument_type->kind != parameter_type->kind)
-        {
-            Diagnostic* _diagnostic = diagnostic(
-                DIAGNOSTIC_ERROR, expression->position,
-                ":RESOLVER - TypeError: Parameter '%s' is of type '%s', but argument of type '%s' was given.", 
-                parameter->identifier, type_as_string(parameter_type->kind), type_as_string(argument_type->kind));
-            array_push(resolver->diagnostics, _diagnostic);
-        }
-    }
-
-    // return the return type of the called function
-    return type->function.return_type;
 }
 
 
@@ -565,12 +586,14 @@ void resolve_return_statement(Resolver* resolver, AST_Statement* statement)
 }
 
 
-void resolve_break_statement(Resolver* resolver)
+void resolve_break_statement(Resolver* resolver, AST_Statement* statement)
 {
     if (resolver->context.not_in_loop)
     {
-        printf("Can't break outside of loops");
-        exit(1);
+        Diagnostic* _diagnostic = diagnostic(
+            DIAGNOSTIC_ERROR, statement->position,
+            ":RESOLVER - SyntaxError: Cant't break outside of loops.");
+        array_push(resolver->diagnostics, _diagnostic);
     }
 }
 
@@ -603,7 +626,7 @@ void resolve_statement(Resolver* resolver, AST_Statement* statement)
             resolve_while_statement(resolver, statement);
             break;
         case STATEMENT_BREAK:
-            resolve_break_statement(resolver);
+            resolve_break_statement(resolver, statement);
             break;
         default:
         {
