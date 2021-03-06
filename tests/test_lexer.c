@@ -1,64 +1,9 @@
 #include "../src/t.h"
+#include "asserts.h"
 #include "tests.h"
 
 
 static bool not_error = true;
-
-
-void assert_token(Token* token, Token_Kind kind, const char* lexeme)
-{
-    if (token->kind != kind)
-    {
-        printf("\n\t\tInvalid token kind '%d', expected '%d'", token->kind, kind);
-        not_error = false;
-    }
-    if (strcmp(token->lexeme, lexeme) != 0)
-    {
-        printf("\n\t\tInvalid lexeme '%s', expected '%s'", token->lexeme, lexeme);
-        not_error = false;
-    }
-}
-
-
-// TODO(timo): This should actually take the token as an argument so we can
-// give better information about WHAT is being positioned wrong when testing.
-// Though this means that there should be position assertions for everything
-// that has positions but so be it.
-void assert_position(Position position, int line_start, int column_start, int line_end, int column_end)
-{
-    if (line_start != 0)
-    {
-        if (position.line_start != line_start)
-        {
-            printf("\n\t\tInvalid starting line '%d', expected '%d'", position.line_start, line_start);
-            not_error = false;
-        }
-    }
-    if (column_start != 0)
-    {
-        if (position.column_start != column_start)
-        {
-            printf("\n\t\tInvalid starting column '%d', expected '%d'", position.column_start, column_start);
-            not_error = false;
-        }
-    }
-    if (line_end != 0)
-    {
-        if (position.line_end != line_end)
-        {
-            printf("\n\t\tInvalid ending line '%d', expected '%d'", position.line_end, line_end);
-            not_error = false;
-        }
-    }
-    if (column_end != 0)
-    {
-        if (position.column_end != column_end)
-        {
-            printf("\n\t\tInvalid ending column '%d', expected '%d'", position.column_end, column_end);
-            not_error = false;
-        }
-    }
-}
 
 
 static void test_skip_whitespace()
