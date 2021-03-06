@@ -19,19 +19,19 @@ void resolver_free(Resolver* resolver)
 }
 
 
-static Type* resolve_literal_expression(AST_Expression* expression)
+static Type* resolve_literal_expression(Resolver* resolver, AST_Expression* expression)
 {
     assert(expression->kind == EXPRESSION_LITERAL);
     
     Type* type;
     Value value;
-    AST_Literal literal = expression->literal;
+    Token* literal = expression->literal;
 
-    switch (literal.literal->kind)
+    switch (literal->kind)
     {
         case TOKEN_INTEGER_LITERAL:
         {
-            const char* lexeme = literal.literal->lexeme;
+            const char* lexeme = literal->lexeme;
             int integer_value = 0;
 
             while (*lexeme != '\0') 
@@ -60,33 +60,51 @@ static Type* resolve_literal_expression(AST_Expression* expression)
             type = type_integer();
             value = (Value){ .type = VALUE_INTEGER, 
                              .integer = integer_value };
-            // TODO(timo): Add the value (and type?) to the expression
             break;
         }
         case TOKEN_BOOLEAN_LITERAL:
         {
             bool boolean_value;
 
-            if (strcmp(literal.literal->lexeme, "true") == 0)
+            if (strcmp(literal->lexeme, "true") == 0)
                 boolean_value = true;
-            else if (strcmp(literal.literal->lexeme, "false") == 0)
+            else if (strcmp(literal->lexeme, "false") == 0)
                 boolean_value = false;
 
             type = type_boolean();
             value = (Value){ .type = VALUE_BOOLEAN,
                               .boolean = boolean_value };
-            // TODO(timo): Add the value (and type?) to the expression
             break;
         }
         default:
-            // TODO(timo): Error
+        {
+            Diagnostic* _diagnostic = diagnostic(
+                DIAGNOSTIC_ERROR, expression->position,
+                ":RESOLVER - Unreachable: Invalid literal '%s'", 
+                literal->lexeme);
+            array_push(resolver->diagnostics, _diagnostic);
             break;
+        }
     }
 
     expression->type = type;
-    expression->literal.value = value;
+    expression->value = value;
 
     return type;
+}
+
+
+const char* type_as_string(Type_Kind type)
+{
+    switch (type)
+    {
+        case TYPE_INTEGER:
+            return "int";
+        case TYPE_BOOLEAN:
+            return "bool";
+        default:
+            return "unknown type";
+    }
 }
 
 
@@ -95,23 +113,26 @@ static Type* resolve_unary_expression(Resolver* resolver, AST_Expression* expres
     Type* operand_type = resolve_expression(resolver, expression->unary.operand);
     Token* _operator = expression->unary._operator;
 
-    // TODO(timo): We should probably check for the negative overflow
-    // in here, since the negative value is being returned from here
-
     switch (_operator->kind)
     {
         case TOKEN_PLUS:
             if (operand_type->kind != TYPE_INTEGER)
             {
-                printf("Invalid operand type\n");
-                exit(1);
+                Diagnostic* _diagnostic = diagnostic(
+                    DIAGNOSTIC_ERROR, expression->position,
+                    ":RESOLVER - TypeError: Unsupported operand type '%s' for unary '+'",
+                    type_as_string(operand_type->kind));
+                array_push(resolver->diagnostics, _diagnostic);
             }
             break;
         case TOKEN_MINUS:
             if (operand_type->kind != TYPE_INTEGER)
             {
-                printf("Invalid operand type\n");
-                exit(1);
+                Diagnostic* _diagnostic = diagnostic(
+                    DIAGNOSTIC_ERROR, expression->position,
+                    ":RESOLVER - TypeError: Unsupported operand type '%s' for unary '-'",
+                    type_as_string(operand_type->kind));
+                array_push(resolver->diagnostics, _diagnostic);
             }
             // TODO(timo): Check for the negative integer overflow
             // The smallest 32-bit integer is -2147483648
@@ -120,16 +141,22 @@ static Type* resolve_unary_expression(Resolver* resolver, AST_Expression* expres
         case TOKEN_NOT:
             if (operand_type->kind != TYPE_BOOLEAN)
             {
-                printf("Invalid operand type\n");
-                exit(1);
+                Diagnostic* _diagnostic = diagnostic(
+                    DIAGNOSTIC_ERROR, expression->position,
+                    ":RESOLVER - TypeError: Unsupported operand type '%s' for unary 'not'",
+                    type_as_string(operand_type->kind));
+                array_push(resolver->diagnostics, _diagnostic);
             }
             break;
         default:
-            // TODO(timo): Error
-            // Even though this should never be reached, since this is
-            // handled at the parsing stage already
-            printf("Invalid unary operator\n");
+        {
+            Diagnostic* _diagnostic = diagnostic(
+                DIAGNOSTIC_ERROR, _operator->position,
+                ":RESOLVER - Unreachable: Invalid unary operator '%s'",
+                _operator->lexeme);
+            array_push(resolver->diagnostics, _diagnostic);
             break;
+        }
     }
 
     expression->type = operand_type;
@@ -148,8 +175,6 @@ static Type* resolve_binary_expression(Resolver* resolver, AST_Expression* expre
     
     Type* type;
     
-    // TODO(timo): Do we want booleans to have some other expressions
-    // allowed than the logical expressions? 
     switch (_operator->kind)
     {
         case TOKEN_PLUS:
@@ -158,25 +183,25 @@ static Type* resolve_binary_expression(Resolver* resolver, AST_Expression* expre
         case TOKEN_DIVIDE:
             if (type_left->kind != TYPE_INTEGER && type_right->kind != TYPE_INTEGER)
             {
-                printf("Invalid operand types\n");
-                exit(1);
+                Diagnostic* _diagnostic = diagnostic(
+                    DIAGNOSTIC_ERROR, expression->position,
+                    ":RESOLVER - TypeError: Unsupported operand types '%s' and '%s' for binary '%s'",
+                    type_as_string(type_left->kind), type_as_string(type_right->kind), _operator->lexeme);
+                array_push(resolver->diagnostics, _diagnostic);
             }
             // TODO(timo): Check for integer overflow here too
             type = type_left;
             break;
         case TOKEN_IS_EQUAL:
         case TOKEN_NOT_EQUAL:
-            // The left type and the right type has to be the same
-            // Also the equality of the booleans can be compared
-            if (type_left->kind == TYPE_INTEGER && type_right->kind != TYPE_INTEGER)
+            if ((type_left->kind == TYPE_INTEGER && type_right->kind != TYPE_INTEGER) || 
+                (type_left->kind == TYPE_BOOLEAN && type_right->kind != TYPE_BOOLEAN))
             {
-                printf("Invalid operand types\n");
-                exit(1);
-            }
-            else if (type_left->kind == TYPE_BOOLEAN && type_right->kind != TYPE_BOOLEAN)
-            {
-                printf("Invalid operand types\n");
-                exit(1);
+                Diagnostic* _diagnostic = diagnostic(
+                    DIAGNOSTIC_ERROR, expression->position,
+                    ":RESOLVER - TypeError: Unsupported operand types '%s' and '%s' for binary '%s'",
+                    type_as_string(type_left->kind), type_as_string(type_right->kind), _operator->lexeme);
+                array_push(resolver->diagnostics, _diagnostic);
             }
             type = type_boolean();
             break;
@@ -188,17 +213,23 @@ static Type* resolve_binary_expression(Resolver* resolver, AST_Expression* expre
             // in this case for the ordering expression
             if (type_left->kind == TYPE_INTEGER && type_right->kind != TYPE_INTEGER)
             {
-                printf("Invalid operand types\n");
-                exit(1);
+                Diagnostic* _diagnostic = diagnostic(
+                    DIAGNOSTIC_ERROR, expression->position,
+                    ":RESOLVER - TypeError: Unsupported operand types '%s' and '%s' for binary '%s'",
+                    type_as_string(type_left->kind), type_as_string(type_right->kind), _operator->lexeme);
+                array_push(resolver->diagnostics, _diagnostic);
             }
             type = type_boolean();
             break;
         default:
-            // TODO(timo): Error
-            // Even though this should never be reached, since this is
-            // handled at the parsing stage already
-            printf("Invalid binary operator\n");
+        {
+            Diagnostic* _diagnostic = diagnostic(
+                DIAGNOSTIC_ERROR, _operator->position,
+                ":RESOLVER - Unreachable: Invalid binary operator '%s'",
+                _operator->lexeme);
+            array_push(resolver->diagnostics, _diagnostic);
             break;
+        }
     }
 
     expression->type = type;
@@ -209,16 +240,21 @@ static Type* resolve_binary_expression(Resolver* resolver, AST_Expression* expre
 
 static Type* resolve_variable_expression(Resolver* resolver, AST_Expression* expression)
 {
+    Type* type;
     Symbol* symbol = scope_lookup(resolver->global, expression->identifier->lexeme);
-    
+     
     if (symbol == NULL)
     {
-        // TODO(timo): Error
-        printf("Undeclared identifier '%s'\n", expression->identifier->lexeme);
-        exit(1);
+        Diagnostic* _diagnostic = diagnostic(
+            DIAGNOSTIC_ERROR, expression->position,
+            ":RESOLVER - SyntaxError: Referencing identifier '%s' before declaring it",
+            expression->identifier->lexeme);
+        array_push(resolver->diagnostics, _diagnostic);
+        
+        type = type_none();
     }
-
-    Type* type = symbol->type; 
+    else
+        type = symbol->type;
 
     return type;
 }
@@ -231,9 +267,11 @@ static Type* resolve_assignment_expression(Resolver* resolver, AST_Expression* e
     
     if (variable_type->kind != value_type->kind)
     {
-        // TODO(timo): Error
-        printf("Conflicting types in assignment expression\n");
-        exit(1);
+        Diagnostic* _diagnostic = diagnostic(
+            DIAGNOSTIC_ERROR, expression->position,
+            ":RESOLVER - TypeError: Conflicting types in assignment expression. Assigning to '%s' from '%s'",
+            type_as_string(variable_type->kind), type_as_string(value_type->kind));
+        array_push(resolver->diagnostics, _diagnostic);
     }
 
     return variable_type;
@@ -252,10 +290,13 @@ static Type* resolve_index_expression(Resolver* resolver, AST_Expression* expres
 
     if (variable_type->kind != TYPE_ARRAY)
     {
-        // TODO(timo): Error
-        printf("Only array types are subscriptable\n");
-        exit(1);
+        Diagnostic* _diagnostic = diagnostic(
+            DIAGNOSTIC_ERROR, expression->position,
+            ":RESOLVER - TypeError: '%s' is not subscriptable.",
+            variable->identifier->lexeme);
+        array_push(resolver->diagnostics, _diagnostic);
     }
+    /*
     // TODO(timo): We should also make sure that the current context is the main functions context
     if (strcmp(symbol->identifier, "argv") != 0)
     {
@@ -263,27 +304,35 @@ static Type* resolve_index_expression(Resolver* resolver, AST_Expression* expres
         printf("You cannot use index expressions with other values than argv of the main function\n");
         exit(1);
     }
+    */
 
     // we should make sure that the type of the expression is integer
     Type* index_type = resolve_expression(resolver, expression->index.value);
     
-    // TODO(timo): We also have the element_type member in the array type, can/should we use it for something?
     if (index_type->kind != TYPE_INTEGER)
     {
-        // TODO(timo): Error
-        printf("Array subscript cannot be other type than integer\n");
-        exit(1);
+        Diagnostic* _diagnostic = diagnostic(
+            DIAGNOSTIC_ERROR, expression->position,
+            ":RESOLVER - TypeError: Array subscripts must be integers.",
+            variable->identifier->lexeme);
+        array_push(resolver->diagnostics, _diagnostic);
     }
     
-    // the index cannot be < 0 and not > array length - 1
-    Value index_value = expression->index.value->literal.value;
+    // TODO(timo): Boundary checks => the index cannot be < 0 and not > array length - 1
+    Value index_value = expression->index.value->value;
 
     if (index_value.integer < 0)
     {
-        // TODO(timo): Error
-        printf("Array subscript less than zero is not allowed\n");
-        exit(1);
+        Diagnostic* _diagnostic = diagnostic(
+            DIAGNOSTIC_ERROR, expression->position,
+            ":RESOLVER - IndexError: Array subscript less than zero.",
+            variable->identifier->lexeme);
+        array_push(resolver->diagnostics, _diagnostic);
     }
+    
+
+    // TODO(timo): The array size should be gotten from initializing the array but since
+    // we have the arrays only for the argv, they are resolved elsewhere
     // TODO(timo): We don't have a way to get the value of the argc for now
     /*
     if (index_value.integer > argc->value.integer)
@@ -294,15 +343,23 @@ static Type* resolve_index_expression(Resolver* resolver, AST_Expression* expres
     }
     */
     
-    // TODO(timo): Should we return the type of the index or the element type
+    // TODO(timo): We prbably should make sure that the elements of the array are integers
+    // but that is not needed for now since we only have arrays for argv
+
+    // TODO(timo): We also have the element_type member in the array type, can/should we use it for something?
+
+    // TODO(timo): Should we return the type of the index or the element type?
     return index_type;
 }
 
 
 static Type* resolve_function_expression(Resolver* resolver, AST_Expression* expression)
 {
+    // TODO(timo): If we are in function at this point, error out.
+    // if not in function -> resolve function -> return function type
+    // else -> error -> return none type
+
     resolver->context.not_in_function = false;
-    // resolver->context.return_type = type_none();
 
     // Begin a new scope
 
@@ -316,9 +373,11 @@ static Type* resolve_function_expression(Resolver* resolver, AST_Expression* exp
         for (int i = 0; i < parameters->length; i++)
         {
             Parameter* parameter = parameters->items[i];
-            Type* parameter_type = resolve_type_specifier(parameter->specifier);
-            array_push(type->function.parameters, parameter_type);
-            scope_declare(resolver->global, symbol_parameter(parameter));
+            Type* parameter_type = resolve_type_specifier(resolver, parameter->specifier);
+            Symbol* symbol = symbol_parameter(parameter->identifier->lexeme, parameter_type);
+            // array_push(type->function.parameters, parameter_type);
+            scope_declare(resolver->global, symbol);
+            array_push(type->function.parameters, symbol);
         }
 
         type->function.arity = type->function.parameters->length;
@@ -348,32 +407,41 @@ static Type* resolve_call_expression(Resolver* resolver, AST_Expression* express
     // Make sure the called variable is actually callable - a function in our case
     if (type->kind != TYPE_FUNCTION)
     {
-        // TODO(timo): Error
-        printf("Cannot call a non-callable '%s'\n", symbol->identifier);
-        exit(1);
+        Diagnostic* _diagnostic = diagnostic(
+            DIAGNOSTIC_ERROR, expression->position,
+            ":RESOLVER - TypeError: '%s' is not callable.",
+            symbol->identifier);
+        array_push(resolver->diagnostics, _diagnostic);
+        // TODO(timo): return type none?
     }
 
     // Number of arguments == arity of the called function
     if (symbol->type->function.arity != arguments->length)
     {
-        // TODO(timo): Error
-        printf("Function '%s' expected %d arguments, but %d was given\n", 
-               symbol->identifier, symbol->type->function.arity, arguments->length);
-        exit(1);
+        Diagnostic* _diagnostic = diagnostic(
+            DIAGNOSTIC_ERROR, expression->position,
+            ":RESOLVER - TypeError: Function '%s' expected %d arguments, but %d was given\n", 
+            symbol->identifier, symbol->type->function.arity, arguments->length);
+        array_push(resolver->diagnostics, _diagnostic);
+        // TODO(timo): return type none?
     }
     
     // types of the arguments == types of the parameters
     for (int i = 0; i < arguments->length; i++)
     {
-        Type* argument_type = resolve_expression(resolver, (AST_Expression*)arguments->items[i]);
-        Type* parameter_type = symbol->type->function.parameters->items[i];
+        AST_Expression* argument = (AST_Expression*)arguments->items[i];
+        Symbol* parameter = symbol->type->function.parameters->items[i];
+
+        Type* argument_type = resolve_expression(resolver, argument);
+        Type* parameter_type = parameter->type;
 
         if (argument_type->kind != parameter_type->kind)
         {
-            // TODO(timo): Error
-            // TODO(timo): We could have the names of the parameters too to give better info for the user
-            printf("Conflicting types in function '%s' parameters\n", symbol->identifier);
-            exit(1);
+            Diagnostic* _diagnostic = diagnostic(
+                DIAGNOSTIC_ERROR, expression->position,
+                ":RESOLVER - TypeError: Parameter '%s' is of type '%s', but argument of type '%s' was given.", 
+                parameter->identifier, type_as_string(parameter_type->kind), type_as_string(argument_type->kind));
+            array_push(resolver->diagnostics, _diagnostic);
         }
     }
 
@@ -389,7 +457,7 @@ Type* resolve_expression(Resolver* resolver, AST_Expression* expression)
     switch (expression->kind)
     {
         case EXPRESSION_LITERAL:
-            type = resolve_literal_expression(expression);
+            type = resolve_literal_expression(resolver, expression);
             break;
         case EXPRESSION_VARIABLE:
             type = resolve_variable_expression(resolver, expression);
@@ -413,7 +481,13 @@ Type* resolve_expression(Resolver* resolver, AST_Expression* expression)
             type = resolve_function_expression(resolver, expression);
             break;
         default:
+        {
+            Diagnostic* _diagnostic = diagnostic(
+                DIAGNOSTIC_ERROR, expression->position,
+                ":RESOLVER - Unreachable: Invalid expression");
+            array_push(resolver->diagnostics, _diagnostic);
             break;
+        }
     }
 
     return type;
@@ -532,15 +606,19 @@ void resolve_statement(Resolver* resolver, AST_Statement* statement)
             resolve_break_statement(resolver);
             break;
         default:
-            // TODO(timo): Error
+        {
+            Diagnostic* _diagnostic = diagnostic(
+                DIAGNOSTIC_ERROR, statement->position,
+                ":RESOLVER - Unreachable: Invalid statement");
+            array_push(resolver->diagnostics, _diagnostic);
             break;
+        }
     }
 }
 
 
-Type* resolve_type_specifier(Type_Specifier specifier)
+Type* resolve_type_specifier(Resolver* resolver, Type_Specifier specifier)
 {
-    // TODO(timo): Array types
     switch (specifier)
     {
         case TYPE_SPECIFIER_INT:
@@ -550,8 +628,13 @@ Type* resolve_type_specifier(Type_Specifier specifier)
         case TYPE_SPECIFIER_ARRAY_INT:
             return type_array(type_integer());
         default:
-            // TODO(timo): Error
+        {
+            Diagnostic* _diagnostic = diagnostic(
+                DIAGNOSTIC_ERROR, (Position) {0},
+                ":RESOLVER - Unreachable: Invalid type specifier");
+            array_push(resolver->diagnostics, _diagnostic);
             break;
+        }
     }
 }
 
@@ -560,7 +643,7 @@ void resolve_variable_declaration(Resolver* resolver, AST_Declaration* declarati
 {
     // NOTE(timo): So this type will be the type of the value assigned to the variable 
     // or if the declaration is function, this will be the type of the return value.
-    Type* expected_type = resolve_type_specifier(declaration->specifier);
+    Type* expected_type = resolve_type_specifier(resolver, declaration->specifier);
     Type* actual_type = resolve_expression(resolver, declaration->initializer);
 
     if (expected_type->kind != actual_type->kind)
@@ -581,9 +664,15 @@ void resolve_variable_declaration(Resolver* resolver, AST_Declaration* declarati
 
 void resolve_function_declaration(Resolver* resolver, AST_Declaration* declaration)
 {
+    // TODO(timo): This is the place where we create the routines which has
+    // the name of the routine, its parameters, its scope etc.
+    //
+    // TODO(timo): We should actually open and close the new scope in here considering our
+    // implementation at this point
+    //
     // NOTE(timo): So this type will be the type of the value assigned to the variable 
     // or if the declaration is function, this will be the type of the return value.
-    Type* expected_type = resolve_type_specifier(declaration->specifier);
+    Type* expected_type = resolve_type_specifier(resolver, declaration->specifier);
     Type* actual_type = resolve_expression(resolver, declaration->initializer);
     
     // Check if the expected type and the actual type match
@@ -614,8 +703,13 @@ void resolve_declaration(Resolver* resolver, AST_Declaration* declaration)
             resolve_function_declaration(resolver, declaration);
             break;
         default:
-            // TODO(timo): Error
+        {
+            Diagnostic* _diagnostic = diagnostic(
+                DIAGNOSTIC_ERROR, declaration->position,
+                ":RESOLVER - Unreachable: Invalid declaration");
+            array_push(resolver->diagnostics, _diagnostic);
             break;
+        }
     }
 }
 
@@ -623,9 +717,10 @@ void resolve_declaration(Resolver* resolver, AST_Declaration* declaration)
 void resolve(Resolver* resolver, array* declarations)
 {
     // TODO(timo): We probably should create a abstraction for the program itself
+    // The program is probably not needed, but we still should handle the program
+    // arguments somehow and it is probably best done in here
     for (int i = 0; i < declarations->length; i++)
     {
-        AST_Declaration* declaration = declarations->items[i];
         resolve_declaration(resolver, declarations->items[i]);
     }
 }

@@ -25,13 +25,13 @@ Symbol* symbol_function(const char* identifier, Type* type)
 }
 
 
-Symbol* symbol_parameter(Parameter* parameter)
+Symbol* symbol_parameter(const char* identifier, Type* type)
 {
     Symbol* symbol = xcalloc(1, sizeof (Symbol));
     symbol->state = STATE_RESOLVED;
     symbol->kind = SYMBOL_PARAMETER;
-    symbol->identifier = parameter->identifier->lexeme;
-    symbol->type = resolve_type_specifier(parameter->specifier);
+    symbol->identifier = identifier;
+    symbol->type = type;
 
     return symbol;
 }

@@ -37,7 +37,8 @@ Type* type_function()
     type->kind = TYPE_FUNCTION;
     // TODO(timo): How to calculate the size?
     type->function.return_type = NULL;
-    type->function.parameters = array_init(sizeof (Type*));
+    // type->function.parameters = array_init(sizeof (Type*));
+    type->function.parameters = array_init(sizeof (Symbol*));
     type->function.arity = 0;
 
     return type;

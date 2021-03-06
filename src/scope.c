@@ -5,7 +5,8 @@ Scope* scope_init(Scope* enclosing)
 {
     Scope* scope = xcalloc(1, sizeof (Scope));
     scope->enclosing = enclosing;
-    scope->symbols = array_init(sizeof(Symbol*));
+    scope->symbols = hashtable_init(sizeof (Symbol));
+    // scope->symbols = array_init(sizeof (Symbol*));
 
     return scope;
 }
@@ -13,10 +14,12 @@ Scope* scope_init(Scope* enclosing)
 
 void scope_free(Scope* scope)
 {
+    /*
     for (int i = 0; i < scope->symbols->length; i++)
         symbol_free(scope->symbols->items[i]);
 
     array_free(scope->symbols);
+    */
 
     free(scope);
     scope = NULL;
@@ -37,8 +40,11 @@ void scope_leave()
 */
 
 
-Symbol* scope_get(Scope* scope, const char* identifier)
+static Symbol* scope_get(Scope* scope, const char* identifier)
 {
+    return hashtable_get(scope->symbols, identifier);
+
+    /*
     for (int i = 0; i < scope->symbols->length; i++)
     {
         Symbol* it = scope->symbols->items[i];
@@ -47,14 +53,16 @@ Symbol* scope_get(Scope* scope, const char* identifier)
     }
     
     return NULL;
+    */
 }
 
 
-void scope_put(Scope* scope, Symbol* symbol)
+static void scope_put(Scope* scope, Symbol* symbol)
 {
     // TODO(timo): Should I check here if the symbol is already declared?
     // Or do I do it somewhere else before putting the symbol in the table?
-    array_push(scope->symbols, symbol);
+    // array_push(scope->symbols, symbol);
+    hashtable_put(scope->symbols, symbol->identifier, symbol);
 }
 
 
