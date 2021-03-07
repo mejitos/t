@@ -21,41 +21,16 @@ void scope_free(Scope* scope)
 
     hashtable_free(scope->symbols);
 
-    if (scope->enclosing) scope_free(scope->enclosing);
+    // if (scope->enclosing) scope_free(scope->enclosing);
 
     free(scope);
     scope = NULL;
 }
 
 
-/*
-void scope_enter(Scope* enclosing)
-{
-    //
-}
-
-
-void scope_leave()
-{
-    //
-}
-*/
-
-
 static Symbol* scope_get(Scope* scope, const char* identifier)
 {
     return hashtable_get(scope->symbols, identifier);
-
-    /*
-    for (int i = 0; i < scope->symbols->length; i++)
-    {
-        Symbol* it = scope->symbols->items[i];
-        if (strcmp(it->identifier, identifier) == 0)
-            return it;
-    }
-    
-    return NULL;
-    */
 }
 
 
@@ -75,7 +50,7 @@ Symbol* scope_lookup(Scope* scope, const char* identifier)
     if (symbol != NULL) return symbol;
 
     if (scope->enclosing != NULL)
-        return scope_lookup(scope, identifier);
+        return scope_lookup(scope->enclosing, identifier);
 
     return NULL;
 }

@@ -82,7 +82,6 @@ Type* type_function()
     type->kind = TYPE_FUNCTION;
     // TODO(timo): How to calculate the size?
     type->function.return_type = NULL;
-    // type->function.parameters = array_init(sizeof (Type*));
     type->function.parameters = array_init(sizeof (Symbol*));
     type->function.arity = 0;
 
@@ -90,7 +89,6 @@ Type* type_function()
 }
 
 
-// Type* type_array(Type* element_type, int length)
 Type* type_array(Type* element_type)
 {
     Type* type = xmalloc(sizeof (Type));
@@ -116,6 +114,7 @@ void type_free(Type* type)
         case TYPE_BOOLEAN:
             break;
         case TYPE_FUNCTION:
+            if (type->function.scope) scope_free(type->function.scope);
             // NOTE(timo): Return types are primitive types at this point so there 
             // is no need to explicitly remove them as they point to type table
             // type_free(type->function.return_type);
@@ -135,16 +134,4 @@ void type_free(Type* type)
     
     free(type);
     type = NULL;
-}
-
-
-bool type_is_boolean(Type* type)
-{
-    return type->kind == TYPE_BOOLEAN;
-}
-
-
-bool type_is_integer(Type* type)
-{
-    return type->kind == TYPE_INTEGER;
 }

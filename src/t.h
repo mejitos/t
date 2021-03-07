@@ -397,6 +397,7 @@ struct Type
             Type* return_type;
             int arity;
             array* parameters; // array of pointers to parameter symbols
+            Scope* scope;
         } function;
         // NOTE(timo): Even though the only array we have for now is the argv,
         // it is probably best idea to try to implement it "properly"
@@ -418,8 +419,6 @@ void type_free(Type* type);
 hashtable* type_table_init();
 const char* type_as_string(Type* type);
 void type_table_free(hashtable* table);
-bool type_is_integer(Type* type);
-bool type_is_boolean(Type* type);
 
 
 /*
@@ -496,8 +495,6 @@ struct Scope
 
 Scope* scope_init(Scope* enclosing); // returns the created scope
 void scope_free(Scope* scope);
-Scope* scope_enter(Scope* enclosing); // returns the entered scope
-Scope* scope_leave(); // returns the closed scope
 Symbol* scope_lookup(Scope* scope, const char* identifier);
 void scope_declare(Scope* scope, Symbol* symbol);
 bool scope_includes(Scope* scope, const char* identifier);

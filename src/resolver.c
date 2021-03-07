@@ -43,6 +43,22 @@ void resolver_free(Resolver* resolver)
 }
 
 
+static inline void enter_scope(Resolver* resolver)
+{
+    // NOTE(timo): local scope at this point should be the global scope
+    assert(resolver->local == resolver->global);
+
+    Scope* scope = scope_init(resolver->local);
+    resolver->local = scope;
+}
+
+
+static inline void leave_scope(Resolver* resolver)
+{
+    resolver->local = resolver->global;
+}
+
+
 static Type* resolve_literal_expression(Resolver* resolver, AST_Expression* expression)
 {
     assert(expression->kind == EXPRESSION_LITERAL);
@@ -269,7 +285,7 @@ static Type* resolve_binary_expression(Resolver* resolver, AST_Expression* expre
 static Type* resolve_variable_expression(Resolver* resolver, AST_Expression* expression)
 {
     Type* type;
-    Symbol* symbol = scope_lookup(resolver->global, expression->identifier->lexeme);
+    Symbol* symbol = scope_lookup(resolver->local, expression->identifier->lexeme);
      
     if (symbol == NULL)
     {
@@ -318,7 +334,7 @@ static Type* resolve_index_expression(Resolver* resolver, AST_Expression* expres
     
     // Make sure the subscript target is an array type
     Type* variable_type = resolve_expression(resolver, variable);
-    Symbol* symbol = scope_lookup(resolver->global, variable->identifier->lexeme);
+    Symbol* symbol = scope_lookup(resolver->local, variable->identifier->lexeme);
 
     if (variable_type->kind != TYPE_ARRAY)
     {
@@ -394,8 +410,8 @@ static Type* resolve_function_expression(Resolver* resolver, AST_Expression* exp
     // else -> error -> return none type
 
     resolver->context.not_in_function = false;
-
     // Begin a new scope
+    enter_scope(resolver);
 
     Type* type = type_function();
 
@@ -409,8 +425,7 @@ static Type* resolve_function_expression(Resolver* resolver, AST_Expression* exp
             Parameter* parameter = parameters->items[i];
             Type* parameter_type = resolve_type_specifier(resolver, parameter->specifier);
             Symbol* symbol = symbol_parameter(parameter->identifier->lexeme, parameter_type);
-            // array_push(type->function.parameters, parameter_type);
-            scope_declare(resolver->global, symbol);
+            scope_declare(resolver->local, symbol);
             array_push(type->function.parameters, symbol);
         }
 
@@ -419,9 +434,11 @@ static Type* resolve_function_expression(Resolver* resolver, AST_Expression* exp
 
     // Resolve body and return type
     resolve_statement(resolver, expression->function.body);
-     
-    // End scope
     
+    // Set the functions scope to created local scope
+    type->function.scope = resolver->local;
+    // End scope
+    leave_scope(resolver);
     resolver->context.not_in_function = true;
 
     // NOTE(timo): Decided to force only single return statement per function, so this can actually 
@@ -438,7 +455,7 @@ static Type* resolve_call_expression(Resolver* resolver, AST_Expression* express
 {
     Type* type = resolve_expression(resolver, expression->call.variable);
     array* arguments = expression->call.arguments;
-    Symbol* symbol = scope_lookup(resolver->global, expression->call.variable->identifier->lexeme);
+    Symbol* symbol = scope_lookup(resolver->local, expression->call.variable->identifier->lexeme);
 
     // Make sure the called variable is actually callable - a function in our case
     if (type->kind == TYPE_FUNCTION)
@@ -716,7 +733,7 @@ void resolve_variable_declaration(Resolver* resolver, AST_Declaration* declarati
     
     // TODO(timo): Should we take the responsibility of declaring errors of
     // already diagnosed variables instead of doing it in the scope
-    scope_declare(resolver->global, symbol);
+    scope_declare(resolver->local, symbol);
 }
 
 
@@ -746,7 +763,7 @@ void resolve_function_declaration(Resolver* resolver, AST_Declaration* declarati
 
     // TODO(timo): Should we take the responsibility of declaring errors of
     // already diagnosed variables instead of doing it in the scope
-    scope_declare(resolver->global, symbol);
+    scope_declare(resolver->local, symbol);
 }
 
 

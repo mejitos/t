@@ -692,9 +692,9 @@ static void test_resolve_function_expression()
     type = resolve_expression(&resolver, expression);
     
     assert(resolver.diagnostics->length == 0);
-    assert(resolver.global->symbols->count == 2);
     assert(resolver.context.return_type->kind == TYPE_INTEGER);
     assert(type->kind == TYPE_FUNCTION);
+    assert(type->function.scope->symbols->count == 2);
     assert(type->function.return_type->kind == TYPE_INTEGER);
     
     type_free(type);
@@ -724,9 +724,9 @@ static void test_resolve_function_expression()
     type = resolve_expression(&resolver, expression);
     
     assert(resolver.diagnostics->length == 0);
-    assert(resolver.global->symbols->count == 1);
     assert(resolver.context.return_type->kind == TYPE_INTEGER);
     assert(type->kind == TYPE_FUNCTION);
+    assert(type->function.scope->symbols->count == 1);
     assert(type->function.return_type->kind == TYPE_INTEGER);
     
     type_free(type);
@@ -1425,6 +1425,62 @@ void test_resolve_order_independent_global_variable_declarations(Lexer* lexer, P
 */
 
 
+static void test_resolve_local_scopes()
+{
+    printf("\tLocal scopes...");
+    not_error = true;
+
+    Lexer lexer;
+    Parser parser;
+    hashtable* type_table;
+    Resolver resolver;
+
+    const char* source = "greater: bool = (x: int, y: int) => {\n"
+                         "    return x > y;\n"
+                         "};\n"
+                         "\n"
+                         "main: int = (argc: int, argv: [int]) => {\n"
+                         "    foo: bool = true;\n"
+                         "    bar: bool = false;\n"
+                         "    greater(1, 0);\n"
+                         "\n"
+                         "   return 0;\n"
+                         "};";
+
+    lexer_init(&lexer, source);
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    parse(&parser);
+
+    type_table = type_table_init();
+    resolver_init(&resolver, type_table);
+    resolve(&resolver, parser.declarations);
+
+    assert(resolver.global->symbols->count == 2);
+    
+    // Local scope for the function 'greater'
+    Symbol* symbol_greater = scope_lookup(resolver.global, "greater");
+    assert(strcmp(symbol_greater->identifier, "greater") == 0);
+    Scope* scope_greater = symbol_greater->type->function.scope;
+    assert(scope_greater->symbols->count == 2);
+
+    // Local scope for the function 'main'
+    Symbol* symbol_main = scope_lookup(resolver.global, "main");
+    assert(strcmp(symbol_main->identifier, "main") == 0);
+    Scope* scope_main = symbol_main->type->function.scope;
+    assert(scope_main->symbols->count == 4);
+
+    resolver_free(&resolver);
+    type_table_free(type_table);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    if (not_error) printf("PASSED\n");
+    else printf("\n");
+}
+
+
 void test_resolver()
 {
     printf("Running resolver tests...\n");
@@ -1506,4 +1562,8 @@ void test_resolver()
     // test_resolve_order_independent_global_variable_declarations(&lexer, &parser, &resolver);
 
     // TODO(timo); Diagnose errors while resolving order independent global variable declarations
+
+    // ----
+
+    test_resolve_local_scopes();
 }
