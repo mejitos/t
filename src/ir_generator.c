@@ -9,7 +9,7 @@ void instruction_free(Instruction* instruction)
 }
 
 
-void generator_init(IR_Generator* generator)
+void ir_generator_init(IR_Generator* generator)
 {
     *generator = (IR_Generator) { .temp = 0,
                                   .label = 0,
@@ -17,7 +17,7 @@ void generator_init(IR_Generator* generator)
 }
 
 
-void generator_free(IR_Generator* generator)
+void ir_generator_free(IR_Generator* generator)
 {
     for (int i = 0; i < generator->instructions->length; i++)
         instruction_free(generator->instructions->items[i]);
@@ -47,369 +47,7 @@ static char* label(IR_Generator* generator)
 }
 
 
-void dump_instruction(Instruction* instruction)
-{
-    switch (instruction->operation)
-    {
-        case OP_ADD:
-            printf("\t%s := %s + %s\n", instruction->result, instruction->arg1, instruction->arg2);
-            break;
-        case OP_SUB:
-            printf("\t%s := %s - %s\n", instruction->result, instruction->arg1, instruction->arg2);
-            break;
-        case OP_MUL:
-            printf("\t%s := %s * %s\n", instruction->result, instruction->arg1, instruction->arg2);
-            break;
-        case OP_DIV:
-            printf("\t%s := %s / %s\n", instruction->result, instruction->arg1, instruction->arg2);
-            break;
-        case OP_EQ:
-            printf("\t%s := %s == %s\n", instruction->result, instruction->arg1, instruction->arg2);
-            break;
-        case OP_NEQ:
-            printf("\t%s := %s != %s\n", instruction->result, instruction->arg1, instruction->arg2);
-            break;
-        case OP_LT:
-            printf("\t%s := %s < %s\n", instruction->result, instruction->arg1, instruction->arg2);
-            break;
-        case OP_LTE:
-            printf("\t%s := %s <= %s\n", instruction->result, instruction->arg1, instruction->arg2);
-            break;
-        case OP_GT:
-            printf("\t%s := %s > %s\n", instruction->result, instruction->arg1, instruction->arg2);
-            break;
-        case OP_GTE:
-            printf("\t%s := %s >= %s\n", instruction->result, instruction->arg1, instruction->arg2);
-            break;
-        case OP_MINUS:
-            printf("\t%s := -%s\n", instruction->result, instruction->arg1);
-            break;
-        case OP_NEG:
-            printf("\t%s := not %s\n", instruction->result, instruction->arg1);
-            break;
-        case OP_COPY:
-            printf("\t%s := %s\n", instruction->result, instruction->arg1);
-            break;
-        case OP_FUNCTION_BEGIN:
-            printf("\tfunction_begin %d\n", instruction->value.integer);
-            break;
-        case OP_FUNCTION_END:
-            printf("\tfunction_end\n");
-            break;
-        case OP_RETURN:
-            printf("\treturn %s\n", instruction->arg1);
-            break;
-        case OP_PARAM_PUSH:
-            printf("\tparameter_push %s\n", instruction->arg1);
-            break;
-        case OP_PARAM_POP:
-            printf("\tparameter_pop %d\n", instruction->value.integer);
-            break;
-        case OP_CALL:
-            printf("\t%s := call %s, %d\n", instruction->result, instruction->arg1, instruction->value.integer);
-            break;
-        case OP_LABEL:
-            printf("%s:\n", instruction->value.string);
-            break;
-        case OP_GOTO:
-            printf("\tgoto %s\n", instruction->value.string);
-            break;
-        case OP_GOTO_IF_FALSE:
-            printf("\tif_false %s goto %s\n", instruction->arg1, instruction->value.string);
-            break;
-        default:
-            // TODO(timo): Error
-            break;
-    }
-}
-
-
-void dump_instructions(array* instructions)
-{
-    printf("\n");
-    printf("-----===== INSTRUCTION DUMP =====-----\n");
-
-    for (int i = 0; i < instructions->length; i++)
-    {
-        printf("%d  ", i);
-        dump_instruction(instructions->items[i]);
-    }
-
-    printf("-----=====||||||||||||||||||=====-----\n");
-}
-
-
-Instruction* instruction_copy(char* arg, char* result)
-{
-    Instruction* instruction = xcalloc(1, sizeof (Instruction));
-    instruction->operation = OP_COPY;
-    instruction->arg1 = arg;
-    instruction->arg2 = NULL;
-    instruction->result = result;
-
-    return instruction;
-}
-
-
-Instruction* instruction_add(char* arg1, char* arg2, char* result)
-{
-    Instruction* instruction = xcalloc(1, sizeof (Instruction));
-    instruction->operation = OP_ADD;
-    instruction->arg1 = arg1;
-    instruction->arg2 = arg2;
-    instruction->result = result;
-
-    return instruction;
-}
-
-
-Instruction* instruction_sub(char* arg1, char* arg2, char* result)
-{
-    Instruction* instruction = xcalloc(1, sizeof (Instruction));
-    instruction->operation = OP_SUB;
-    instruction->arg1 = arg1;
-    instruction->arg2 = arg2;
-    instruction->result = result;
-
-    return instruction;
-}
-
-
-Instruction* instruction_mul(char* arg1, char* arg2, char* result)
-{
-    Instruction* instruction = xcalloc(1, sizeof (Instruction));
-    instruction->operation = OP_MUL;
-    instruction->arg1 = arg1;
-    instruction->arg2 = arg2;
-    instruction->result = result;
-
-    return instruction;
-}
-
-
-Instruction* instruction_div(char* arg1, char* arg2, char* result)
-{
-    Instruction* instruction = xcalloc(1, sizeof (Instruction));
-    instruction->operation = OP_DIV;
-    instruction->arg1 = arg1;
-    instruction->arg2 = arg2;
-    instruction->result = result;
-
-    return instruction;
-}
-
-
-Instruction* instruction_eq(char* arg1, char* arg2, char* result)
-{
-    Instruction* instruction = xcalloc(1, sizeof (Instruction));
-    instruction->operation = OP_EQ;
-    instruction->arg1 = arg1;
-    instruction->arg2 = arg2;
-    instruction->result = result;
-
-    return instruction;
-}
-
-
-Instruction* instruction_neq(char* arg1, char* arg2, char* result)
-{
-    Instruction* instruction = xcalloc(1, sizeof (Instruction));
-    instruction->operation = OP_NEQ;
-    instruction->arg1 = arg1;
-    instruction->arg2 = arg2;
-    instruction->result = result;
-
-    return instruction;
-}
-
-
-Instruction* instruction_lt(char* arg1, char* arg2, char* result)
-{
-    Instruction* instruction = xcalloc(1, sizeof (Instruction));
-    instruction->operation = OP_LT;
-    instruction->arg1 = arg1;
-    instruction->arg2 = arg2;
-    instruction->result = result;
-
-    return instruction;
-}
-
-
-Instruction* instruction_lte(char* arg1, char* arg2, char* result)
-{
-    Instruction* instruction = xcalloc(1, sizeof (Instruction));
-    instruction->operation = OP_LTE;
-    instruction->arg1 = arg1;
-    instruction->arg2 = arg2;
-    instruction->result = result;
-
-    return instruction;
-}
-
-
-Instruction* instruction_gt(char* arg1, char* arg2, char* result)
-{
-    Instruction* instruction = xcalloc(1, sizeof (Instruction));
-    instruction->operation = OP_GT;
-    instruction->arg1 = arg1;
-    instruction->arg2 = arg2;
-    instruction->result = result;
-
-    return instruction;
-}
-
-
-Instruction* instruction_gte(char* arg1, char* arg2, char* result)
-{
-    Instruction* instruction = xcalloc(1, sizeof (Instruction));
-    instruction->operation = OP_GTE;
-    instruction->arg1 = arg1;
-    instruction->arg2 = arg2;
-    instruction->result = result;
-
-    return instruction;
-}
-
-Instruction* instruction_minus(char* arg, char* result)
-{
-    Instruction* instruction = xcalloc(1, sizeof (Instruction));
-    instruction->operation = OP_MINUS;
-    instruction->arg1 = arg;
-    instruction->arg2 = NULL;
-    instruction->result = result;
-
-    return instruction;
-}
-
-
-Instruction* instruction_neg(char* arg, char* result)
-{
-    Instruction* instruction = xcalloc(1, sizeof (Instruction));
-    instruction->operation = OP_NEG;
-    instruction->arg1 = arg;
-    instruction->arg2 = NULL;
-    instruction->result = result;
-
-    return instruction;
-}
-
-
-Instruction* instruction_function_begin()
-{
-    Instruction* instruction = xcalloc(1, sizeof (Instruction));
-    instruction->operation = OP_FUNCTION_BEGIN;
-    instruction->arg1 = NULL;
-    instruction->arg2 = NULL;
-    instruction->result = NULL;
-    instruction->value.integer = 0;
-
-    return instruction;
-}
-
-
-Instruction* instruction_function_end()
-{
-    Instruction* instruction = xcalloc(1, sizeof (Instruction));
-    instruction->operation = OP_FUNCTION_END;
-    instruction->arg1 = NULL;
-    instruction->arg2 = NULL;
-    instruction->result = NULL;
-
-    return instruction;
-}
-
-
-Instruction* instruction_param_push(char* arg)
-{
-    Instruction* instruction = xcalloc(1, sizeof (Instruction));
-    instruction->operation = OP_PARAM_PUSH;
-    instruction->arg1 = arg;
-    instruction->arg2 = NULL;
-    instruction->result = NULL;
-
-    return instruction;
-}
-
-
-Instruction* instruction_param_pop(int release)
-{
-    Instruction* instruction = xcalloc(1, sizeof (Instruction));
-    instruction->operation = OP_PARAM_POP;
-    instruction->arg1 = NULL;
-    instruction->arg2 = NULL;
-    instruction->result = NULL;
-    instruction->value.integer = release;
-
-    return instruction;
-}
-
-
-Instruction* instruction_call(char* arg, char* result, int n)
-{
-    Instruction* instruction = xcalloc(1, sizeof (Instruction));
-    instruction->operation = OP_CALL;
-    instruction->arg1 = arg;
-    instruction->arg2 = NULL;
-    instruction->result = result;
-    instruction->value.integer = n;
-
-    return instruction;
-}
-
-
-Instruction* instruction_return(char* arg)
-{
-    Instruction* instruction = xcalloc(1, sizeof (Instruction));
-    instruction->operation = OP_RETURN;
-    instruction->arg1 = arg;
-    instruction->arg2 = NULL;
-    instruction->result = NULL;
-
-    return instruction;
-}
-
-
-Instruction* instruction_label(char* label)
-{
-    Instruction* instruction = xcalloc(1, sizeof (Instruction));
-    instruction->operation = OP_LABEL;
-    instruction->arg1 = NULL;
-    instruction->arg2 = NULL;
-    instruction->result = NULL;
-    instruction->value.string = label; // TODO(timo): Now that I think of it, this could be just a arg1
-
-    return instruction;
-}
-
-
-Instruction* instruction_goto(char* label)
-{
-    Instruction* instruction = xcalloc(1, sizeof (Instruction));
-    instruction->operation = OP_GOTO;
-    instruction->arg1 = NULL;
-    instruction->arg2 = NULL;
-    instruction->result = NULL;
-    instruction->value.string = label; // TODO(timo): Now that I think of it, this could be just a arg1
-
-    return instruction;
-}
-
-
-Instruction* instruction_goto_if_false(char* arg, char* label)
-{
-    Instruction* instruction = xcalloc(1, sizeof (Instruction));
-    instruction->operation = OP_GOTO_IF_FALSE;
-    instruction->arg1 = arg;
-    instruction->arg2 = NULL;
-    instruction->result = NULL;
-    instruction->value.string = label; // TODO(timo): Now that I think of it, this could be just a arg1
-
-    return instruction;
-}
-
-
-// Instruction* generate_expression(IR_Generator* generator, AST_Expression* expression)
-char* generate_expression(IR_Generator* generator, AST_Expression* expression)
+char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression)
 {
     // TODO(timo): This should probably return the instruction structures
     switch (expression->kind)
@@ -431,11 +69,11 @@ char* generate_expression(IR_Generator* generator, AST_Expression* expression)
             return result;
             */
             // Generate nothing, just return the literal
-            return (char*)expression->literal.literal->lexeme;
+            return (char*)expression->literal->lexeme;
         }
         case EXPRESSION_UNARY:
         {
-            char* operand = generate_expression(generator, expression->unary.operand);
+            char* operand = ir_generate_expression(generator, expression->unary.operand);
             char* operator = (char*)expression->unary._operator->lexeme;
             char* result = temp(generator);
 
@@ -463,8 +101,8 @@ char* generate_expression(IR_Generator* generator, AST_Expression* expression)
         }
         case EXPRESSION_BINARY:
         {
-            char* left = generate_expression(generator, expression->binary.left); 
-            char* right = generate_expression(generator, expression->binary.right);
+            char* left = ir_generate_expression(generator, expression->binary.left); 
+            char* right = ir_generate_expression(generator, expression->binary.right);
             char* operator = (char*)expression->binary._operator->lexeme;
             // NOTE(timo): When we move this into here, we get the correct ordering of the temp labels
             char* result = temp(generator);
@@ -529,7 +167,7 @@ char* generate_expression(IR_Generator* generator, AST_Expression* expression)
             return result;
             */
             // Generate nothing, just return the variable
-            return (char*)expression->literal.literal->lexeme;
+            return (char*)expression->identifier->lexeme;
         }
         case EXPRESSION_ASSIGNMENT:
         {
@@ -539,7 +177,7 @@ char* generate_expression(IR_Generator* generator, AST_Expression* expression)
             // Assignment happens pretty much only to the named variable so there is no
             // need for temp variables
             char* result = (char*)expression->assignment.variable->identifier->lexeme;
-            char* arg = generate_expression(generator, expression->assignment.value);
+            char* arg = ir_generate_expression(generator, expression->assignment.value);
             printf("\t%s := %s\n", result, arg);
 
             Instruction* instruction = instruction_copy(arg, result);
@@ -562,7 +200,7 @@ char* generate_expression(IR_Generator* generator, AST_Expression* expression)
             instruction = instruction_function_begin();
             array_push(generator->instructions, instruction);
 
-            generate_statement(generator, expression->function.body);
+            ir_generate_statement(generator, expression->function.body);
 
             printf("\tfunction_end\n");
 
@@ -581,8 +219,9 @@ char* generate_expression(IR_Generator* generator, AST_Expression* expression)
             for (int i = arguments->length - 1; i >= 0; i--)
             {
                 AST_Expression* argument = (AST_Expression*)arguments->items[i];
-                release += argument->type->size;
-                char* arg = generate_expression(generator, argument);
+                // TODO(timo): I removed the types from the expressions themselves since they seemed useless
+                // release += argument->type->size;
+                char* arg = ir_generate_expression(generator, argument);
                 printf("\tparameter_push %s\n", arg);
 
                 instruction = instruction_param_push(arg);
@@ -590,7 +229,7 @@ char* generate_expression(IR_Generator* generator, AST_Expression* expression)
             }
 
             // Call instruction
-            char* arg = generate_expression(generator, expression->call.variable);
+            char* arg = ir_generate_expression(generator, expression->call.variable);
             char* result = temp(generator);
             // NOTE(timo): According to the Dragon Book the number of arguments is
             // important info to pass on in case of nested function calls
@@ -615,16 +254,16 @@ char* generate_expression(IR_Generator* generator, AST_Expression* expression)
 }
 
 
-void generate_statement(IR_Generator* generator, AST_Statement* statement)
+void ir_generate_statement(IR_Generator* generator, AST_Statement* statement)
 {
     switch (statement->kind)
     {
         case STATEMENT_EXPRESSION:
-            generate_expression(generator, statement->expression);
+            ir_generate_expression(generator, statement->expression);
             break;
         case STATEMENT_BLOCK:
             for (int i = 0; i < statement->block.statements->length; i++)
-                generate_statement(generator, (AST_Statement*)statement->block.statements->items[i]);
+                ir_generate_statement(generator, (AST_Statement*)statement->block.statements->items[i]);
             break;
         case STATEMENT_WHILE:
         {
@@ -640,7 +279,7 @@ void generate_statement(IR_Generator* generator, AST_Statement* statement)
             instruction = instruction_label(label_condition);
             array_push(generator->instructions, instruction);
 
-            char* condition = generate_expression(generator, statement->_while.condition);
+            char* condition = ir_generate_expression(generator, statement->_while.condition);
 
             // if false, jump to label 2
             printf("\tif_false %s goto %s\n", condition, label_exit);
@@ -649,7 +288,7 @@ void generate_statement(IR_Generator* generator, AST_Statement* statement)
             array_push(generator->instructions, instruction);
             
             // print the body
-            generate_statement(generator, statement->_while.body);
+            ir_generate_statement(generator, statement->_while.body);
             
             // go back to the start of the loop to test the condition again
             printf("\tgoto %s\n", label_condition);
@@ -676,7 +315,7 @@ void generate_statement(IR_Generator* generator, AST_Statement* statement)
                 // Local labels
                 char* label_else = label(generator);
                 char* label_exit = label(generator);
-                char* condition = generate_expression(generator, statement->_if.condition);
+                char* condition = ir_generate_expression(generator, statement->_if.condition);
                 
                 //
                 printf("\tif_false %s goto %s\n", condition, label_else);
@@ -684,7 +323,7 @@ void generate_statement(IR_Generator* generator, AST_Statement* statement)
                 instruction = instruction_goto_if_false(condition, label_else);
                 array_push(generator->instructions, instruction);
 
-                generate_statement(generator, statement->_if.then);
+                ir_generate_statement(generator, statement->_if.then);
                 
                 //
                 printf("\tgoto %s\n", label_exit);
@@ -697,7 +336,7 @@ void generate_statement(IR_Generator* generator, AST_Statement* statement)
                 instruction = instruction_label(label_else);
                 array_push(generator->instructions, instruction);
 
-                generate_statement(generator, statement->_if._else);
+                ir_generate_statement(generator, statement->_if._else);
                 
                 //
                 printf("%s:\n", label_exit);
@@ -711,7 +350,7 @@ void generate_statement(IR_Generator* generator, AST_Statement* statement)
                 Instruction* instruction;
                 // Local labels
                 char* label_exit = label(generator);
-                char* condition = generate_expression(generator, statement->_if.condition);
+                char* condition = ir_generate_expression(generator, statement->_if.condition);
                 
                 //
                 printf("\tif_false %s goto %s\n", condition, label_exit);
@@ -719,7 +358,7 @@ void generate_statement(IR_Generator* generator, AST_Statement* statement)
                 instruction = instruction_goto_if_false(condition, label_exit);
                 array_push(generator->instructions, instruction);
 
-                generate_statement(generator, statement->_if.then);
+                ir_generate_statement(generator, statement->_if.then);
                 
                 // 
                 printf("%s:\n", label_exit);
@@ -731,7 +370,7 @@ void generate_statement(IR_Generator* generator, AST_Statement* statement)
         }
         case STATEMENT_RETURN:
         {
-            char* value = generate_expression(generator, statement->_return.value);
+            char* value = ir_generate_expression(generator, statement->_return.value);
             printf("\treturn %s\n", value);
 
             Instruction* instruction = instruction_return(value);
@@ -745,7 +384,7 @@ void generate_statement(IR_Generator* generator, AST_Statement* statement)
 }
 
 
-void generate_declaration(IR_Generator* generator, AST_Declaration* declaration)
+void ir_generate_declaration(IR_Generator* generator, AST_Declaration* declaration)
 {
     switch (declaration->kind)
     {
@@ -776,7 +415,7 @@ void generate_declaration(IR_Generator* generator, AST_Declaration* declaration)
             // This function beginnning and ending is handled in function expression for the time being
             // printf("\tfunction_begin %d\n", N);
             
-            generate_expression(generator, declaration->initializer);
+            ir_generate_expression(generator, declaration->initializer);
 
             // printf("\tfunction_end\n");
             break;
@@ -788,15 +427,8 @@ void generate_declaration(IR_Generator* generator, AST_Declaration* declaration)
 }
 
 
-void generate(IR_Generator* generator)
+void ir_generate(IR_Generator* generator, array* declarations)
 {
-    /*
-    if ((generator->output_file = fopen("ir.tac", "w")) == NULL)
-    {
-        printf("Unable to open file 'ir.tac'\n");
-        exit(1);
-    }
-
-    fclose(output_file);
-    */
+    for (int i = 0; i < declarations->length; i++)
+        ir_generate_declaration(generator, declarations->items[i]);
 }

@@ -72,6 +72,7 @@ void print_diagnostic(Diagnostic* diagnostic);
  *  File: t.c
  */
 void compile(const char* source);
+void compile_from_file(const char* path);
 
 
 /*
@@ -648,6 +649,31 @@ struct Instruction
 };
 
 
+Instruction* instruction_copy(char* arg, char* result);
+Instruction* instruction_add(char* arg1, char* arg2, char* result);
+Instruction* instruction_sub(char* arg1, char* arg2, char* result);
+Instruction* instruction_mul(char* arg1, char* arg2, char* result);
+Instruction* instruction_div(char* arg1, char* arg2, char* result);
+Instruction* instruction_eq(char* arg1, char* arg2, char* result);
+Instruction* instruction_neq(char* arg1, char* arg2, char* result);
+Instruction* instruction_lt(char* arg1, char* arg2, char* result);
+Instruction* instruction_lte(char* arg1, char* arg2, char* result);
+Instruction* instruction_gt(char* arg1, char* arg2, char* result);
+Instruction* instruction_gte(char* arg1, char* arg2, char* result);
+Instruction* instruction_minus(char* arg, char* result);
+Instruction* instruction_neg(char* arg, char* result);
+Instruction* instruction_function_begin();
+Instruction* instruction_function_end();
+Instruction* instruction_param_push(char* arg);
+Instruction* instruction_param_pop(int release);
+Instruction* instruction_call(char* arg, char* result, int n);
+Instruction* instruction_return(char* arg);
+Instruction* instruction_label(char* label);
+Instruction* instruction_goto(char* label);
+Instruction* instruction_goto_if_false(char* arg, char* label);
+void dump_instruction(Instruction* instruction);
+void dump_instructions(array* instructions);
+
 /*
  *  Code in basic block has only one entry point and one exit point, meaning
  *  there is no jump destinations inside the block and that only last instruction
@@ -673,11 +699,12 @@ typedef struct IR_Generator
 } IR_Generator;
 
 
-void generator_init(IR_Generator* generator);
-void generator_free(IR_Generator* generator);
-char* generate_expression(IR_Generator* generator, AST_Expression* expression);
-void generate_statement(IR_Generator* generator, AST_Statement* statement);
-void generate_declaration(IR_Generator* generator, AST_Declaration* declaration);
+void ir_generator_init(IR_Generator* generator);
+void ir_generator_free(IR_Generator* generator);
+void ir_generate(IR_Generator* generator, array* declarations);
+char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression);
+void ir_generate_statement(IR_Generator* generator, AST_Statement* statement);
+void ir_generate_declaration(IR_Generator* generator, AST_Declaration* declaration);
 
 void dump_instructions(array* instructions);
 
