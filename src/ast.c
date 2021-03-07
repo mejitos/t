@@ -233,6 +233,7 @@ AST_Expression* error_expression()
 {
     AST_Expression* expression = xmalloc(sizeof (AST_Expression));
     expression->kind = EXPRESSION_NONE;
+    // expression->type = NULL;
 
     return expression;
 }
@@ -270,11 +271,14 @@ void expression_free(AST_Expression* expression)
             {
                 for (int i = 0; i < expression->function.parameters->length; i++)
                 {
+                    // NOTE(timo): These are the unresolved parameters which have no types etc.
+                    // so this free is enough
                     free(expression->function.parameters->items[i]);
                     expression->function.parameters->items[i] = NULL;
                 }
                 array_free(expression->function.parameters);
             }
+            // if (expression->type != NULL) type_free(expression->type);
             statement_free(expression->function.body);
             break; 
         case EXPRESSION_CALL:

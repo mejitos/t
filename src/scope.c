@@ -5,8 +5,7 @@ Scope* scope_init(Scope* enclosing)
 {
     Scope* scope = xcalloc(1, sizeof (Scope));
     scope->enclosing = enclosing;
-    scope->symbols = hashtable_init(sizeof (Symbol));
-    // scope->symbols = array_init(sizeof (Symbol*));
+    scope->symbols = hashtable_init(10);
 
     return scope;
 }
@@ -14,12 +13,15 @@ Scope* scope_init(Scope* enclosing)
 
 void scope_free(Scope* scope)
 {
-    /*
-    for (int i = 0; i < scope->symbols->length; i++)
-        symbol_free(scope->symbols->items[i]);
+    for (int i = 0; i < scope->symbols->capacity; i++)
+    {
+        Symbol* symbol = scope->symbols->entries[i].value;
+        if (symbol) symbol_free(symbol);
+    }
 
-    array_free(scope->symbols);
-    */
+    hashtable_free(scope->symbols);
+
+    if (scope->enclosing) scope_free(scope->enclosing);
 
     free(scope);
     scope = NULL;

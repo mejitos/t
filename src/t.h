@@ -286,7 +286,7 @@ struct AST_Expression
 {
     Expression_Kind kind;
     Position position;
-    Type* type;
+    // Type* type;
     Value value;
 
     union {
@@ -414,6 +414,10 @@ Type* type_boolean();
 Type* type_function();
 // Type* type_array(Type* element_type, int length);
 Type* type_array(Type* element_type);
+void type_free(Type* type);
+hashtable* type_table_init();
+const char* type_as_string(Type* type);
+void type_table_free(hashtable* table);
 bool type_is_integer(Type* type);
 bool type_is_boolean(Type* type);
 
@@ -434,10 +438,8 @@ typedef struct Operand
 
 
 /*
- *  Symbol
+ *  Symbol stuff
  *
- *  NOTE(timo): Symbol state is not in use at the moment. It is only necessary
- *  when we have order independent declarations and we don't do that now.
  */
 typedef enum Symbol_Kind
 {
@@ -448,6 +450,9 @@ typedef enum Symbol_Kind
 } Symbol_Kind;
 
 
+/*
+ *  Symbol state is not in use at the moment.
+ */
 typedef enum Symbol_State
 {
     STATE_UNRESOLVED,
@@ -456,6 +461,11 @@ typedef enum Symbol_State
 } Symbol_State;
 
 
+/*
+ *  - identifier comes from AST nodes and it is being free'd when AST nodes are freed
+ *  - the type is free'd by type table if it is primitive type, else symbol has the
+ *  responsibility of freeing the type
+ */
 typedef struct Symbol
 {
     Symbol_Kind kind;
@@ -501,11 +511,12 @@ bool scope_includes(Scope* scope, const char* identifier);
 typedef struct Resolver
 {
     array* diagnostics;
+    hashtable* type_table;
     Scope* global;
     Scope* local; // the current scope
     // NOTE(timo): This scopes variable is probably not necessary since I actually
     // have only two scopes: global and local.
-    array* scopes; // the scope stack TODO(timo): push and pop functions
+    // array* scopes; // the scope stack TODO(timo): push and pop functions
     struct {
         bool not_in_loop;
         bool not_in_function;
@@ -514,7 +525,7 @@ typedef struct Resolver
     } context;
 } Resolver;
 
-void resolver_init(Resolver* resolver);
+void resolver_init(Resolver* resolver, hashtable* type_table);
 void resolver_free(Resolver* resolver);
 Type* resolve_expression(Resolver* resolver, AST_Expression* expression);
 void resolve_statement(Resolver* resolver, AST_Statement* statement);

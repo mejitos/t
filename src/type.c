@@ -31,6 +31,51 @@ Type* type_boolean()
 }
 
 
+const char* type_as_string(Type* type)
+{
+    switch (type->kind)
+    {
+        case TYPE_NONE:
+            return "none";
+        case TYPE_INTEGER:
+            return "int";
+        case TYPE_BOOLEAN:
+            return "bool";
+        default:
+            return "unknown type";
+    }
+}
+
+
+hashtable* type_table_init()
+{
+    hashtable* type_table = hashtable_init(3);
+    hashtable_put(type_table, "none", type_none());
+    hashtable_put(type_table, "int", type_integer());
+    hashtable_put(type_table, "bool", type_boolean());
+
+    return type_table;
+}
+
+
+void type_table_free(hashtable* table)
+{
+    for (int i = 0; i < table->capacity; i++)
+    {
+        Type* type = table->entries[i].value;
+
+        if (type)
+        {
+            type_free(type);
+            type = NULL;
+        }
+    }
+
+    hashtable_free(table);
+    table = NULL;
+}
+
+
 Type* type_function()
 {
     Type* type = xmalloc(sizeof (Type));
@@ -55,6 +100,41 @@ Type* type_array(Type* element_type)
     type->array.length = 0;
 
     return type;
+}
+
+
+void type_free(Type* type)
+{
+    // NOTE(timo): There is a lot of situations where the same types can be found from
+    // expressions and from symbols. Therefore we need to make a NULL check here.
+    if (type == NULL) return;
+
+    switch (type->kind)
+    {
+        case TYPE_NONE:
+        case TYPE_INTEGER:
+        case TYPE_BOOLEAN:
+            break;
+        case TYPE_FUNCTION:
+            // NOTE(timo): Return types are primitive types at this point so there 
+            // is no need to explicitly remove them as they point to type table
+            // type_free(type->function.return_type);
+            // NOTE(timo): The parameter list is a list of pointers to symbols
+            // which are being freed elsewhere
+            array_free(type->function.parameters);
+            break;
+        case TYPE_ARRAY:
+            // NOTE(timo): Element types are primitive types at this point so there 
+            // is no need to explicitly remove them as they point to type table
+            // type_free(type->array.element_type);
+            break;
+        default:
+            // TODO(timo): Error
+            break;
+    }
+    
+    free(type);
+    type = NULL;
 }
 
 

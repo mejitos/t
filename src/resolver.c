@@ -4,36 +4,42 @@
 #define INTEGER_MIN 2147483648; // absolute value
 
 
-void resolver_init(Resolver* resolver)
+void resolver_init(Resolver* resolver, hashtable* type_table)
 {
     *resolver = (Resolver){ .global = scope_init(NULL),
                             .diagnostics = array_init(sizeof (Diagnostic*)),
+                            .type_table = type_table,
                             .context.not_in_loop = true,
                             .context.not_in_function = true, };
+
+    resolver->local = resolver->global;
 }
 
 
 void resolver_free(Resolver* resolver)
 {
-    // TODO(timo): We also should free the contents of the symbol table
+    for (int i = 0; i < resolver->diagnostics->length; i++)
+    {
+        Diagnostic* diagnostic = resolver->diagnostics->items[i];
+
+        free((char*)diagnostic->message);
+        diagnostic->message = NULL;
+
+        free(diagnostic);
+        diagnostic = NULL;
+    }
+
+    array_free(resolver->diagnostics);
+
+    // NOTE(timo): Scopes are being freed at the later stage since they
+    // are needed for code generation
+    
+    // Now scopes are being freed in here for testing purpose
     scope_free(resolver->global);
+    resolver->global = NULL;
 
     // NOTE(timo): The resolver itself is not being freed since it is
     // being initialized to the stack in the top level function
-}
-
-
-const char* type_as_string(Type_Kind type)
-{
-    switch (type)
-    {
-        case TYPE_INTEGER:
-            return "int";
-        case TYPE_BOOLEAN:
-            return "bool";
-        default:
-            return "unknown type";
-    }
 }
 
 
@@ -74,7 +80,7 @@ static Type* resolve_literal_expression(Resolver* resolver, AST_Expression* expr
                 lexeme++;
             }
             
-            type = type_integer();
+            type = hashtable_get(resolver->type_table, "int");
             value = (Value){ .type = VALUE_INTEGER, 
                              .integer = integer_value };
             break;
@@ -88,7 +94,7 @@ static Type* resolve_literal_expression(Resolver* resolver, AST_Expression* expr
             else if (strcmp(literal->lexeme, "false") == 0)
                 boolean_value = false;
 
-            type = type_boolean();
+            type = hashtable_get(resolver->type_table, "bool");
             value = (Value){ .type = VALUE_BOOLEAN,
                               .boolean = boolean_value };
             break;
@@ -104,7 +110,7 @@ static Type* resolve_literal_expression(Resolver* resolver, AST_Expression* expr
         }
     }
 
-    expression->type = type;
+    // expression->type = type;
     expression->value = value;
 
     return type;
@@ -113,6 +119,8 @@ static Type* resolve_literal_expression(Resolver* resolver, AST_Expression* expr
 
 static Type* resolve_unary_expression(Resolver* resolver, AST_Expression* expression)
 {
+    assert(expression->kind == EXPRESSION_UNARY);
+
     AST_Expression* operand = expression->unary.operand;
     Token* _operator = expression->unary._operator;
     Type* operand_type = resolve_expression(resolver, operand);
@@ -125,7 +133,7 @@ static Type* resolve_unary_expression(Resolver* resolver, AST_Expression* expres
                 Diagnostic* _diagnostic = diagnostic(
                     DIAGNOSTIC_ERROR, expression->position,
                     ":RESOLVER - TypeError: Unsupported operand type '%s' for unary '+'",
-                    type_as_string(operand_type->kind));
+                    type_as_string(operand_type));
                 array_push(resolver->diagnostics, _diagnostic);
                 break;
             }
@@ -139,13 +147,14 @@ static Type* resolve_unary_expression(Resolver* resolver, AST_Expression* expres
                 break;
             }
             */
+            break;
         case TOKEN_MINUS:
             if (operand_type->kind != TYPE_INTEGER)
             {
                 Diagnostic* _diagnostic = diagnostic(
                     DIAGNOSTIC_ERROR, expression->position,
                     ":RESOLVER - TypeError: Unsupported operand type '%s' for unary '-'",
-                    type_as_string(operand_type->kind));
+                    type_as_string(operand_type));
                 array_push(resolver->diagnostics, _diagnostic);
                 break;
             }
@@ -159,13 +168,14 @@ static Type* resolve_unary_expression(Resolver* resolver, AST_Expression* expres
                 break;
             }
             */
+            break;
         case TOKEN_NOT:
             if (operand_type->kind != TYPE_BOOLEAN)
             {
                 Diagnostic* _diagnostic = diagnostic(
                     DIAGNOSTIC_ERROR, expression->position,
                     ":RESOLVER - TypeError: Unsupported operand type '%s' for unary 'not'",
-                    type_as_string(operand_type->kind));
+                    type_as_string(operand_type));
                 array_push(resolver->diagnostics, _diagnostic);
             }
             break;
@@ -180,7 +190,7 @@ static Type* resolve_unary_expression(Resolver* resolver, AST_Expression* expres
         }
     }
 
-    expression->type = operand_type;
+    // expression->type = operand_type;
 
     return operand_type;
 }
@@ -205,7 +215,7 @@ static Type* resolve_binary_expression(Resolver* resolver, AST_Expression* expre
                 Diagnostic* _diagnostic = diagnostic(
                     DIAGNOSTIC_ERROR, expression->position,
                     ":RESOLVER - TypeError: Unsupported operand types '%s' and '%s' for binary '%s'",
-                    type_as_string(type_left->kind), type_as_string(type_right->kind), _operator->lexeme);
+                    type_as_string(type_left), type_as_string(type_right), _operator->lexeme);
                 array_push(resolver->diagnostics, _diagnostic);
             }
             type = type_left;
@@ -218,10 +228,10 @@ static Type* resolve_binary_expression(Resolver* resolver, AST_Expression* expre
                 Diagnostic* _diagnostic = diagnostic(
                     DIAGNOSTIC_ERROR, expression->position,
                     ":RESOLVER - TypeError: Unsupported operand types '%s' and '%s' for binary '%s'",
-                    type_as_string(type_left->kind), type_as_string(type_right->kind), _operator->lexeme);
+                    type_as_string(type_left), type_as_string(type_right), _operator->lexeme);
                 array_push(resolver->diagnostics, _diagnostic);
             }
-            type = type_boolean();
+            type = hashtable_get(resolver->type_table, "bool");
             break;
         case TOKEN_LESS_THAN:
         case TOKEN_LESS_THAN_EQUAL:
@@ -234,10 +244,10 @@ static Type* resolve_binary_expression(Resolver* resolver, AST_Expression* expre
                 Diagnostic* _diagnostic = diagnostic(
                     DIAGNOSTIC_ERROR, expression->position,
                     ":RESOLVER - TypeError: Unsupported operand types '%s' and '%s' for binary '%s'",
-                    type_as_string(type_left->kind), type_as_string(type_right->kind), _operator->lexeme);
+                    type_as_string(type_left), type_as_string(type_right), _operator->lexeme);
                 array_push(resolver->diagnostics, _diagnostic);
             }
-            type = type_boolean();
+            type = hashtable_get(resolver->type_table, "bool");
             break;
         default:
         {
@@ -250,7 +260,7 @@ static Type* resolve_binary_expression(Resolver* resolver, AST_Expression* expre
         }
     }
 
-    expression->type = type;
+    // expression->type = type;
 
     return type;
 }
@@ -269,10 +279,12 @@ static Type* resolve_variable_expression(Resolver* resolver, AST_Expression* exp
             expression->identifier->lexeme);
         array_push(resolver->diagnostics, _diagnostic);
         
-        type = type_none();
+        type = hashtable_get(resolver->type_table, "none");
     }
     else
         type = symbol->type;
+
+    // expression->type = type;
 
     return type;
 }
@@ -288,9 +300,11 @@ static Type* resolve_assignment_expression(Resolver* resolver, AST_Expression* e
         Diagnostic* _diagnostic = diagnostic(
             DIAGNOSTIC_ERROR, expression->position,
             ":RESOLVER - TypeError: Conflicting types in assignment expression. Assigning to '%s' from '%s'",
-            type_as_string(variable_type->kind), type_as_string(value_type->kind));
+            type_as_string(variable_type), type_as_string(value_type));
         array_push(resolver->diagnostics, _diagnostic);
     }
+
+    // expression->type = variable_type;
 
     return variable_type;
 }
@@ -367,6 +381,8 @@ static Type* resolve_index_expression(Resolver* resolver, AST_Expression* expres
     // TODO(timo): We also have the element_type member in the array type, can/should we use it for something?
 
     // TODO(timo): Should we return the type of the index or the element type?
+    // expression->type = index_type;
+
     return index_type;
 }
 
@@ -412,6 +428,8 @@ static Type* resolve_function_expression(Resolver* resolver, AST_Expression* exp
     // return something. Even though this information could carry inside the context structure.
     type->function.return_type = resolver->context.return_type;
 
+    // expression->type = type;
+
     return type;
 }
 
@@ -450,10 +468,12 @@ static Type* resolve_call_expression(Resolver* resolver, AST_Expression* express
                 Diagnostic* _diagnostic = diagnostic(
                     DIAGNOSTIC_ERROR, expression->position,
                     ":RESOLVER - TypeError: Parameter '%s' is of type '%s', but argument of type '%s' was given.", 
-                    parameter->identifier, type_as_string(parameter_type->kind), type_as_string(argument_type->kind));
+                    parameter->identifier, type_as_string(parameter_type), type_as_string(argument_type));
                 array_push(resolver->diagnostics, _diagnostic);
             }
         }
+
+        // expression->type = type->function.return_type;
 
         // return the return type of the called function
         return type->function.return_type;
@@ -466,7 +486,7 @@ static Type* resolve_call_expression(Resolver* resolver, AST_Expression* express
             symbol->identifier);
         array_push(resolver->diagnostics, _diagnostic);
         // TODO(timo): return type none?
-        return type_none();
+        return hashtable_get(resolver->type_table, "none");
     }
 }
 
@@ -642,23 +662,38 @@ void resolve_statement(Resolver* resolver, AST_Statement* statement)
 
 Type* resolve_type_specifier(Resolver* resolver, Type_Specifier specifier)
 {
+    Type* type;
+
     switch (specifier)
     {
         case TYPE_SPECIFIER_INT:
-            return type_integer();
+        {
+            type = hashtable_get(resolver->type_table, "int");
+            break;
+        }
         case TYPE_SPECIFIER_BOOL:
-            return type_boolean();
+        {
+            type = hashtable_get(resolver->type_table, "bool");
+            break;
+        }
         case TYPE_SPECIFIER_ARRAY_INT:
-            return type_array(type_integer());
+        {
+            type = type_array(hashtable_get(resolver->type_table, "int"));
+            break;
+        }
         default:
         {
             Diagnostic* _diagnostic = diagnostic(
                 DIAGNOSTIC_ERROR, (Position) {0},
                 ":RESOLVER - Unreachable: Invalid type specifier");
             array_push(resolver->diagnostics, _diagnostic);
+
+            type = hashtable_get(resolver->type_table, "none");
             break;
         }
     }
+    
+    return type;
 }
 
 
