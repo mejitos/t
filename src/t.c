@@ -61,7 +61,7 @@ void compile(const char* source)
     // Code generation
     clock_t code_generating_start = clock();
     
-    code_generator_init(&code_generator);
+    code_generator_init(&code_generator, ir_generator.instructions);
     code_generate(&code_generator);
 
     clock_t code_generating_end = clock();

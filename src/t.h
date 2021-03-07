@@ -715,10 +715,11 @@ void dump_instructions(array* instructions);
 typedef struct Code_Generator
 {
     FILE* output;
+    array* instructions;
 } Code_Generator;
 
 
-void code_generator_init(Code_Generator* generator);
+void code_generator_init(Code_Generator* generator, array* instructions);
 void code_generate(Code_Generator* generator);
 
 
