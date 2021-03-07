@@ -720,7 +720,9 @@ void resolve_variable_declaration(Resolver* resolver, AST_Declaration* declarati
     // or if the declaration is function, this will be the type of the return value.
     Type* expected_type = resolve_type_specifier(resolver, declaration->specifier);
     Type* actual_type = resolve_expression(resolver, declaration->initializer);
-
+    
+    // TODO(timo): If the resolved type is a function, we have to compare the type
+    // to the return type of the function
     if (expected_type->kind != actual_type->kind)
     {
         // TODO(timo): Error

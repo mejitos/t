@@ -1,14 +1,31 @@
-#include "t.h"
 #define T_HASHTABLE_IMPLEMENTATION
+#include "t.h"
 
 
 int main(int argc, char** argv)
 {
-    const char* source = "main: int = (argc: int, argv: int) => {"
-                         "    return 0;"
-                         "};";
+    /*
+    if (argc == 1) 
+    {
+        // TODO(timo): This should give an error and print the usage/help to the console
+        const char* source = "main: int = (argc: int, argv: [int]) => {"
+                             "    return 0;"
+                             "};";
 
-    compile(source);
+        compile(source);
+        return 0;
+    }
+
+    // TODO(timo): Parsing and Passing user passed arguments for the program
+    const char* file_path = argv[1];
+    */
+
+    // TODO(timo): This probably should return somekind of code indicating the success
+    // or non-success of the compiling process
+    // NOTE(timo): For now we just use hardcoded path
+    compile_from_file("./examples/factorial.t");
+    // compile_from_file("./examples/fibonacci.t");
+    // compile_from_file(file_path);
 
     return 0;
 }
