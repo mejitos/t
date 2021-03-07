@@ -9,11 +9,11 @@ void interpreter_init(Interpreter* interpreter)
 
 static Value evaluate_literal_expression(AST_Expression* expression)
 {
-    switch (expression->literal.literal->kind)
+    switch (expression->literal->kind)
     {
         case TOKEN_INTEGER_LITERAL:
         case TOKEN_BOOLEAN_LITERAL:
-            return expression->literal.value;
+            return expression->value;
         default:
             // TODO(timo): Error
             break;
