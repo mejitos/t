@@ -10,6 +10,7 @@ void compile(const char* source)
     hashtable* type_table;
     Resolver resolver;
     IR_Generator ir_generator;
+    Code_Generator code_generator;
 
     // Lexing part
     clock_t lexing_start = clock();
@@ -49,39 +50,118 @@ void compile(const char* source)
     ir_generator_init(&ir_generator);
     ir_generate(&ir_generator, parser.declarations);
 
-    // Dump instructions
-    dump_instructions(ir_generator.instructions);
-
     clock_t ir_generating_end = clock();
     double ir_generating_time = (double)(ir_generating_end - ir_generating_start) * 1000 / (double)CLOCKS_PER_SEC;
 
+    // Dump instructions
+    dump_instructions(ir_generator.instructions);
+
     // TODO(timo): IR runner could run/interpret the created IR code if there is option set for that
 
-    // TODO(timo): Code generation
+    // Code generation
+    clock_t code_generating_start = clock();
+    
+    code_generator_init(&code_generator);
+    code_generate(&code_generator);
 
-    // TODO(timo): Assembling
+    clock_t code_generating_end = clock();
+    double code_generating_time = (double)(code_generating_end - code_generating_start) * 1000 / (double)CLOCKS_PER_SEC;
 
-    // TODO(timo): Linking
+    // Cat the created assembly file
+    printf("-----===== ASSEMBLY =====-----\n");
+    printf("\n");
+
+    char* cat_main = "cat main.asm";
+    int cat_error;
+
+    if ((cat_error = system(cat_main)) != 0)
+    {
+        printf("Error code on command '%s': %d\n", cat_main, cat_error);
+    }
+
+    printf("\n");
+    printf("-----===== ||||||| =====-----\n");
+
+    // Assembling
+    printf("Assembling...");
+
+    clock_t assembly_start = clock();
+
+    char* assemble = "nasm -f elf64 -o main.o main.asm";
+    int assemble_error;
+
+    if ((assemble_error = system(assemble)) != 0)
+    {
+        printf("FAILED\n");
+        printf("Error code on command '%s': %d\n", assemble, assemble_error);
+    }
+    else
+        printf("OK\n");
+
+    clock_t assembly_end = clock();
+    double assembly_time = (double)(assembly_end - assembly_start) * 1000 / (double)CLOCKS_PER_SEC;
+
+    // Linking
+    printf("Linking...");
+
+    clock_t linker_start = clock();
+
+    char* link = "gcc -no-pie -o main main.o";
+    int link_error;
+
+    if ((link_error = system(link)) != 0)
+    {
+        printf("FAILED\n");
+        printf("Error code on command '%s': %d\n", link, link_error);
+    }
+    else
+        printf("OK\n");
+
+    clock_t linker_end = clock();
+    double linker_time = (double)(linker_end - linker_start) * 1000 / (double)CLOCKS_PER_SEC;
 
     // Teardown
     printf("Teardown...");
-
+    
+    ir_generator_free(&ir_generator);
     resolver_free(&resolver);
     type_table_free(type_table);
     parser_free(&parser);
     lexer_free(&lexer);
 
+    char* rm_main_asm = "rm main.asm";
+    int rm_main_asm_error;
+
+    if ((rm_main_asm_error = system(rm_main_asm)) != 0 )
+    {
+        printf("\n");
+        printf("Error code on command '%s': %d\n", rm_main_asm, rm_main_asm_error);
+    }
+
+    char* rm_main_o = "rm main.o";
+    int rm_main_o_error;
+
+    if ((rm_main_o_error = system(rm_main_o)) != 0 )
+    {
+        printf("\n");
+        printf("Error code on command '%s': %d\n", rm_main_o, rm_main_o_error);
+    }
+
     printf("DONE\n");
 
     // Compilation summary
-    double compilation_time = lexing_time + parsing_time + resolving_time + ir_generating_time;
+    double compilation_time = (lexing_time + parsing_time + resolving_time + ir_generating_time +
+                               code_generating_time + assembly_time + linker_time);
 
     printf("-----===== COMPILATION SUMMARY =====-----\n");
     printf("Total compilation time: %f ms\n", compilation_time);
-    printf("    Lexing time:           %f ms\n", lexing_time);
-    printf("    Parsing time:          %f ms\n", parsing_time);
-    printf("    Resolving time:        %f ms\n", resolving_time);
-    printf("    IR generation time:    %f ms\n", ir_generating_time);
+    printf("    Lexing time:             %f ms\n", lexing_time);
+    printf("    Parsing time:            %f ms\n", parsing_time);
+    printf("    Resolving time:          %f ms\n", resolving_time);
+    printf("    IR generation time:      %f ms\n", ir_generating_time);
+    printf("    Code generation time:    %f ms\n", code_generating_time);
+    printf("    Assembly time:           %f ms\n", assembly_time);
+    printf("    Linking time:            %f ms\n", linker_time);
 }
 
 

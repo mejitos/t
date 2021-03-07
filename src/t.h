@@ -709,4 +709,17 @@ void ir_generate_declaration(IR_Generator* generator, AST_Declaration* declarati
 void dump_instructions(array* instructions);
 
 
+/*
+ *  Code generation
+ */
+typedef struct Code_Generator
+{
+    FILE* output;
+} Code_Generator;
+
+
+void code_generator_init(Code_Generator* generator);
+void code_generate(Code_Generator* generator);
+
+
 #endif
