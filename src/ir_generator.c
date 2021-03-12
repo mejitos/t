@@ -9,11 +9,14 @@ void instruction_free(Instruction* instruction)
 }
 
 
-void ir_generator_init(IR_Generator* generator)
+void ir_generator_init(IR_Generator* generator, Scope* global)
 {
     *generator = (IR_Generator) { .temp = 0,
                                   .label = 0,
+                                  .global = global,
                                   .instructions = array_init(sizeof (Instruction*)) };
+
+    generator->local = generator->global;
 }
 
 
@@ -58,24 +61,28 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
             // for all the literals/constants etc. and they just get optimized away later
             // TODO(timo): I think we could just return the string and we can skip the
             // unnecessary extra assign/store/move step
-            /*
             char* result = temp(generator);
-            char* arg = (char*)expression->literal.literal->lexeme;
+            char* arg = (char*)expression->literal->lexeme;
+
+            scope_declare(generator->local, symbol_temp(result, expression->type));
+
             printf("\t%s := %s\n", result, arg);
 
             Instruction* instruction = instruction_copy(arg, result);
             array_push(generator->instructions, instruction);
             
             return result;
-            */
+
             // Generate nothing, just return the literal
-            return (char*)expression->literal->lexeme;
+            // return (char*)expression->literal->lexeme;
         }
         case EXPRESSION_UNARY:
         {
             char* operand = ir_generate_expression(generator, expression->unary.operand);
             char* operator = (char*)expression->unary._operator->lexeme;
             char* result = temp(generator);
+
+            scope_declare(generator->local, symbol_temp(result, expression->type));
 
             printf("\t%s := %s %s\n", result, operator, operand);
 
@@ -106,6 +113,8 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
             char* operator = (char*)expression->binary._operator->lexeme;
             // NOTE(timo): When we move this into here, we get the correct ordering of the temp labels
             char* result = temp(generator);
+
+            scope_declare(generator->local, symbol_temp(result, expression->type));
 
             printf("\t%s := %s %s %s\n", result, left, operator, right);
             
@@ -156,16 +165,18 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
         {
             // TODO(timo): I think we could just return the string and we can skip the
             // unnecessary extra assign/store/move step
-            /*
             char* result = temp(generator);
-            char* arg = (char*)expression->literal.literal->lexeme;
+            char* arg = (char*)expression->literal->lexeme;
+
+            scope_declare(generator->local, symbol_temp(result, expression->type));
+
             printf("\t%s := %s\n", result, arg);
 
             Instruction* instruction = instruction_copy(arg, result);
             array_push(generator->instructions, instruction);
 
             return result;
-            */
+
             // Generate nothing, just return the variable
             return (char*)expression->identifier->lexeme;
         }
@@ -178,6 +189,7 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
             // need for temp variables
             char* result = (char*)expression->assignment.variable->identifier->lexeme;
             char* arg = ir_generate_expression(generator, expression->assignment.value);
+
             printf("\t%s := %s\n", result, arg);
 
             Instruction* instruction = instruction_copy(arg, result);
@@ -197,10 +209,14 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
             // future and to anonymous functions
             printf("\tfunction_begin N\n");
 
+            // TODO(timo): Change the scope to function scope
+
             instruction = instruction_function_begin();
             array_push(generator->instructions, instruction);
 
             ir_generate_statement(generator, expression->function.body);
+            
+            // TODO(timo): Leave the function scope
 
             printf("\tfunction_end\n");
 
@@ -231,6 +247,9 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
             // Call instruction
             char* arg = ir_generate_expression(generator, expression->call.variable);
             char* result = temp(generator);
+
+            scope_declare(generator->local, symbol_temp(result, expression->type));
+
             // NOTE(timo): According to the Dragon Book the number of arguments is
             // important info to pass on in case of nested function calls
             printf("\t%s := call %s, %d\n", result, arg, arguments->length);
@@ -348,6 +367,7 @@ void ir_generate_statement(IR_Generator* generator, AST_Statement* statement)
             else
             {
                 Instruction* instruction;
+
                 // Local labels
                 char* label_exit = label(generator);
                 char* condition = ir_generate_expression(generator, statement->_if.condition);
@@ -401,7 +421,7 @@ void ir_generate_declaration(IR_Generator* generator, AST_Declaration* declarati
         {
             Instruction* instruction;
             // TODO(timo): This is probably the point where we need the abstraction for routines
-            char* label = declaration->identifier->lexeme;
+            char* label = (char*)declaration->identifier->lexeme;
             printf("_%s:\n", label);
 
             instruction = instruction_label(label);
@@ -414,8 +434,13 @@ void ir_generate_declaration(IR_Generator* generator, AST_Declaration* declarati
             
             // This function beginnning and ending is handled in function expression for the time being
             // printf("\tfunction_begin %d\n", N);
+            generator->local = (scope_lookup(generator->local, declaration->identifier->lexeme))->type->function.scope;
             
             ir_generate_expression(generator, declaration->initializer);
+    
+            // NOTE(timo): These two are basically the same thing in our case
+            // generator->local = generator->local->enclosing;
+            generator->local = generator->global;
 
             // printf("\tfunction_end\n");
             break;

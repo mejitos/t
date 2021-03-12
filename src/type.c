@@ -6,6 +6,7 @@ Type* type_none()
     Type* type = xmalloc(sizeof (Type));
     type->kind = TYPE_NONE;
     type->size = 0;
+    type->offset = 0;
 
     return type;
 }
@@ -16,6 +17,7 @@ Type* type_integer()
     Type* type = xmalloc(sizeof (Type));
     type->kind = TYPE_INTEGER;
     type->size = 4;
+    type->offset = 0;
 
     return type;
 }
@@ -26,6 +28,40 @@ Type* type_boolean()
     Type* type = xmalloc(sizeof (Type));
     type->kind = TYPE_BOOLEAN;
     type->size = 1;
+    type->offset = 0;
+
+    return type;
+}
+
+
+Type* type_function()
+{
+    Type* type = xmalloc(sizeof (Type));
+    type->kind = TYPE_FUNCTION;
+    // TODO(timo): How to calculate the size?
+    type->function.return_type = NULL;
+    type->function.parameters = array_init(sizeof (Symbol*));
+    type->function.arity = 0;
+
+    // TODO(timo): These
+    type->size = 0;
+    type->offset = 0;
+
+    return type;
+}
+
+
+Type* type_array(Type* element_type)
+{
+    Type* type = xmalloc(sizeof (Type));
+    type->kind = TYPE_ARRAY;
+    // TODO(timo): Size can be calculated with the size of the element type * length
+    type->array.element_type = element_type;
+    type->array.length = 0;
+
+    // TODO(timo): These
+    type->size = 0;
+    type->offset = 0;
 
     return type;
 }
@@ -41,6 +77,8 @@ const char* type_as_string(Type* type)
             return "int";
         case TYPE_BOOLEAN:
             return "bool";
+        case TYPE_FUNCTION:
+            return type_as_string(type->function.return_type);
         default:
             return "unknown type";
     }
@@ -73,31 +111,6 @@ void type_table_free(hashtable* table)
 
     hashtable_free(table);
     table = NULL;
-}
-
-
-Type* type_function()
-{
-    Type* type = xmalloc(sizeof (Type));
-    type->kind = TYPE_FUNCTION;
-    // TODO(timo): How to calculate the size?
-    type->function.return_type = NULL;
-    type->function.parameters = array_init(sizeof (Symbol*));
-    type->function.arity = 0;
-
-    return type;
-}
-
-
-Type* type_array(Type* element_type)
-{
-    Type* type = xmalloc(sizeof (Type));
-    type->kind = TYPE_ARRAY;
-    // TODO(timo): Size can be calculated with the size of the element type * length
-    type->array.element_type = element_type;
-    type->array.length = 0;
-
-    return type;
 }
 
 

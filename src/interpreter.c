@@ -3,7 +3,7 @@
 
 void interpreter_init(Interpreter* interpreter)
 {
-    *interpreter = (Interpreter) { .global = scope_init(NULL) };
+    *interpreter = (Interpreter) { .global = scope_init(NULL, "global") };
 }
 
 

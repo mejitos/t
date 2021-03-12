@@ -13,8 +13,8 @@ fibonacci: int = (n: int) => {
     i: int = 0;
 
     while i < n do {
-        a = b;
-        b = a + b;
+        a := b;
+        b := a + b;
         i := i + 1;
     }
 

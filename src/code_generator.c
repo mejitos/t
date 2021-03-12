@@ -1,39 +1,175 @@
 #include "t.h"
 
 
-void code_generator_init(Code_Generator* generator, array* instructions)
+static int registers[] = { 1, 1, 1, 1, 1, 1 };
+static const char* register_list[] = { "r10", "r11", "r12", "r13", "r14", "r15" };
+
+static void free_registers()
 {
-    *generator = (Code_Generator) { .instructions = instructions };
+    for (int i = 0; i < 6; i++)
+        registers[i] = 1;
 }
+
+
+static void free_register(int _register)
+{
+    if (registers[_register] != 0)
+    {
+        printf("[CODE_GENERATOR] - Error: Trying to free already free'd register\n");
+        exit(1);
+    }
+
+    registers[_register] = 1;
+}
+
+static int allocate_register()
+{
+    for (int i = 0; i < 6; i++)
+    {
+        if (registers[i])
+        {
+            registers[i] = 0;
+            return i;
+        }
+    }
+
+    printf("[CODE_GENERATOR] - Error: Out of free registers\n");
+    exit(1);
+}
+
+
+void code_generator_init(Code_Generator* generator, Scope* global, array* instructions)
+{
+    *generator = (Code_Generator) { .global = global,
+                                    .instructions = instructions };
+
+    generator->local = generator->global;
+}
+
+
+/*
+// static int emit_copy(const char* value)
+static int emit_copy(Code_Generator* generator, const char* value)
+{
+    // We should set this register to the generator somehow
+    int _register = allocate_register();
+
+    // fprintf(generator->output,
+            // "\tmov\t%s, %s ; some comment\n", register_list[_register], instruction->arg1);
+
+    fprintf(generator->output,
+            "\tmov\t%s, %s ; some comment\n", register_list[_register], value);
+
+    return _register;
+}
+
+
+// Adds two registers together
+// dest <- (dest + src)
+// Returns the register which has the value
+static int emit_add(int destination, int source)
+{
+    fprintf(generator->output,
+            "\tadd\t%s, %s\n", register_list[destination], register_list[source]);
+
+    free_register(source);
+
+    return destination;
+}
+*/
 
 
 void code_generate_instruction(Code_Generator* generator, Instruction* instruction)
 {
     switch (instruction->operation)
     {
+        case OP_ADD:
+        {
+            // here the arg1 is the result register of the instruction 1
+            // Should I set the value of the instruction to register?
+            // int destination = emit_copy(instruction->arg1);
+            // here the arg2 is the result register of the instruction 2
+            // int source = emit_copy(instruction->arg2);
+            Symbol* destination = scope_lookup(generator->local, instruction->arg1);
+            Symbol* source = scope_lookup(generator->local, instruction->arg2);
+            Symbol* result = scope_lookup(generator->local, instruction->result);
+
+            fprintf(generator->output,
+                "\tadd\t%s, %s\n", register_list[destination->_register], register_list[source->_register]);
+
+            free_register(source->_register);
+
+            // result->_register = emit_add(destination, source);
+            break;
+        }
+        case OP_COPY:
+        {
+            Symbol* result = scope_lookup(generator->local, instruction->result);
+            assert(result != NULL);
+            result->_register = allocate_register();
+            // int _register = allocate_register();
+
+            fprintf(generator->output,
+                "\tmov\t%s, %s\t\t; some comment\n", register_list[result->_register], instruction->arg1);
+            
+            // result->_register = _register;
+
+            // result->_register = emit_copy(instruction->arg1);
+            // int _register = emit_copy(instruction->arg1);
+            // result->_register = register_list[_register];
+            break;
+        }
         case OP_LABEL:
+        {
+            // If the label is function symbol -> change the scope
+            Symbol* symbol = scope_lookup(generator->local, instruction->value.string);
+
+            if (symbol != NULL && symbol->type->kind == TYPE_FUNCTION)
+            {
+                generator->local = symbol->type->function.scope;
+            }
+
             fprintf(generator->output, "%s:\n", instruction->value.string);
             break;
+        }
         case OP_FUNCTION_BEGIN:
-            // start a stack frame and allocate memory for it from the stack
+            // TODO(timo): That scope change should probably happen in here        
+
+            // TODO(timo): start a stack frame and allocate memory for it from the stack
             // the amount needed should be in the symbol table after getting
             // all the temporary variables etc.
-            // NOTE(timo): For now we use this general function as main program
-            // but we probably should create the own commands 
             fprintf(generator->output, 
                     "\tpush\trbp\n"
-                    "\tmov\trbp, rsp ; started stack frame\n"
-                    "\tmov\t[rbp-4], rdi ; argc\n"
-                    "\tmov\t[rbp-16], rsi ; argv\n");
+                    "\tmov\trbp, rsp\t\t;started stack frame\n");
+            // NOTE(timo): For now we use this general function as main program
+            // but we probably should create the own commands 
+            // fprintf(generator->output, 
+                    // "\tpush\trbp\n"
+                    // "\tmov\trbp, rsp ; started stack frame\n"
+                    // "\tmov\t[rbp-4], rdi ; argc\n"
+                    // "\tmov\t[rbp-16], rsi ; argv\n");
             // Push all the parameters
             // TODO(timo): So I should actually resolve the params normally
             // for the main, but they are "special params" mapped in assembly
+            break;
         case OP_FUNCTION_END:
             // What to do with the function end?
+            // Set the current scope to the enclosing (global) scope
+            if (generator->local->enclosing != NULL)
+            {
+                generator->local = generator->global;
+                // generator->local = generator->local->enclosing;
+            }
             break;
         case OP_RETURN:
+        {
+            Symbol* value = scope_lookup(generator->local, instruction->arg1);
+
             fprintf(generator->output,
-                    "\tmov\trax, %s ; put return value to rax\n", instruction->arg1);
+                    "\tmov\trax, %s ; put return value to rax\n", register_list[value->_register]);
+
+            free_registers();
+        }
         default:
             // TODO(timo): Error
             break;

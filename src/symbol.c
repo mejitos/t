@@ -37,6 +37,18 @@ Symbol* symbol_parameter(const char* identifier, Type* type)
 }
 
 
+Symbol* symbol_temp(const char* identifier, Type* type)
+{
+    Symbol* symbol = xcalloc(1, sizeof (Symbol));
+    symbol->state = STATE_RESOLVED;
+    symbol->kind = SYMBOL_TEMP;
+    symbol->identifier = identifier;
+    symbol->type = type;
+        
+    return symbol;
+}
+
+
 void symbol_free(Symbol* symbol)
 {
     // NOTE(timo): There might not be type if program stops before types are added

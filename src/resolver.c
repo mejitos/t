@@ -6,7 +6,7 @@
 
 void resolver_init(Resolver* resolver, hashtable* type_table)
 {
-    *resolver = (Resolver){ .global = scope_init(NULL),
+    *resolver = (Resolver){ .global = scope_init(NULL, "global"),
                             .diagnostics = array_init(sizeof (Diagnostic*)),
                             .type_table = type_table,
                             .context.not_in_loop = true,
@@ -43,12 +43,12 @@ void resolver_free(Resolver* resolver)
 }
 
 
-static inline void enter_scope(Resolver* resolver)
+static inline void enter_scope(Resolver* resolver, const char* name)
 {
     // NOTE(timo): local scope at this point should be the global scope
     assert(resolver->local == resolver->global);
 
-    Scope* scope = scope_init(resolver->local);
+    Scope* scope = scope_init(resolver->local, name);
     resolver->local = scope;
 }
 
@@ -126,7 +126,7 @@ static Type* resolve_literal_expression(Resolver* resolver, AST_Expression* expr
         }
     }
 
-    // expression->type = type;
+    expression->type = type;
     expression->value = value;
 
     return type;
@@ -206,7 +206,7 @@ static Type* resolve_unary_expression(Resolver* resolver, AST_Expression* expres
         }
     }
 
-    // expression->type = operand_type;
+    expression->type = operand_type;
 
     return operand_type;
 }
@@ -276,7 +276,7 @@ static Type* resolve_binary_expression(Resolver* resolver, AST_Expression* expre
         }
     }
 
-    // expression->type = type;
+    expression->type = type;
 
     return type;
 }
@@ -300,7 +300,7 @@ static Type* resolve_variable_expression(Resolver* resolver, AST_Expression* exp
     else
         type = symbol->type;
 
-    // expression->type = type;
+    expression->type = type;
 
     return type;
 }
@@ -320,9 +320,9 @@ static Type* resolve_assignment_expression(Resolver* resolver, AST_Expression* e
         array_push(resolver->diagnostics, _diagnostic);
     }
 
-    // expression->type = variable_type;
+    expression->type = value_type;
 
-    return variable_type;
+    return value_type;
 }
 
 
@@ -397,9 +397,9 @@ static Type* resolve_index_expression(Resolver* resolver, AST_Expression* expres
     // TODO(timo): We also have the element_type member in the array type, can/should we use it for something?
 
     // TODO(timo): Should we return the type of the index or the element type?
-    // expression->type = index_type;
+    expression->type = variable_type;
 
-    return index_type;
+    return variable_type;
 }
 
 
@@ -410,8 +410,9 @@ static Type* resolve_function_expression(Resolver* resolver, AST_Expression* exp
     // else -> error -> return none type
 
     resolver->context.not_in_function = false;
+
     // Begin a new scope
-    enter_scope(resolver);
+    enter_scope(resolver, "function_x");
 
     Type* type = type_function();
 
@@ -437,6 +438,7 @@ static Type* resolve_function_expression(Resolver* resolver, AST_Expression* exp
     
     // Set the functions scope to created local scope
     type->function.scope = resolver->local;
+
     // End scope
     leave_scope(resolver);
     resolver->context.not_in_function = true;
@@ -445,7 +447,7 @@ static Type* resolve_function_expression(Resolver* resolver, AST_Expression* exp
     // return something. Even though this information could carry inside the context structure.
     type->function.return_type = resolver->context.return_type;
 
-    // expression->type = type;
+    expression->type = type;
 
     return type;
 }
@@ -489,8 +491,9 @@ static Type* resolve_call_expression(Resolver* resolver, AST_Expression* express
                 array_push(resolver->diagnostics, _diagnostic);
             }
         }
-
-        // expression->type = type->function.return_type;
+        
+        // TODO(timo): Is this the correct type?
+        expression->type = type->function.return_type;
 
         // return the return type of the called function
         return type->function.return_type;
@@ -547,6 +550,8 @@ Type* resolve_expression(Resolver* resolver, AST_Expression* expression)
             break;
         }
     }
+    
+    // TODO(timo): Could we just set the expression type in here?
 
     return type;
 }
@@ -726,7 +731,7 @@ void resolve_variable_declaration(Resolver* resolver, AST_Declaration* declarati
     if (expected_type->kind != actual_type->kind)
     {
         // TODO(timo): Error
-        printf("Conflicting types in variable declaration\n");
+        printf("Conflicting types when declaring variable '%s'\n", declaration->identifier->lexeme);
         exit(1);
     }
 
@@ -743,13 +748,15 @@ void resolve_function_declaration(Resolver* resolver, AST_Declaration* declarati
 {
     // TODO(timo): This is the place where we create the routines which has
     // the name of the routine, its parameters, its scope etc.
-    //
+
     // TODO(timo): We should actually open and close the new scope in here considering our
     // implementation at this point
-    //
+
     // NOTE(timo): So this type will be the type of the value assigned to the variable 
     // or if the declaration is function, this will be the type of the return value.
     Type* expected_type = resolve_type_specifier(resolver, declaration->specifier);
+
+    // Declare the scope here so we can set the scope into the symbol
     Type* actual_type = resolve_expression(resolver, declaration->initializer);
     
     // Check if the expected type and the actual type match

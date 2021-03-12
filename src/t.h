@@ -287,7 +287,7 @@ struct AST_Expression
 {
     Expression_Kind kind;
     Position position;
-    // Type* type;
+    Type* type;
     Value value;
 
     union {
@@ -392,7 +392,7 @@ struct Type
 {
     Type_Kind kind;
     size_t size;
-    // alignment?
+    int offset; // alignment?
     union {
         struct {
             Type* return_type;
@@ -447,6 +447,7 @@ typedef enum Symbol_Kind
     SYMBOL_VARIABLE,
     SYMBOL_PARAMETER,
     SYMBOL_FUNCTION,
+    SYMBOL_TEMP,
 } Symbol_Kind;
 
 
@@ -473,10 +474,20 @@ typedef struct Symbol
     const char* identifier;
     Type* type;
     Value value;
+
+    // NOTE(timo): Since functions are expressions, we cannot really have them
+    // in the symbols themselves?
+    // Scope* scope; // function scope
+
+    // Register stuff
+    int offset;
+    int _register;
+    // const char* _register;
 } Symbol;
 
 
 Symbol* symbol_variable(const char* identifier, Type* type);
+Symbol* symbol_temp(const char* identifier, Type* type);
 Symbol* symbol_parameter(const char* identifier, Type* type);
 Symbol* symbol_function(const char* identifier, Type* type);
 void symbol_free(Symbol* symbol);
@@ -489,16 +500,19 @@ void symbol_free(Symbol* symbol);
  */
 struct Scope
 {
+    const char* name;
+    int offset; // alignment
     Scope* enclosing;
     hashtable* symbols;
 };
 
 
-Scope* scope_init(Scope* enclosing); // returns the created scope
+Scope* scope_init(Scope* enclosing, const char* name); 
 void scope_free(Scope* scope);
 Symbol* scope_lookup(Scope* scope, const char* identifier);
 void scope_declare(Scope* scope, Symbol* symbol);
-bool scope_includes(Scope* scope, const char* identifier);
+bool scope_contains(Scope* scope, const char* identifier);
+void dump_scope(Scope* scope, int indentation);
 
 
 /*
@@ -695,11 +709,12 @@ typedef struct IR_Generator
     array* instructions;
     int label;
     int temp;
-    Scope* symbol_table;
+    Scope* global;
+    Scope* local;
 } IR_Generator;
 
 
-void ir_generator_init(IR_Generator* generator);
+void ir_generator_init(IR_Generator* generator, Scope* global);
 void ir_generator_free(IR_Generator* generator);
 void ir_generate(IR_Generator* generator, array* declarations);
 char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression);
@@ -716,10 +731,16 @@ typedef struct Code_Generator
 {
     FILE* output;
     array* instructions;
+    Scope* global;
+    Scope* local;
+
+    // Used for register allocation stuff
+    int destination;
+    int source;
 } Code_Generator;
 
 
-void code_generator_init(Code_Generator* generator, array* instructions);
+void code_generator_init(Code_Generator* generator, Scope* global, array* instructions);
 void code_generate(Code_Generator* generator);
 
 

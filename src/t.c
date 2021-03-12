@@ -36,8 +36,11 @@ void compile(const char* source)
     type_table = type_table_init();
     resolver_init(&resolver, type_table);
     resolve(&resolver, parser.declarations);
-
-    // TODO(timo): Dump symbol tables
+    
+    // Dump symbol tables after resolving
+    printf("-----===== SCOPES / SYMBOLS =====-----\n");
+    dump_scope(resolver.global, 0);
+    printf("-----===== |||||||||| =====-----\n");
 
     clock_t resolving_end = clock();
     double resolving_time = (double)(resolving_end - resolving_start) * 1000 / (double)CLOCKS_PER_SEC;
@@ -47,7 +50,7 @@ void compile(const char* source)
     // IR generation
     clock_t ir_generating_start = clock();
 
-    ir_generator_init(&ir_generator);
+    ir_generator_init(&ir_generator, resolver.global);
     ir_generate(&ir_generator, parser.declarations);
 
     clock_t ir_generating_end = clock();
@@ -56,12 +59,17 @@ void compile(const char* source)
     // Dump instructions
     dump_instructions(ir_generator.instructions);
 
+    // Dump symbol tables after generating IR
+    printf("-----===== SCOPES / SYMBOLS =====-----\n");
+    dump_scope(resolver.global, 0);
+    printf("-----===== |||||||||| =====-----\n");
+
     // TODO(timo): IR runner could run/interpret the created IR code if there is option set for that
 
     // Code generation
     clock_t code_generating_start = clock();
     
-    code_generator_init(&code_generator, ir_generator.instructions);
+    code_generator_init(&code_generator, ir_generator.global, ir_generator.instructions);
     code_generate(&code_generator);
 
     clock_t code_generating_end = clock();
@@ -128,7 +136,7 @@ void compile(const char* source)
     type_table_free(type_table);
     parser_free(&parser);
     lexer_free(&lexer);
-
+    
     char* rm_main_asm = "rm main.asm";
     int rm_main_asm_error;
 

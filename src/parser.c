@@ -112,21 +112,6 @@ static inline void advance(Parser* parser)
 }
 
 
-// TODO(timo): Is there way to mangle these into the advance function?
-static inline void statement_start(Parser* parser)
-{
-    parser->position.line_start = parser->current_token->position.line_start;
-    parser->position.column_start = parser->current_token->position.column_start;
-}
-
-
-static inline void statement_end(Parser* parser)
-{
-    parser->position.line_end = parser->current_token->position.line_end;
-    parser->position.column_end = parser->current_token->position.column_end;
-}
-
-
 Type_Specifier parse_type_specifier(Parser* parser)
 {
     Type_Specifier specifier;

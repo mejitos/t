@@ -30,7 +30,8 @@ int main(int argc, char** argv)
     // TODO(timo): This probably should return somekind of code indicating the success
     // or non-success of the compiling process
     // NOTE(timo): For now we just use hardcoded path
-    compile_from_file("./examples/first.t");
+    // compile_from_file("./examples/first.t");
+    compile_from_file("./examples/return1.t");
     // compile_from_file("./examples/factorial.t");
     // compile_from_file("./examples/fibonacci.t");
     // compile_from_file(file_path);
