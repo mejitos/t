@@ -31,7 +31,11 @@ int main(int argc, char** argv)
     // or non-success of the compiling process
     // NOTE(timo): For now we just use hardcoded path
     // compile_from_file("./examples/first.t");
-    compile_from_file("./examples/return1.t");
+    // compile_from_file("./examples/trivial_add.t");
+    // compile_from_file("./examples/trivial_subtract.t");
+    // compile_from_file("./examples/trivial_multiply.t");
+    // compile_from_file("./examples/trivial_divide.t");
+    compile_from_file("./examples/trivial_arithmetics.t");
     // compile_from_file("./examples/factorial.t");
     // compile_from_file("./examples/fibonacci.t");
     // compile_from_file(file_path);

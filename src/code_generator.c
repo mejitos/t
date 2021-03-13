@@ -22,6 +22,7 @@ static void free_register(int _register)
     registers[_register] = 1;
 }
 
+
 static int allocate_register()
 {
     for (int i = 0; i < 6; i++)
@@ -47,49 +48,14 @@ void code_generator_init(Code_Generator* generator, Scope* global, array* instru
 }
 
 
-/*
-// static int emit_copy(const char* value)
-static int emit_copy(Code_Generator* generator, const char* value)
-{
-    // We should set this register to the generator somehow
-    int _register = allocate_register();
-
-    // fprintf(generator->output,
-            // "\tmov\t%s, %s ; some comment\n", register_list[_register], instruction->arg1);
-
-    fprintf(generator->output,
-            "\tmov\t%s, %s ; some comment\n", register_list[_register], value);
-
-    return _register;
-}
-
-
-// Adds two registers together
-// dest <- (dest + src)
-// Returns the register which has the value
-static int emit_add(int destination, int source)
-{
-    fprintf(generator->output,
-            "\tadd\t%s, %s\n", register_list[destination], register_list[source]);
-
-    free_register(source);
-
-    return destination;
-}
-*/
-
-
 void code_generate_instruction(Code_Generator* generator, Instruction* instruction)
 {
     switch (instruction->operation)
     {
         case OP_ADD:
         {
-            // here the arg1 is the result register of the instruction 1
-            // Should I set the value of the instruction to register?
-            // int destination = emit_copy(instruction->arg1);
-            // here the arg2 is the result register of the instruction 2
-            // int source = emit_copy(instruction->arg2);
+            // Adds two registers together
+            // dest <- (dest + src)
             Symbol* destination = scope_lookup(generator->local, instruction->arg1);
             Symbol* source = scope_lookup(generator->local, instruction->arg2);
             Symbol* result = scope_lookup(generator->local, instruction->result);
@@ -99,7 +65,66 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
 
             free_register(source->_register);
 
+            result->_register = destination->_register;
+
             // result->_register = emit_add(destination, source);
+            break;
+        }
+        case OP_SUB:
+        {
+            // Subtracts source from destination
+            // dest <- (dest - src)
+            Symbol* destination = scope_lookup(generator->local, instruction->arg1);
+            Symbol* source = scope_lookup(generator->local, instruction->arg2);
+            Symbol* result = scope_lookup(generator->local, instruction->result);
+
+            fprintf(generator->output,
+                "\tsub\t%s, %s\n", register_list[destination->_register], register_list[source->_register]);
+
+            free_register(source->_register);
+
+            result->_register = destination->_register;
+            break;
+        }
+        case OP_MUL:
+        {
+            // Multiplies value in the rax register with the given argument. Result is saved into rax.
+            // dest <- (dest + src)
+            Symbol* destination = scope_lookup(generator->local, instruction->arg1);
+            Symbol* source = scope_lookup(generator->local, instruction->arg2);
+            Symbol* result = scope_lookup(generator->local, instruction->result);
+
+            result->_register = destination->_register;
+
+            /*
+            fprintf(generator->output,
+                "\tmov\trax, %s\n"
+                "\tmul\t%s, %s\n", register_list[destination->_register], register_list[source->_register]);
+            */
+
+            fprintf(generator->output,
+                "\tmov\trax, %s\n"
+                "\tmul\t%s\t\t; multiply the value in the rax with the source\n"
+                "\tmov\t%s, rax\n", register_list[destination->_register], register_list[source->_register], register_list[result->_register]);
+
+            free_register(source->_register);
+            break;
+        }
+        case OP_DIV:
+        {
+            Symbol* destination = scope_lookup(generator->local, instruction->arg1);
+            Symbol* source = scope_lookup(generator->local, instruction->arg2);
+            Symbol* result = scope_lookup(generator->local, instruction->result);
+
+            result->_register = destination->_register;
+
+            fprintf(generator->output,
+                "\tmov\trdx, 0\t\t; setting rdx to 0 because it represents the top bits of the input divident\n"
+                "\tmov\trax, %s\n"
+                "\tdiv\t%s\t\t; divide the rax with the source\n"
+                "\tmov\t%s, rax\n", register_list[destination->_register], register_list[source->_register], register_list[result->_register]);
+
+            free_register(source->_register);
             break;
         }
         case OP_COPY:
@@ -140,7 +165,7 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
             // all the temporary variables etc.
             fprintf(generator->output, 
                     "\tpush\trbp\n"
-                    "\tmov\trbp, rsp\t\t;started stack frame\n");
+                    "\tmov\trbp, rsp\t\t; started stack frame\n");
             // NOTE(timo): For now we use this general function as main program
             // but we probably should create the own commands 
             // fprintf(generator->output, 
@@ -166,7 +191,7 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
             Symbol* value = scope_lookup(generator->local, instruction->arg1);
 
             fprintf(generator->output,
-                    "\tmov\trax, %s ; put return value to rax\n", register_list[value->_register]);
+                    "\tmov\trax, %s\t\t; put return value to rax\n", register_list[value->_register]);
 
             free_registers();
         }
