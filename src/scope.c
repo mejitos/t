@@ -80,8 +80,6 @@ void scope_declare(Scope* scope, Symbol* symbol)
     // scope->offset += symbol->type->size;
     scope->offset += symbol->type->alignment;
 
-    printf("scope offset %d\n", scope->offset);
-
     // Lets just use the alignment of 8 bytes for everything for now to make life easier
     while (scope->offset % 8 != 0)
         scope->offset += 4;

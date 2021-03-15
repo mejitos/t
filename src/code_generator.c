@@ -254,6 +254,46 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
             */
             break;
         }
+        case OP_EQ:
+        case OP_NEQ:
+            break;
+        case OP_LT:
+        {
+            // Just put things into the registers and compare?
+            Symbol* destination = scope_lookup(generator->local, instruction->arg1);
+            Symbol* source = scope_lookup(generator->local, instruction->arg2);
+            // Symbol* result = scope_lookup(generator->local, instruction->result);
+
+            if (destination != NULL)
+            {
+                destination->_register = allocate_register();
+                fprintf(generator->output,
+                        "\tmov\t%s, [rbp-%d]\t\t; --\n", register_list[destination->_register], destination->offset);
+            }
+            if (source != NULL)
+            {
+                source->_register = allocate_register();
+                fprintf(generator->output,
+                        "\tmov\t%s, [rbp-%d]\t\t; --\n", register_list[source->_register], source->offset);
+            }
+
+            fprintf(generator->output,
+                "\tcmp\t%s, %s\t\t; --\n", register_list[destination->_register], register_list[source->_register]);
+
+            free_register(destination->_register);
+            free_register(source->_register);
+            
+            break;
+        }
+        case OP_GOTO_IF_FALSE:
+            // jz label
+            fprintf(generator->output,
+                "\tjz %s\t\t; --\n", instruction->value.string);
+            break;
+        case OP_LTE:
+        case OP_GT:
+        case OP_GTE:
+            break;
         case OP_COPY:
         {
             Symbol* result = scope_lookup(generator->local, instruction->result);
@@ -271,7 +311,7 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
             {
                 // NOTE(timo): Is this actually needed? I mean at this point we save pretty much everything to
                 // stack at this point, so there is probably no need for register allocation here
-                result->_register = allocate_register();
+                // result->_register = allocate_register();
 
                 fprintf(generator->output,
                         "\tmov\tqword [rbp-%d], %s\t\t; asd\n", result->offset, instruction->arg1);
@@ -292,6 +332,10 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
             fprintf(generator->output, "%s:\n", instruction->value.string);
             break;
         }
+        case OP_GOTO:
+            fprintf(generator->output,
+                "\tjmp %s\t\t; --\n", instruction->value.string);
+            break;
         case OP_FUNCTION_BEGIN:
             // TODO(timo): That scope change should probably happen in here and not in OP_LABEL
 
