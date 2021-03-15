@@ -27,7 +27,7 @@ static void test_generate_literal_expression()
     resolver_init(&resolver, type_table);
     resolve_expression(&resolver, expression);
 
-    ir_generator_init(&generator);
+    ir_generator_init(&generator, resolver.global);
     char* result = ir_generate_expression(&generator, expression);
     
     // assert(strcmp(result, "42") == 0);
@@ -69,7 +69,7 @@ static void test_generate_unary_expression()
     resolver_init(&resolver, type_table);
     resolve_expression(&resolver, expression);
 
-    ir_generator_init(&generator);
+    ir_generator_init(&generator, resolver.global);
     ir_generate_expression(&generator, expression);
 
     //dump_instructions(generator.instructions);
@@ -94,7 +94,7 @@ static void test_generate_unary_expression()
     resolver_init(&resolver, type_table);
     resolve_expression(&resolver, expression);
     
-    ir_generator_init(&generator);
+    ir_generator_init(&generator, resolver.global);
     ir_generate_expression(&generator, expression);
 
     //dump_instructions(generator.instructions);
@@ -133,7 +133,7 @@ static void test_generate_binary_expression()
     resolver_init(&resolver, type_table);
     resolve_expression(&resolver, expression);
     
-    ir_generator_init(&generator);
+    ir_generator_init(&generator, resolver.global);
     ir_generate_expression(&generator, expression);
 
     //dump_instructions(generator.instructions);
@@ -158,7 +158,7 @@ static void test_generate_binary_expression()
     resolver_init(&resolver, type_table);
     resolve_expression(&resolver, expression);
 
-    ir_generator_init(&generator);
+    ir_generator_init(&generator, resolver.global);
     ir_generate_expression(&generator, expression);
 
     //dump_instructions(generator.instructions);
@@ -183,7 +183,7 @@ static void test_generate_binary_expression()
     resolver_init(&resolver, type_table);
     resolve_expression(&resolver, expression);
 
-    ir_generator_init(&generator);
+    ir_generator_init(&generator, resolver.global);
     ir_generate_expression(&generator, expression);
 
     //dump_instructions(generator.instructions);
@@ -207,7 +207,7 @@ static void test_generate_binary_expression()
     resolver_init(&resolver, type_table);
     resolve_expression(&resolver, expression);
 
-    ir_generator_init(&generator);
+    ir_generator_init(&generator, resolver.global);
     ir_generate_expression(&generator, expression);
 
     //dump_instructions(generator.instructions);
@@ -250,7 +250,7 @@ static void test_generate_variable_expression()
     resolver_init(&resolver, type_table);
     resolve_statement(&resolver, statement);
 
-    ir_generator_init(&generator);
+    ir_generator_init(&generator, resolver.global);
     
     expression = ((AST_Statement*)statement->block.statements->items[1])->expression;
     char* result = ir_generate_expression(&generator, expression);
@@ -295,7 +295,7 @@ static void test_generate_assignment_expression()
     resolver_init(&resolver, type_table);
     resolve_statement(&resolver, statement);
     
-    ir_generator_init(&generator);
+    ir_generator_init(&generator, resolver.global);
     expression = ((AST_Statement*)statement->block.statements->items[1])->expression;
     ir_generate_expression(&generator, expression);
 
@@ -323,7 +323,7 @@ static void test_generate_assignment_expression()
     resolver_init(&resolver, type_table);
     resolve_statement(&resolver, statement);
     
-    ir_generator_init(&generator);
+    ir_generator_init(&generator, resolver.global);
     expression = ((AST_Statement*)statement->block.statements->items[3])->expression;
     ir_generate_expression(&generator, expression);
 
@@ -376,7 +376,7 @@ static void test_generate_function_expression()
     resolver_init(&resolver, type_table);
     resolve_expression(&resolver, expression);
     
-    ir_generator_init(&generator);
+    ir_generator_init(&generator, resolver.global);
     ir_generate_expression(&generator, expression);
 
     //dump_instructions(generator.instructions);
@@ -429,7 +429,7 @@ static void test_generate_call_expression()
 
     assert(strcmp(expression->call.variable->identifier->lexeme, "cube") == 0);
     
-    ir_generator_init(&generator);
+    ir_generator_init(&generator, resolver.global);
     ir_generate_expression(&generator, expression);
 
     //dump_instructions(generator.instructions);
@@ -463,7 +463,7 @@ static void test_generate_call_expression()
 
     assert(strcmp(expression->call.variable->identifier->lexeme, "max") == 0);
     
-    ir_generator_init(&generator);
+    ir_generator_init(&generator, resolver.global);
     ir_generate_expression(&generator, expression);
 
     //dump_instructions(generator.instructions);
@@ -502,7 +502,7 @@ static void test_generate_arithmetics()
     resolver_init(&resolver, type_table);
     resolve_expression(&resolver, expression);
     
-    ir_generator_init(&generator);
+    ir_generator_init(&generator, resolver.global);
     ir_generate_expression(&generator, expression);
 
     //dump_instructions(generator.instructions);
@@ -527,7 +527,7 @@ static void test_generate_arithmetics()
     resolver_init(&resolver, type_table);
     resolve_expression(&resolver, expression);
 
-    ir_generator_init(&generator);
+    ir_generator_init(&generator, resolver.global);
     ir_generate_expression(&generator, expression);
 
     //dump_instructions(generator.instructions);
@@ -552,7 +552,7 @@ static void test_generate_arithmetics()
     resolver_init(&resolver, type_table);
     resolve_expression(&resolver, expression);
 
-    ir_generator_init(&generator);
+    ir_generator_init(&generator, resolver.global);
     ir_generate_expression(&generator, expression);
 
     //dump_instructions(generator.instructions);
@@ -604,7 +604,7 @@ static void test_generate_if_statement()
     resolver_init(&resolver, type_table);
     resolve_statement(&resolver, statement);
     
-    ir_generator_init(&generator);
+    ir_generator_init(&generator, resolver.global);
     ir_generate_statement(&generator, statement);
 
     //dump_instructions(generator.instructions);
@@ -630,7 +630,7 @@ static void test_generate_if_statement()
     resolver_init(&resolver, type_table);
     resolve_statement(&resolver, statement);
     
-    ir_generator_init(&generator);
+    ir_generator_init(&generator, resolver.global);
     ir_generate_statement(&generator, statement);
 
     //dump_instructions(generator.instructions);
@@ -672,7 +672,7 @@ static void test_generate_while_statement()
     resolver_init(&resolver, type_table);
     resolve_statement(&resolver, statement);
     
-    ir_generator_init(&generator);
+    ir_generator_init(&generator, resolver.global);
     ir_generate_statement(&generator, statement);
 
     //dump_instructions(generator.instructions);
@@ -715,7 +715,7 @@ static void test_generate_return_statement()
     resolver.context.not_in_function = false;
     resolve_statement(&resolver, statement);
     
-    ir_generator_init(&generator);
+    ir_generator_init(&generator, resolver.global);
     ir_generate_statement(&generator, statement);
 
     //dump_instructions(generator.instructions);
@@ -758,7 +758,7 @@ static void test_generate_function_declaration()
     resolver_init(&resolver, type_table);
     resolve(&resolver, parser.declarations);
 
-    ir_generator_init(&generator);
+    ir_generator_init(&generator, resolver.global);
     ir_generate_declaration(&generator, declaration);
     
     //dump_instructions(generator.instructions);
@@ -800,7 +800,7 @@ static void test_generate_small_program()
     resolver_init(&resolver, type_table);
     resolve(&resolver, parser.declarations);
 
-    ir_generator_init(&generator);
+    ir_generator_init(&generator, resolver.global);
     ir_generate(&generator, parser.declarations);
     
     //dump_instructions(generator.instructions);

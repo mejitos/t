@@ -680,7 +680,7 @@ static void test_resolve_function_expression()
 
     lexer_init(&lexer, source);
     lex(&lexer);
-    
+
     parser_init(&parser, lexer.tokens);
     expression = parse_expression(&parser);
 
@@ -712,7 +712,7 @@ static void test_resolve_function_expression()
 
     lexer_init(&lexer, source);
     lex(&lexer);
-    
+
     parser_init(&parser, lexer.tokens);
     expression = parse_expression(&parser);
 
@@ -722,7 +722,7 @@ static void test_resolve_function_expression()
     type_table = type_table_init();
     resolver_init(&resolver, type_table);
     type = resolve_expression(&resolver, expression);
-    
+
     assert(resolver.diagnostics->length == 0);
     assert(resolver.context.return_type->kind == TYPE_INTEGER);
     assert(type->kind == TYPE_FUNCTION);

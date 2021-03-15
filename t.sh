@@ -44,7 +44,25 @@ case $COMMAND in
         echo -e "$USAGE"
         exit 0;;
     test )
-        build "$TEST_BUILD_DIR" "tests/main.c" "$TEST_BUILD_DIR/$TEST_EXECUTABLE" "tests/*.c src/lexer.c src/scope.c src/array.c src/parser.c src/resolver.c src/interpreter.c src/instruction.c src/ir_generator.c src/ir_runner.c src/stringbuilder.c src/ast.c src/symbol.c src/type.c src/token.c src/memory.c src/diagnostics.c"
+        build "$TEST_BUILD_DIR" "tests/main.c" "$TEST_BUILD_DIR/$TEST_EXECUTABLE" "tests/*.c 
+                                                                                   src/t.c 
+                                                                                   src/lexer.c 
+                                                                                   src/scope.c 
+                                                                                   src/array.c 
+                                                                                   src/parser.c 
+                                                                                   src/resolver.c 
+                                                                                   src/interpreter.c 
+                                                                                   src/instruction.c 
+                                                                                   src/ir_generator.c 
+                                                                                   src/ir_runner.c 
+                                                                                   src/code_generator.c 
+                                                                                   src/stringbuilder.c 
+                                                                                   src/ast.c 
+                                                                                   src/symbol.c 
+                                                                                   src/type.c 
+                                                                                   src/token.c 
+                                                                                   src/memory.c 
+                                                                                   src/diagnostics.c"
         $TEST_BUILD_DIR/$TEST_EXECUTABLE
         exit 0;;
     run )
@@ -59,7 +77,25 @@ case $COMMAND in
         valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --log-file="vglog" --verbose $BUILD_DIR/$EXECUTABLE $5 $6 $7 $8
         exit 0;;
     vgtest )
-        build "$TEST_BUILD_DIR" "tests/main.c" "$TEST_BUILD_DIR/$TEST_EXECUTABLE" "tests/*.c src/lexer.c src/scope.c src/array.c src/parser.c src/resolver.c src/interpreter.c src/instruction.c src/ir_generator.c src/ir_runner.c src/stringbuilder.c src/ast.c src/symbol.c src/type.c src/token.c src/memory.c src/diagnostics.c"
+        build "$TEST_BUILD_DIR" "tests/main.c" "$TEST_BUILD_DIR/$TEST_EXECUTABLE" "tests/*.c 
+                                                                                   src/t.c 
+                                                                                   src/lexer.c 
+                                                                                   src/scope.c 
+                                                                                   src/array.c 
+                                                                                   src/parser.c 
+                                                                                   src/resolver.c 
+                                                                                   src/interpreter.c 
+                                                                                   src/instruction.c 
+                                                                                   src/ir_generator.c 
+                                                                                   src/ir_runner.c 
+                                                                                   src/code_generator.c 
+                                                                                   src/stringbuilder.c 
+                                                                                   src/ast.c 
+                                                                                   src/symbol.c 
+                                                                                   src/type.c 
+                                                                                   src/token.c 
+                                                                                   src/memory.c 
+                                                                                   src/diagnostics.c"
         valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --log-file="vglog" --verbose $TEST_BUILD_DIR/$TEST_EXECUTABLE
         exit 0;;
 esac
