@@ -8,6 +8,7 @@ Symbol* symbol_variable(const char* identifier, Type* type)
     symbol->kind = SYMBOL_VARIABLE;
     symbol->identifier = identifier;
     symbol->type = type;
+    symbol->_register = -1;
         
     return symbol;
 }
@@ -20,6 +21,7 @@ Symbol* symbol_function(const char* identifier, Type* type)
     symbol->kind = SYMBOL_FUNCTION;
     symbol->identifier = identifier;
     symbol->type = type;
+    symbol->_register = -1;
 
     return symbol;
 }
@@ -32,6 +34,7 @@ Symbol* symbol_parameter(const char* identifier, Type* type)
     symbol->kind = SYMBOL_PARAMETER;
     symbol->identifier = identifier;
     symbol->type = type;
+    symbol->_register = -1;
 
     return symbol;
 }
@@ -44,6 +47,7 @@ Symbol* symbol_temp(const char* identifier, Type* type)
     symbol->kind = SYMBOL_TEMP;
     symbol->identifier = identifier;
     symbol->type = type;
+    symbol->_register = -1;
         
     return symbol;
 }

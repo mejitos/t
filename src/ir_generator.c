@@ -207,16 +207,24 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
             // TODO(timo): Does the function declaration handle the beginnning and ending?
             // It probably is job of the expression, if we think about a little into the
             // future and to anonymous functions
+
             printf("\tfunction_begin N\n");
 
             // TODO(timo): Change the scope to function scope
-
+            
             instruction = instruction_function_begin();
             array_push(generator->instructions, instruction);
+
+            // TODO(timo): Params?!?
 
             ir_generate_statement(generator, expression->function.body);
             
             // TODO(timo): Leave the function scope
+
+            // NOTE(timo): At this point, the scope has been already set to the function scope
+            // so therefore we already know the size of the function via the scope
+            // We could also take this info at the code generation stage from the scope
+            instruction->value.integer = generator->local->offset;
 
             printf("\tfunction_end\n");
 
@@ -277,6 +285,9 @@ void ir_generate_statement(IR_Generator* generator, AST_Statement* statement)
 {
     switch (statement->kind)
     {
+        case STATEMENT_DECLARATION:
+            ir_generate_declaration(generator, statement->declaration);
+            break;
         case STATEMENT_EXPRESSION:
             ir_generate_expression(generator, statement->expression);
             break;
@@ -415,6 +426,14 @@ void ir_generate_declaration(IR_Generator* generator, AST_Declaration* declarati
             // from the functions when necessary and therefore access them when necessary.
             // TODO(timo): Or are these actually loaded into the stack at the 
             // beginning of the program
+            
+            char* value = ir_generate_expression(generator, declaration->initializer);
+
+            Instruction* instruction;
+
+            instruction = instruction_copy(value, (char*)declaration->identifier->lexeme);
+            array_push(generator->instructions, instruction);
+
             break;
         }
         case DECLARATION_FUNCTION:
@@ -426,23 +445,28 @@ void ir_generate_declaration(IR_Generator* generator, AST_Declaration* declarati
 
             instruction = instruction_label(label);
             array_push(generator->instructions, instruction);
-
-            // TODO(timo): Get the size of the function somehow. It is probably
-            // a lot easier when we abstract things into structs and use some other
-            // functionality to print things. But for now, we keep things simple like this
-            // int N = 324;
             
-            // This function beginnning and ending is handled in function expression for the time being
-            // printf("\tfunction_begin %d\n", N);
+            /*
+            printf("\tfunction_begin %d\n", N);
+
+            instruction = instruction_function_begin();
+            array_push(generator->instructions, instruction);
+            */
+
             generator->local = (scope_lookup(generator->local, declaration->identifier->lexeme))->type->function.scope;
             
             ir_generate_expression(generator, declaration->initializer);
-    
+
             // NOTE(timo): These two are basically the same thing in our case
             // generator->local = generator->local->enclosing;
             generator->local = generator->global;
+            
+            /*
+            printf("\tfunction_end\n");
 
-            // printf("\tfunction_end\n");
+            instruction = instruction_function_end();
+            array_push(generator->instructions, instruction);
+            */
             break;
         }
         default:

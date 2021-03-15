@@ -392,7 +392,9 @@ struct Type
 {
     Type_Kind kind;
     size_t size;
-    int offset; // alignment?
+    // int offset; // alignment?
+    int alignment;
+
     union {
         struct {
             Type* return_type;

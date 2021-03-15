@@ -60,14 +60,46 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
             Symbol* source = scope_lookup(generator->local, instruction->arg2);
             Symbol* result = scope_lookup(generator->local, instruction->result);
 
+            if (destination != NULL)
+            {
+                destination->_register = allocate_register();
+                fprintf(generator->output,
+                        "\tmov\t%s, [rbp-%d]\t\t; --\n", register_list[destination->_register], destination->offset);
+            }
+            if (source != NULL)
+            {
+                source->_register = allocate_register();
+                fprintf(generator->output,
+                        "\tmov\t%s, [rbp-%d]\t\t; --\n", register_list[source->_register], source->offset);
+            }
+
+            if (result != NULL)
+            {
+                fprintf(generator->output,
+                    "\tadd\t%s, %s\n", register_list[destination->_register], register_list[source->_register]);
+                fprintf(generator->output,
+                    "\tmov qword\t[rbp-%d], %s\t\t; --\n", result->offset, register_list[destination->_register]);
+            }
+            else
+            {
+                result->_register = destination->_register;
+
+                fprintf(generator->output,
+                    "\tadd\t%s, %s\n", register_list[destination->_register], register_list[source->_register]);
+            }
+
+            free_register(source->_register);
+            source->_register = -1;
+
+            // NOTE(timo): This uses straight up registers for the values
+            /*
             fprintf(generator->output,
                 "\tadd\t%s, %s\n", register_list[destination->_register], register_list[source->_register]);
 
             free_register(source->_register);
 
             result->_register = destination->_register;
-
-            // result->_register = emit_add(destination, source);
+            */
             break;
         }
         case OP_SUB:
@@ -78,29 +110,87 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
             Symbol* source = scope_lookup(generator->local, instruction->arg2);
             Symbol* result = scope_lookup(generator->local, instruction->result);
 
+            if (destination != NULL)
+            {
+                destination->_register = allocate_register();
+                fprintf(generator->output,
+                        "\tmov\t%s, [rbp-%d]\t\t; --\n", register_list[destination->_register], destination->offset);
+            }
+            if (source != NULL)
+            {
+                source->_register = allocate_register();
+                fprintf(generator->output,
+                        "\tmov\t%s, [rbp-%d]\t\t; --\n", register_list[source->_register], source->offset);
+            }
+
+            if (result != NULL)
+            {
+                fprintf(generator->output,
+                    "\tsub\t%s, %s\n", register_list[destination->_register], register_list[source->_register]);
+                fprintf(generator->output,
+                    "\tmov qword\t[rbp-%d], %s\t\t; --\n", result->offset, register_list[destination->_register]);
+            }
+            else
+            {
+                result->_register = destination->_register;
+
+                fprintf(generator->output,
+                    "\tsub\t%s, %s\n", register_list[destination->_register], register_list[source->_register]);
+            }
+
+            free_register(source->_register);
+            source->_register = -1;
+
+            // NOTE(timo): This uses straight up registers for the values
+            /*
             fprintf(generator->output,
                 "\tsub\t%s, %s\n", register_list[destination->_register], register_list[source->_register]);
 
             free_register(source->_register);
 
             result->_register = destination->_register;
+            */
             break;
         }
         case OP_MUL:
         {
             // Multiplies value in the rax register with the given argument. Result is saved into rax.
-            // dest <- (dest + src)
+            // rax <- (rax * src)
             Symbol* destination = scope_lookup(generator->local, instruction->arg1);
             Symbol* source = scope_lookup(generator->local, instruction->arg2);
             Symbol* result = scope_lookup(generator->local, instruction->result);
+            
+            if (destination != NULL)
+            {
+                fprintf(generator->output,
+                        "\tmov\trax, [rbp-%d]\t\t; --\n", destination->offset);
+            }
+            if (source != NULL)
+            {
+                fprintf(generator->output,
+                        "\tmul qword\t[rbp-%d]\t\t; --\n", source->offset);
+            }
 
-            result->_register = destination->_register;
+            if (result != NULL)
+            {
+                fprintf(generator->output,
+                    "\tmov qword\t[rbp-%d], rax\t\t; --\n", result->offset);
+            }
+            else
+            {
+                result->_register = destination->_register;
+
+                fprintf(generator->output,
+                    "\tmov\trax, %s\n"
+                    "\tmul\t%s\t\t; multiply the value in the rax with the source\n"
+                    "\tmov\t%s, rax\n", register_list[destination->_register], register_list[source->_register], register_list[result->_register]);
+
+                free_register(source->_register);
+                source->_register = -1;
+            }
 
             /*
-            fprintf(generator->output,
-                "\tmov\trax, %s\n"
-                "\tmul\t%s, %s\n", register_list[destination->_register], register_list[source->_register]);
-            */
+            result->_register = destination->_register;
 
             fprintf(generator->output,
                 "\tmov\trax, %s\n"
@@ -108,14 +198,50 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
                 "\tmov\t%s, rax\n", register_list[destination->_register], register_list[source->_register], register_list[result->_register]);
 
             free_register(source->_register);
+            */
             break;
         }
         case OP_DIV:
         {
+            // rax <- (rax / src)
             Symbol* destination = scope_lookup(generator->local, instruction->arg1);
             Symbol* source = scope_lookup(generator->local, instruction->arg2);
             Symbol* result = scope_lookup(generator->local, instruction->result);
 
+            fprintf(generator->output,
+                    "\tmov\trdx, 0\t\t; setting rdx to 0 because it represents the top bits of the divident\n");
+
+            if (destination != NULL)
+            {
+                fprintf(generator->output,
+                        "\tmov\trax, [rbp-%d]\t\t; --\n", destination->offset);
+            }
+            if (source != NULL)
+            {
+                fprintf(generator->output,
+                        "\tdiv qword\t[rbp-%d]\t\t; --\n", source->offset);
+            }
+
+            if (result != NULL)
+            {
+                fprintf(generator->output,
+                    "\tmov qword\t[rbp-%d], rax\t\t; --\n", result->offset);
+            }
+            else
+            {
+                result->_register = destination->_register;
+
+                fprintf(generator->output,
+                    "\tmov\trdx, 0\t\t; setting rdx to 0 because it represents the top bits of the input divident\n"
+                    "\tmov\trax, %s\n"
+                    "\tdiv\t%s\t\t; divide the rax with the source\n"
+                    "\tmov\t%s, rax\n", register_list[destination->_register], register_list[source->_register], register_list[result->_register]);
+
+                free_register(source->_register);
+                source->_register = -1;
+            }
+
+            /*
             result->_register = destination->_register;
 
             fprintf(generator->output,
@@ -125,23 +251,32 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
                 "\tmov\t%s, rax\n", register_list[destination->_register], register_list[source->_register], register_list[result->_register]);
 
             free_register(source->_register);
+            */
             break;
         }
         case OP_COPY:
         {
             Symbol* result = scope_lookup(generator->local, instruction->result);
-            assert(result != NULL);
-            result->_register = allocate_register();
-            // int _register = allocate_register();
+            Symbol* arg = scope_lookup(generator->local, instruction->arg1);
 
-            fprintf(generator->output,
-                "\tmov\t%s, %s\t\t; some comment\n", register_list[result->_register], instruction->arg1);
-            
-            // result->_register = _register;
+            // NOTE(timo): If argument symbol is found, argument is a variable, else it is probably constant
+            if (arg != NULL)
+            {
+                fprintf(generator->output,
+                        "\tmov\trax, [rbp-%d]\t\t; --\n", arg->offset);
+                fprintf(generator->output,
+                        "\tmov\tqword [rbp-%d], rax\t\t; --\n", result->offset);
+            }
+            else
+            {
+                // NOTE(timo): Is this actually needed? I mean at this point we save pretty much everything to
+                // stack at this point, so there is probably no need for register allocation here
+                result->_register = allocate_register();
 
-            // result->_register = emit_copy(instruction->arg1);
-            // int _register = emit_copy(instruction->arg1);
-            // result->_register = register_list[_register];
+                fprintf(generator->output,
+                        "\tmov\tqword [rbp-%d], %s\t\t; asd\n", result->offset, instruction->arg1);
+            }
+
             break;
         }
         case OP_LABEL:
@@ -158,7 +293,7 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
             break;
         }
         case OP_FUNCTION_BEGIN:
-            // TODO(timo): That scope change should probably happen in here        
+            // TODO(timo): That scope change should probably happen in here and not in OP_LABEL
 
             // TODO(timo): start a stack frame and allocate memory for it from the stack
             // the amount needed should be in the symbol table after getting
@@ -166,16 +301,16 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
             fprintf(generator->output, 
                     "\tpush\trbp\n"
                     "\tmov\trbp, rsp\t\t; started stack frame\n");
-            // NOTE(timo): For now we use this general function as main program
-            // but we probably should create the own commands 
-            // fprintf(generator->output, 
-                    // "\tpush\trbp\n"
-                    // "\tmov\trbp, rsp ; started stack frame\n"
-                    // "\tmov\t[rbp-4], rdi ; argc\n"
-                    // "\tmov\t[rbp-16], rsi ; argv\n");
+
+            fprintf(generator->output,
+                    "\tsub\trsp, %d\t\t; allocate memory for local variables from stack\n", instruction->value.integer);
+
             // Push all the parameters
             // TODO(timo): So I should actually resolve the params normally
             // for the main, but they are "special params" mapped in assembly
+            break;
+        case OP_PARAM_PUSH:
+
             break;
         case OP_FUNCTION_END:
             // What to do with the function end?
@@ -189,11 +324,20 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
         case OP_RETURN:
         {
             Symbol* value = scope_lookup(generator->local, instruction->arg1);
-
-            fprintf(generator->output,
-                    "\tmov\trax, %s\t\t; put return value to rax\n", register_list[value->_register]);
+            
+            if (value != NULL)
+            {
+                fprintf(generator->output,
+                        "\tmov\trax, [rbp-%d]\t\t; put return value to rax\n", value->offset);
+            }
+            else
+            {
+                fprintf(generator->output,
+                        "\tmov\trax, %s\t\t; put return value to rax\n", register_list[value->_register]);
+            }
 
             free_registers();
+            break;
         }
         default:
             // TODO(timo): Error
@@ -234,13 +378,18 @@ void code_generate(Code_Generator* generator)
     fprintf(generator->output,
             "\n"
             "; preparing to exit from the program\n"
-            "\tmov\trdi, return_message ; setting the return message\n"
-            "\tmov\trsi, rax ; return value for printf\n"
-            "\tcall printf ; print the return value\n"
-            "\tmov\trax, 0 ; exit success\n"
-            // "\tpop rbp ; leave the stack frame\n"
-            "\tleave ; leave the current stack frame without manually setting it\n"
-            "\tret ; exit the program\n"
+            "\tpush rax\t\t; caller save register for printf\n"
+            "\tpush rcx\t\t; caller save register for printf\n"
+            "\tmov\trdi, return_message\t\t; first argument of printf - format\n"
+            "\tmov\trsi, rax\t\t ;second argument of printf - formatted value\n"
+            "\txor\trax, rax\t\t; because the varargs printf uses\n"
+            "\tcall printf\t\t; print the return value - printf(format, value)\n"
+            "\tpop\trcx\t\t; restore caller save register of printf\n"
+            "\tpop\trax\t\t; restore caller save register of printf\n"
+            "\tmov\trax, 0\t\t; exit success\n"
+            // "\tpop rbp ; leave the stack frame\n" // this could be used if we restore the stackpointer by adding the offset back
+            "\tleave\t\t; leave the current stack frame without manually setting it\n"
+            "\tret\t\t; exit the program\n"
             "\n"
             "return_message:\n"
             "\tdb 'Program exited with the value %s', 10, 0\n", "%d");

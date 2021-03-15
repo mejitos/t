@@ -2,6 +2,25 @@
 #include "t.h"
 
 
+const char* test_files[] =
+{
+    // "./examples/trivial_add.t",
+    // "./examples/trivial_subtract.t",
+    // "./examples/trivial_multiply.t",
+    // "./examples/trivial_divide.t",
+    // "./examples/trivial_arithmetics.t",
+    // "./examples/local_variables_1.t",
+    // "./examples/local_variables_2.t",
+    // "./examples/local_variables_3.t",
+    // "./examples/local_variables_4.t",
+    // "./examples/local_variables_5.t",
+    "./examples/local_variables_6.t",
+    // "./examples/args_1.t",
+    // "./examples/factorial.t",
+    // "./examples/fibonacci.t",
+};
+
+
 int main(int argc, char** argv)
 {
     /*
@@ -30,14 +49,9 @@ int main(int argc, char** argv)
     // TODO(timo): This probably should return somekind of code indicating the success
     // or non-success of the compiling process
     // NOTE(timo): For now we just use hardcoded path
-    // compile_from_file("./examples/first.t");
-    // compile_from_file("./examples/trivial_add.t");
-    // compile_from_file("./examples/trivial_subtract.t");
-    // compile_from_file("./examples/trivial_multiply.t");
-    // compile_from_file("./examples/trivial_divide.t");
-    compile_from_file("./examples/trivial_arithmetics.t");
-    // compile_from_file("./examples/factorial.t");
-    // compile_from_file("./examples/fibonacci.t");
+    for (int i = 0; i < sizeof(test_files) / sizeof(*test_files); i++)
+        compile_from_file(test_files[i]);
+
     // compile_from_file(file_path);
 
     return 0;

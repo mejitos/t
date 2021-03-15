@@ -6,7 +6,7 @@ Type* type_none()
     Type* type = xmalloc(sizeof (Type));
     type->kind = TYPE_NONE;
     type->size = 0;
-    type->offset = 0;
+    // type->offset = 0;
 
     return type;
 }
@@ -17,7 +17,8 @@ Type* type_integer()
     Type* type = xmalloc(sizeof (Type));
     type->kind = TYPE_INTEGER;
     type->size = 4;
-    type->offset = 0;
+    // type->offset = 0;
+    type->alignment = 4;
 
     return type;
 }
@@ -28,7 +29,8 @@ Type* type_boolean()
     Type* type = xmalloc(sizeof (Type));
     type->kind = TYPE_BOOLEAN;
     type->size = 1;
-    type->offset = 0;
+    // type->offset = 0;
+    type->alignment = 4;
 
     return type;
 }
@@ -45,7 +47,7 @@ Type* type_function()
 
     // TODO(timo): These
     type->size = 0;
-    type->offset = 0;
+    // type->offset = 0;
 
     return type;
 }
@@ -60,8 +62,9 @@ Type* type_array(Type* element_type)
     type->array.length = 0;
 
     // TODO(timo): These
-    type->size = 0;
-    type->offset = 0;
+    type->size = 8; // Size of the pointer is 8 bytes and array is basically a pointer type
+    // type->offset = 0;
+    type->alignment = 8;
 
     return type;
 }
@@ -79,6 +82,10 @@ const char* type_as_string(Type* type)
             return "bool";
         case TYPE_FUNCTION:
             return type_as_string(type->function.return_type);
+        case TYPE_ARRAY:
+            // TODO(timo): I probably should return something else but since the array 
+            // is just array of elements type of element type and basically a pointer type
+            return type_as_string(type->array.element_type);
         default:
             return "unknown type";
     }

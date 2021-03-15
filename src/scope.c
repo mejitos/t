@@ -74,8 +74,14 @@ void scope_declare(Scope* scope, Symbol* symbol)
     }
 
     // Setting the memory offsets / alignment
-    scope->offset += symbol->type->size;
     symbol->offset = scope->offset;
+
+    // Compute the new offset for the scope
+    scope->offset += symbol->type->size;
+
+    // Lets just use the alignment of 8 bytes for everything for now to make life easier
+    while (scope->offset % 8 != 0)
+        scope->offset += 4;
 
     scope_put(scope, symbol);
 }
