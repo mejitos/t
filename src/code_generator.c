@@ -42,6 +42,7 @@ static int allocate_register()
 void code_generator_init(Code_Generator* generator, Scope* global, array* instructions)
 {
     *generator = (Code_Generator) { .global = global,
+                                    .index = 0,
                                     .instructions = instructions };
 
     generator->local = generator->global;
@@ -256,13 +257,15 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
         }
         case OP_EQ:
         case OP_NEQ:
-            break;
         case OP_LT:
+        case OP_LTE:
+        case OP_GT:
+        case OP_GTE:
         {
             // Just put things into the registers and compare?
             Symbol* destination = scope_lookup(generator->local, instruction->arg1);
             Symbol* source = scope_lookup(generator->local, instruction->arg2);
-            // Symbol* result = scope_lookup(generator->local, instruction->result);
+            Symbol* result = scope_lookup(generator->local, instruction->result);
 
             if (destination != NULL)
             {
@@ -279,6 +282,19 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
 
             fprintf(generator->output,
                 "\tcmp\t%s, %s\t\t; --\n", register_list[destination->_register], register_list[source->_register]);
+            
+            /*
+            fprintf(generator->output,
+                "\tcmp\tSF, OF\t\t; --\n");
+            */
+
+            /*
+            fprintf(generator->output,
+                "\tmov\t[rbp-%d], CF");
+            */
+
+            // TODO(timo): What to save into the result? I mean we could save the correct jump
+            // instruction at this point already and just print it at the GOTO_IF_FALSE
 
             free_register(destination->_register);
             free_register(source->_register);
@@ -286,14 +302,57 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
             break;
         }
         case OP_GOTO_IF_FALSE:
+        {
+            // TODO(timo): This is pretty hacky solution just to get things to work
+            // just for this we added the index/cursor for the generator instructions
+            // and do all this switch jumping to get correct jumps. Like Raymond Hettinger
+            // would say: 'There must be a better way!'.
+
+            // Here we can access the result of the condition
+            // Symbol* condition = scope_lookup(generator->local, instruction->arg1);
+            
+            Instruction* preceding = generator->instructions->items[generator->index - 1];
+
+            // NOTE(timo): Since the operation is goto if false, we need to use the
+            // opposite conditions for the jumps
+            switch (preceding->operation)
+            {
+                case OP_EQ:
+                    fprintf(generator->output,
+                        "\tjne %s\t\t; --\n", instruction->value.string);
+                    break;
+                case OP_NEQ:
+                    fprintf(generator->output,
+                        "\tje %s\t\t; --\n", instruction->value.string);
+                    break;
+                case OP_LT:
+                    fprintf(generator->output,
+                        "\tjge %s\t\t; --\n", instruction->value.string);
+                    break;
+                case OP_LTE:
+                    fprintf(generator->output,
+                        "\tjg %s\t\t; --\n", instruction->value.string);
+                    break;
+                case OP_GT:
+                    fprintf(generator->output,
+                        "\tjle %s\t\t; --\n", instruction->value.string);
+                    break;
+                case OP_GTE:
+                    fprintf(generator->output,
+                        "\tjl %s\t\t; --\n", instruction->value.string);
+                    break;
+                default:
+                    printf("[CODE_GENERATOR] - Invalid preceding instruction in OP_GOTO_IF_FALSE\n");
+                    exit(1);
+            }
+            
+            /*
             // jz label
             fprintf(generator->output,
                 "\tjz %s\t\t; --\n", instruction->value.string);
+            */
             break;
-        case OP_LTE:
-        case OP_GT:
-        case OP_GTE:
-            break;
+        }
         case OP_COPY:
         {
             Symbol* result = scope_lookup(generator->local, instruction->result);
@@ -413,7 +472,10 @@ void code_generate(Code_Generator* generator)
             "\tsection .text\n");
     
     for (int i = 0; i < generator->instructions->length; i++)
+    {
         code_generate_instruction(generator, generator->instructions->items[i]);
+        generator->index++;
+    }
 
     // Should the main function has its own being and end operations?
     // We should probably have some way to declare builtin functions etc.

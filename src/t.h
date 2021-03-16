@@ -733,6 +733,8 @@ typedef struct Code_Generator
 {
     FILE* output;
     array* instructions;
+    int index;
+
     Scope* global;
     Scope* local;
 
