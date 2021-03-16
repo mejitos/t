@@ -238,14 +238,12 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
 
             // Push the params to the stack/registers
             array* arguments = expression->call.arguments;
-            int release = 0;
 
             for (int i = arguments->length - 1; i >= 0; i--)
             {
                 AST_Expression* argument = (AST_Expression*)arguments->items[i];
-                // TODO(timo): I removed the types from the expressions themselves since they seemed useless
-                // release += argument->type->size;
                 char* arg = ir_generate_expression(generator, argument);
+
                 printf("\tparameter_push %s\n", arg);
 
                 instruction = instruction_param_push(arg);
@@ -264,13 +262,18 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
 
             instruction = instruction_call(arg, result, arguments->length);
             array_push(generator->instructions, instruction);
+            
+            // Pop the params from the stack
+            for (int i = 0; i < arguments->length; i++)
+            {
+                AST_Expression* argument = (AST_Expression*)arguments->items[i];
+                char* arg = ir_generate_expression(generator, argument);
 
-            // Pop the params from the stack by popping the number of bytes being popped
-            // => reclaim the space used by the parameters
-            printf("\tparameter_pop %d\n", release);
+                printf("\tparameter_pop %s\n", arg);
 
-            instruction = instruction_param_pop(release);
-            array_push(generator->instructions, instruction);
+                instruction = instruction_param_pop(arg);
+                array_push(generator->instructions, instruction);
+            }
 
             return result;
         }

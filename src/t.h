@@ -681,7 +681,7 @@ Instruction* instruction_neg(char* arg, char* result);
 Instruction* instruction_function_begin();
 Instruction* instruction_function_end();
 Instruction* instruction_param_push(char* arg);
-Instruction* instruction_param_pop(int release);
+Instruction* instruction_param_pop(char* arg);
 Instruction* instruction_call(char* arg, char* result, int n);
 Instruction* instruction_return(char* arg);
 Instruction* instruction_label(char* label);

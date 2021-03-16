@@ -194,14 +194,13 @@ Instruction* instruction_param_push(char* arg)
 }
 
 
-Instruction* instruction_param_pop(int release)
+Instruction* instruction_param_pop(char* arg)
 {
     Instruction* instruction = xcalloc(1, sizeof (Instruction));
     instruction->operation = OP_PARAM_POP;
-    instruction->arg1 = NULL;
+    instruction->arg1 = arg;
     instruction->arg2 = NULL;
     instruction->result = NULL;
-    instruction->value.integer = release;
 
     return instruction;
 }
@@ -327,7 +326,7 @@ void dump_instruction(Instruction* instruction)
             printf("\tparameter_push %s\n", instruction->arg1);
             break;
         case OP_PARAM_POP:
-            printf("\tparameter_pop %d\n", instruction->value.integer);
+            printf("\tparameter_pop %s\n", instruction->arg1);
             break;
         case OP_CALL:
             printf("\t%s := call %s, %d\n", instruction->result, instruction->arg1, instruction->value.integer);
