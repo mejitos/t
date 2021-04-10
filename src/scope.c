@@ -74,7 +74,10 @@ void scope_declare(Scope* scope, Symbol* symbol)
     }
 
     // Setting the memory offsets / alignment
-    symbol->offset = scope->offset;
+    // NOTE(timo): This has to be offset + 8 because of how the stack works
+    // We cannot have position stack_top - 0, since then the value would go
+    // outside of the stack.
+    symbol->offset = scope->offset + 8;
 
     // Compute the new offset for the scope
     // scope->offset += symbol->type->size;

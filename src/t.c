@@ -139,12 +139,14 @@ void compile(const char* source)
     
     char* rm_main_asm = "rm main.asm";
     int rm_main_asm_error;
-
+    
+    /*
     if ((rm_main_asm_error = system(rm_main_asm)) != 0 )
     {
         printf("\n");
         printf("Error code on command '%s': %d\n", rm_main_asm, rm_main_asm_error);
     }
+    */
 
     char* rm_main_o = "rm main.o";
     int rm_main_o_error;

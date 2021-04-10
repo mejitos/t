@@ -52,15 +52,12 @@ static char* label(IR_Generator* generator)
 
 char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression)
 {
-    // TODO(timo): This should probably return the instruction structures
     switch (expression->kind)
     {
         case EXPRESSION_LITERAL:
         {
             // NOTE(timo): The situation probably calls for generating the temp variables
             // for all the literals/constants etc. and they just get optimized away later
-            // TODO(timo): I think we could just return the string and we can skip the
-            // unnecessary extra assign/store/move step
             char* result = temp(generator);
             char* arg = (char*)expression->literal->lexeme;
 
@@ -111,7 +108,7 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
             char* left = ir_generate_expression(generator, expression->binary.left); 
             char* right = ir_generate_expression(generator, expression->binary.right);
             char* operator = (char*)expression->binary._operator->lexeme;
-            // NOTE(timo): When we move this into here, we get the correct ordering of the temp labels
+            // NOTE(timo): When we move this result into here, we get the correct ordering of the temp labels
             char* result = temp(generator);
 
             scope_declare(generator->local, symbol_temp(result, expression->type));
@@ -178,7 +175,7 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
             return result;
 
             // Generate nothing, just return the variable
-            return (char*)expression->identifier->lexeme;
+            // return (char*)expression->identifier->lexeme;
         }
         case EXPRESSION_ASSIGNMENT:
         {
@@ -207,11 +204,15 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
             // TODO(timo): Does the function declaration handle the beginnning and ending?
             // It probably is job of the expression, if we think about a little into the
             // future and to anonymous functions
+            
+            // -----===== The function prologue =====-----
 
+            // 
             printf("\tfunction_begin N\n");
 
             // TODO(timo): Change the scope to function scope
             
+            // What functions begins?
             instruction = instruction_function_begin();
             array_push(generator->instructions, instruction);
 
@@ -225,9 +226,11 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
             // so therefore we already know the size of the function via the scope
             // We could also take this info at the code generation stage from the scope
             instruction->value.integer = generator->local->offset;
-
+            
+            // -----===== The function epilogue =====-----
             printf("\tfunction_end\n");
-
+            
+            // What functions ends?
             instruction = instruction_function_end();
             array_push(generator->instructions, instruction);
             break;
@@ -251,7 +254,9 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
             }
 
             // Call instruction
-            char* arg = ir_generate_expression(generator, expression->call.variable);
+            // NOTE(timo): We cannot put the name of the function into temp variable?
+            // char* arg = ir_generate_expression(generator, expression->call.variable);
+            char* arg = expression->call.variable->identifier->lexeme;
             char* result = temp(generator);
 
             scope_declare(generator->local, symbol_temp(result, expression->type));
@@ -429,6 +434,7 @@ void ir_generate_declaration(IR_Generator* generator, AST_Declaration* declarati
             // from the functions when necessary and therefore access them when necessary.
             // TODO(timo): Or are these actually loaded into the stack at the 
             // beginning of the program
+            // TODO(timo): Or are they actually loaded to the data section at the end?
             
             char* value = ir_generate_expression(generator, declaration->initializer);
 
@@ -436,13 +442,14 @@ void ir_generate_declaration(IR_Generator* generator, AST_Declaration* declarati
 
             instruction = instruction_copy(value, (char*)declaration->identifier->lexeme);
             array_push(generator->instructions, instruction);
-
             break;
         }
         case DECLARATION_FUNCTION:
         {
             Instruction* instruction;
+
             // TODO(timo): This is probably the point where we need the abstraction for routines
+
             char* label = (char*)declaration->identifier->lexeme;
             printf("_%s:\n", label);
 
@@ -455,11 +462,14 @@ void ir_generate_declaration(IR_Generator* generator, AST_Declaration* declarati
             instruction = instruction_function_begin();
             array_push(generator->instructions, instruction);
             */
-
+            
+            // Set the scope to the function scope
             generator->local = (scope_lookup(generator->local, declaration->identifier->lexeme))->type->function.scope;
             
+            // Generate the body of the function (=initializer)
             ir_generate_expression(generator, declaration->initializer);
-
+            
+            // Restore the scope to the enclosing scope
             // NOTE(timo): These two are basically the same thing in our case
             // generator->local = generator->local->enclosing;
             generator->local = generator->global;

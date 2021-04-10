@@ -758,7 +758,14 @@ void resolve_function_declaration(Resolver* resolver, AST_Declaration* declarati
 
     // Declare the scope here so we can set the scope into the symbol
     Type* actual_type = resolve_expression(resolver, declaration->initializer);
-    
+   
+    // The type has to be a function type
+    if (actual_type->kind != TYPE_FUNCTION)
+    {
+        printf("Expected function type, got something else\n");
+        exit(1);
+    }
+
     // Check if the expected type and the actual type match
     if (expected_type->kind != actual_type->function.return_type->kind)
     {
@@ -766,6 +773,10 @@ void resolve_function_declaration(Resolver* resolver, AST_Declaration* declarati
         printf("Conflicting types in function declaration\n");
         exit(1);
     }
+    
+    // TODO(timo): Set the name of the scope to the name of the function. I'm pretty
+    // sure this should be done elsewhere and not in here
+    actual_type->function.scope->name = declaration->identifier->lexeme;
 
     // Declare the symbol into the current scope
     Symbol* symbol = symbol_function(declaration->identifier->lexeme, actual_type);

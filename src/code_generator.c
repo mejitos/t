@@ -361,10 +361,23 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
             // NOTE(timo): If argument symbol is found, argument is a variable, else it is probably constant
             if (arg != NULL)
             {
-                fprintf(generator->output,
-                        "\tmov\trax, [rbp-%d]\t\t; --\n", arg->offset);
-                fprintf(generator->output,
-                        "\tmov\tqword [rbp-%d], rax\t\t; --\n", result->offset);
+                // TODO(timo): For now this is just a super quick hacky solution to get things working
+                if (arg->kind == SYMBOL_PARAMETER)
+                {
+                    // NOTE(timo): The offset has to be offset + 8 here, since the first spot in the
+                    // previous stackframe, is always the return address and the parameters are behind it
+                    fprintf(generator->output,
+                            "\tmov\trax, [rbp+%d]\t\t; --\n", arg->offset + 8);
+                    fprintf(generator->output,
+                            "\tmov\tqword [rbp-%d], rax\t\t; --\n", result->offset);
+                }
+                else
+                {
+                    fprintf(generator->output,
+                            "\tmov\trax, [rbp-%d]\t\t; --\n", arg->offset);
+                    fprintf(generator->output,
+                            "\tmov\tqword [rbp-%d], rax\t\t; --\n", result->offset);
+                }
             }
             else
             {
@@ -402,24 +415,90 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
             // the amount needed should be in the symbol table after getting
             // all the temporary variables etc.
             fprintf(generator->output, 
-                    "\tpush\trbp\n"
-                    "\tmov\trbp, rsp\t\t; started stack frame\n");
+                "\tpush\trbp\n"
+                "\tmov\trbp, rsp\t\t; started stack frame\n");
 
             fprintf(generator->output,
-                    "\tsub\trsp, %d\t\t; allocate memory for local variables from stack\n", instruction->value.integer);
+                "\tsub\trsp, %d\t\t; allocate memory for local variables from stack\n", instruction->value.integer);
+
+            // Save the parameters to the local variables
+            
+            /*
+            fprintf(generator->output,
+                "\tpush\trdi\n"
+                "\tpush\trsi\n");
+            */
 
             // Push all the parameters
             // TODO(timo): So I should actually resolve the params normally
             // for the main, but they are "special params" mapped in assembly
             break;
         case OP_PARAM_PUSH:
+        {
+            // arg1: the parameter being pushed into the stack
+            Symbol* parameter = scope_lookup(generator->local, instruction->arg1);
+            
+            // Local variable saved in the stack
+            if (parameter != NULL)
+            {
+                fprintf(generator->output,
+                        "\tpush\tqword[rbp-%d]\t\t; pushing function parameter\n", parameter->offset);
+            }
+            else
+            {
+                // TODO(timo): Just use the registers
+            }
 
             break;
+        }
+        case OP_PARAM_POP:
+        {
+            // arg1: the parameter being popped from the stack
+            Symbol* parameter = scope_lookup(generator->local, instruction->arg1);
+            
+            // Local variable saved in the stack
+            if (parameter != NULL)
+            {
+                fprintf(generator->output,
+                        "\tpop\tqword [rbp-%d]\t\t; popping function parameter\n", parameter->offset);
+            }
+            else
+            {
+                // TODO(timo): Just use the registers
+            }
+
+            break;
+        }
         case OP_FUNCTION_END:
-            // What to do with the function end?
+            // The function epilogue
+
+            // Label
+            fprintf(generator->output,
+                "%s_epilogue:\n", generator->local->name);
+
+            // Restore the stack
+            // Restore the arguments/registers
+            // Return to the caller
+            // TODO(timo): Hacky solution to get things work for now
+            if (strcmp(generator->local->name, "main") != 0)
+            {
+                /*
+                fprintf(generator->output,
+                    "\tpop\trsi\n"
+                    "\tpop\trdi\n");
+                */
+                fprintf(generator->output,
+                    // "\tadd\trsp, 8\n"
+                    // "\tleave\n"
+                    "\tmov\trsp, rbp\t\t; restore stack frame\n"
+                    "\tpop\trbp\n"
+                    "\tret\n");
+            }
+
             // Set the current scope to the enclosing (global) scope
             if (generator->local->enclosing != NULL)
             {
+                // NOTE(timo): At this point, these two are equal
                 generator->local = generator->global;
                 // generator->local = generator->local->enclosing;
             }
@@ -431,15 +510,88 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
             if (value != NULL)
             {
                 fprintf(generator->output,
-                        "\tmov\trax, [rbp-%d]\t\t; put return value to rax\n", value->offset);
+                    "\tmov\trax, [rbp-%d]\t\t; put return value to rax\n", value->offset);
             }
             else
             {
                 fprintf(generator->output,
-                        "\tmov\trax, %s\t\t; put return value to rax\n", register_list[value->_register]);
+                    "\tmov\trax, %s\t\t; put return value to rax\n", register_list[value->_register]);
             }
 
+            // TODO(timo): Make jump to function epilogue where the function will be teared down
+            // Even though the jump is not necessary right now since we only have one return per function
+            fprintf(generator->output,
+                "\tjmp %s_epilogue\t\t; run the function epilogue\n", generator->local->name);
+
             free_registers();
+            break;
+        }
+        case OP_CALL:
+        {
+            // Push the return address to the stack?
+            // We need to save the RAX to rescue variable from the function
+            /*
+            fprintf(generator->output,
+                    "\tpush\trax\t\t; --\n");
+            */
+
+            // Caller saved registers
+            /*
+            fprintf(generator->output,
+                    "\tpush\trax\n"
+                    "\tpush\trcx\n"
+                    "\tpush\trdx\n");
+            */
+            // fprintf(generator->output, "\tpush\trax\n");
+
+            // Instruction has arg1: what is being called
+            //                 result: where the result is being saved
+            //                 n: number of arguments the function was being called with
+            Symbol* value = scope_lookup(generator->local, instruction->arg1);
+            Symbol* result = scope_lookup(generator->local, instruction->result);
+            
+            if (value != NULL)
+            {
+                fprintf(generator->output,
+                        // "\txor\trax, rax\n"
+                        "\tcall\t%s\t\t; calling the function %s\n", value->identifier, value->identifier);
+                /*
+                fprintf(generator->output,
+                        "\tadd\trsp, 16\n");
+                */
+            }
+            else
+            {
+                // TODO(timo): Just use the registers
+            }
+
+            // Pop the return address
+            /*
+            fprintf(generator->output,
+                    "\tpop\trax\t\t; --\n");
+            */
+            
+            // Restore caller saved registers
+            /*
+            fprintf(generator->output,
+                    "\tpop\trdx\n"
+                    "\tpop\trcx\n"
+                    "\tpop\trax\n");
+            */
+
+            // Save the call result to result address
+            if (result != NULL)
+            {
+                fprintf(generator->output,
+                        "\tmov\t[rbp-%d], rax\t\t; Moving the function result to the result address\n", result->offset);
+            }
+            else
+            {
+                // TODO(timo): Just use the registers
+            }
+
+            // fprintf(generator->output, "\tpop\trax\n");
+
             break;
         }
         default:
@@ -482,8 +634,6 @@ void code_generate(Code_Generator* generator)
 
     // Template end
     fprintf(generator->output,
-            "\n"
-            "; preparing to exit from the program\n"
             "\tpush rax\t\t; caller save register for printf\n"
             "\tpush rcx\t\t; caller save register for printf\n"
             "\tmov\trdi, return_message\t\t; first argument of printf - format\n"
