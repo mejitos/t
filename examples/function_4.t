@@ -1,6 +1,6 @@
 #
 # Author: Timo Mehto
-# Date: 2020/03/16
+# Date: 2020/04/10
 
 max: int = (x: int, y: int) => {
     result: int = -1;
