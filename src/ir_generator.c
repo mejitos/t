@@ -14,6 +14,7 @@ void ir_generator_init(IR_Generator* generator, Scope* global)
     *generator = (IR_Generator) { .temp = 0,
                                   .label = 0,
                                   .global = global,
+                                  .not_in_loop = true,
                                   .instructions = array_init(sizeof (Instruction*)) };
 
     generator->local = generator->global;
@@ -312,6 +313,10 @@ void ir_generate_statement(IR_Generator* generator, AST_Statement* statement)
             char* label_condition = label(generator); // condition
             char* label_exit = label(generator); // exit
 
+            // TODO(timo): Quick hacky hack solution for break statements. There might be a better way.
+            generator->not_in_loop = false;
+            generator->while_exit = label_exit;
+
             printf("%s:\n", label_condition);
 
             instruction = instruction_label(label_condition);
@@ -339,6 +344,10 @@ void ir_generate_statement(IR_Generator* generator, AST_Statement* statement)
 
             instruction = instruction_label(label_exit);
             array_push(generator->instructions, instruction);
+            
+            // TODO(timo): Quick hacky hack solution for break statements. There might be a better way.
+            generator->not_in_loop = true;
+            generator->while_exit = NULL;
             
             break;
         }
@@ -415,6 +424,28 @@ void ir_generate_statement(IR_Generator* generator, AST_Statement* statement)
             Instruction* instruction = instruction_return(value);
             array_push(generator->instructions, instruction);
             break;
+        }
+        case STATEMENT_BREAK:
+        {
+            // TODO(timo): Here we should actually know the context of the 
+            // current loop so we know where to go to
+
+            // We could just decrement the current label by 1 and create label?
+            // Nope. We have no freaking clue at this point, what the label should
+            // be where the break jumps
+            // --> This is something that should be backpatched
+            // Or just add a context into the generator
+            if (generator->not_in_loop)
+            {
+                // TODO(timo): Add diagnostic
+                printf("[IR_GENERATOR] - Error: Trying to create break instruction when not in loop\n");
+                exit(1);
+            }
+            else
+            {
+                Instruction* instruction = instruction_goto(generator->while_exit);
+                array_push(generator->instructions, instruction);
+            }
         }
         default:
             // TODO(timo): Error

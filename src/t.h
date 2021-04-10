@@ -713,6 +713,10 @@ typedef struct IR_Generator
     int temp;
     Scope* global;
     Scope* local;
+
+    // Context
+    bool not_in_loop;
+    char* while_exit;
 } IR_Generator;
 
 

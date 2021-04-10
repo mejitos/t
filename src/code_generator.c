@@ -503,14 +503,6 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
 
             break;
         }
-        case OP_BREAK:
-        {
-            break;
-        }
-        case OP_CONTINUE:
-        {
-            break;
-        }
         default:
         {
             // TODO(timo): Error
