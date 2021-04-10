@@ -55,7 +55,8 @@ static inline void enter_scope(Resolver* resolver, const char* name)
 
 static inline void leave_scope(Resolver* resolver)
 {
-    resolver->local = resolver->global;
+    // resolver->local = resolver->global;
+    resolver->local = resolver->local->enclosing;
 }
 
 
