@@ -9,7 +9,7 @@
 #       n: nth term
 fibonacci: int = (n: int) => {
     a: int = 0;
-    b: int = 0;
+    b: int = 1;
     i: int = 0;
 
     while i < n do {
