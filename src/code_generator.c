@@ -91,16 +91,6 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
 
             free_register(source->_register);
             source->_register = -1;
-
-            // NOTE(timo): This uses straight up registers for the values
-            /*
-            fprintf(generator->output,
-                "\tadd\t%s, %s\n", register_list[destination->_register], register_list[source->_register]);
-
-            free_register(source->_register);
-
-            result->_register = destination->_register;
-            */
             break;
         }
         case OP_SUB:
@@ -141,16 +131,6 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
 
             free_register(source->_register);
             source->_register = -1;
-
-            // NOTE(timo): This uses straight up registers for the values
-            /*
-            fprintf(generator->output,
-                "\tsub\t%s, %s\n", register_list[destination->_register], register_list[source->_register]);
-
-            free_register(source->_register);
-
-            result->_register = destination->_register;
-            */
             break;
         }
         case OP_MUL:
@@ -190,16 +170,6 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
                 source->_register = -1;
             }
 
-            /*
-            result->_register = destination->_register;
-
-            fprintf(generator->output,
-                "\tmov\trax, %s\n"
-                "\tmul\t%s\t\t; multiply the value in the rax with the source\n"
-                "\tmov\t%s, rax\n", register_list[destination->_register], register_list[source->_register], register_list[result->_register]);
-
-            free_register(source->_register);
-            */
             break;
         }
         case OP_DIV:
@@ -242,17 +212,6 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
                 source->_register = -1;
             }
 
-            /*
-            result->_register = destination->_register;
-
-            fprintf(generator->output,
-                "\tmov\trdx, 0\t\t; setting rdx to 0 because it represents the top bits of the input divident\n"
-                "\tmov\trax, %s\n"
-                "\tdiv\t%s\t\t; divide the rax with the source\n"
-                "\tmov\t%s, rax\n", register_list[destination->_register], register_list[source->_register], register_list[result->_register]);
-
-            free_register(source->_register);
-            */
             break;
         }
         case OP_EQ:
@@ -282,23 +241,12 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
 
             fprintf(generator->output,
                 "\tcmp\t%s, %s\t\t; --\n", register_list[destination->_register], register_list[source->_register]);
-            
-            /*
-            fprintf(generator->output,
-                "\tcmp\tSF, OF\t\t; --\n");
-            */
-
-            /*
-            fprintf(generator->output,
-                "\tmov\t[rbp-%d], CF");
-            */
 
             // TODO(timo): What to save into the result? I mean we could save the correct jump
             // instruction at this point already and just print it at the GOTO_IF_FALSE
 
             free_register(destination->_register);
             free_register(source->_register);
-            
             break;
         }
         case OP_GOTO_IF_FALSE:
@@ -308,9 +256,6 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
             // and do all this switch jumping to get correct jumps. Like Raymond Hettinger
             // would say: 'There must be a better way!'.
 
-            // Here we can access the result of the condition
-            // Symbol* condition = scope_lookup(generator->local, instruction->arg1);
-            
             Instruction* preceding = generator->instructions->items[generator->index - 1];
 
             // NOTE(timo): Since the operation is goto if false, we need to use the
@@ -319,38 +264,34 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
             {
                 case OP_EQ:
                     fprintf(generator->output,
-                        "\tjne %s\t\t; --\n", instruction->value.string);
+                        "\tjne %s\n", instruction->value.string);
                     break;
                 case OP_NEQ:
                     fprintf(generator->output,
-                        "\tje %s\t\t; --\n", instruction->value.string);
+                        "\tje %s\n", instruction->value.string);
                     break;
                 case OP_LT:
                     fprintf(generator->output,
-                        "\tjge %s\t\t; --\n", instruction->value.string);
+                        "\tjge %s\n", instruction->value.string);
                     break;
                 case OP_LTE:
                     fprintf(generator->output,
-                        "\tjg %s\t\t; --\n", instruction->value.string);
+                        "\tjg %s\n", instruction->value.string);
                     break;
                 case OP_GT:
                     fprintf(generator->output,
-                        "\tjle %s\t\t; --\n", instruction->value.string);
+                        "\tjle %s\n", instruction->value.string);
                     break;
                 case OP_GTE:
                     fprintf(generator->output,
-                        "\tjl %s\t\t; --\n", instruction->value.string);
+                        "\tjl %s\n", instruction->value.string);
                     break;
                 default:
+                    // TODO(timo): Create diagnostic
                     printf("[CODE_GENERATOR] - Invalid preceding instruction in OP_GOTO_IF_FALSE\n");
                     exit(1);
             }
-            
-            /*
-            // jz label
-            fprintf(generator->output,
-                "\tjz %s\t\t; --\n", instruction->value.string);
-            */
+
             break;
         }
         case OP_COPY:
@@ -405,15 +346,17 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
             break;
         }
         case OP_GOTO:
+        {
             fprintf(generator->output,
                 "\tjmp %s\t\t; --\n", instruction->value.string);
             break;
+        }
         case OP_FUNCTION_BEGIN:
+        {
             // TODO(timo): That scope change should probably happen in here and not in OP_LABEL
-
-            // TODO(timo): start a stack frame and allocate memory for it from the stack
-            // the amount needed should be in the symbol table after getting
-            // all the temporary variables etc.
+            
+            // These instructions are same as instruction "enter, N" where enter sets the stackframe 
+            // and if N is given, N bytes of memory will be reserved from the stack
             fprintf(generator->output, 
                 "\tpush\trbp\n"
                 "\tmov\trbp, rsp\t\t; started stack frame\n");
@@ -421,18 +364,14 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
             fprintf(generator->output,
                 "\tsub\trsp, %d\t\t; allocate memory for local variables from stack\n", instruction->value.integer);
 
-            // Save the parameters to the local variables
-            
-            /*
-            fprintf(generator->output,
-                "\tpush\trdi\n"
-                "\tpush\trsi\n");
-            */
+            // TODO(timo): Save the parameters to the local variables in here
 
             // Push all the parameters
+
             // TODO(timo): So I should actually resolve the params normally
             // for the main, but they are "special params" mapped in assembly
             break;
+        }
         case OP_PARAM_PUSH:
         {
             // arg1: the parameter being pushed into the stack
@@ -446,7 +385,7 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
             }
             else
             {
-                // TODO(timo): Just use the registers
+                // TODO(timo): Just use the registers or error
             }
 
             break;
@@ -464,12 +403,13 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
             }
             else
             {
-                // TODO(timo): Just use the registers
+                // TODO(timo): Just use the registers or error
             }
 
             break;
         }
         case OP_FUNCTION_END:
+        {
             // The function epilogue
 
             // Label
@@ -482,11 +422,6 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
             // TODO(timo): Hacky solution to get things work for now
             if (strcmp(generator->local->name, "main") != 0)
             {
-                /*
-                fprintf(generator->output,
-                    "\tpop\trsi\n"
-                    "\tpop\trdi\n");
-                */
                 fprintf(generator->output,
                     // "\tadd\trsp, 8\n"
                     // "\tleave\n"
@@ -502,7 +437,9 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
                 generator->local = generator->global;
                 // generator->local = generator->local->enclosing;
             }
+
             break;
+        }
         case OP_RETURN:
         {
             Symbol* value = scope_lookup(generator->local, instruction->arg1);
@@ -528,21 +465,7 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
         }
         case OP_CALL:
         {
-            // Push the return address to the stack?
-            // We need to save the RAX to rescue variable from the function
-            /*
-            fprintf(generator->output,
-                    "\tpush\trax\t\t; --\n");
-            */
-
-            // Caller saved registers
-            /*
-            fprintf(generator->output,
-                    "\tpush\trax\n"
-                    "\tpush\trcx\n"
-                    "\tpush\trdx\n");
-            */
-            // fprintf(generator->output, "\tpush\trax\n");
+            // NOTE(timo): The call instruction itself contains the RIP push to the stack and jmp to the function
 
             // Instruction has arg1: what is being called
             //                 result: where the result is being saved
@@ -555,6 +478,8 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
                 fprintf(generator->output,
                         // "\txor\trax, rax\n"
                         "\tcall\t%s\t\t; calling the function %s\n", value->identifier, value->identifier);
+                // TODO(timo): We have to reset the stack right away after the call and not to wait param pop operations
+
                 /*
                 fprintf(generator->output,
                         "\tadd\trsp, 16\n");
@@ -562,22 +487,8 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
             }
             else
             {
-                // TODO(timo): Just use the registers
+                // TODO(timo): Just use the registers or error
             }
-
-            // Pop the return address
-            /*
-            fprintf(generator->output,
-                    "\tpop\trax\t\t; --\n");
-            */
-            
-            // Restore caller saved registers
-            /*
-            fprintf(generator->output,
-                    "\tpop\trdx\n"
-                    "\tpop\trcx\n"
-                    "\tpop\trax\n");
-            */
 
             // Save the call result to result address
             if (result != NULL)
@@ -587,16 +498,24 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
             }
             else
             {
-                // TODO(timo): Just use the registers
+                // TODO(timo): Just use the registers or error
             }
-
-            // fprintf(generator->output, "\tpop\trax\n");
 
             break;
         }
+        case OP_BREAK:
+        {
+            break;
+        }
+        case OP_CONTINUE:
+        {
+            break;
+        }
         default:
+        {
             // TODO(timo): Error
             break;
+        }
     }
 }
 
@@ -608,7 +527,6 @@ void code_generate(Code_Generator* generator)
         printf("Unable to create assembly file\n");
         return;
     }
-    
     
     // Template start
     fprintf(generator->output,
@@ -628,8 +546,9 @@ void code_generate(Code_Generator* generator)
         code_generate_instruction(generator, generator->instructions->items[i]);
         generator->index++;
     }
-
-    // Should the main function has its own being and end operations?
+    
+    // TODO(timo):
+    // Should the main function has its own beginning and end operations?
     // We should probably have some way to declare builtin functions etc.
 
     // Template end
