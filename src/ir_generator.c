@@ -64,7 +64,7 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
 
             scope_declare(generator->local, symbol_temp(result, expression->type));
 
-            printf("\t%s := %s\n", result, arg);
+            //printf("\t%s := %s\n", result, arg);
 
             Instruction* instruction = instruction_copy(arg, result);
             array_push(generator->instructions, instruction);
@@ -82,7 +82,7 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
 
             scope_declare(generator->local, symbol_temp(result, expression->type));
 
-            printf("\t%s := %s %s\n", result, operator, operand);
+            //printf("\t%s := %s %s\n", result, operator, operand);
 
             Instruction* instruction;
 
@@ -114,7 +114,7 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
 
             scope_declare(generator->local, symbol_temp(result, expression->type));
 
-            printf("\t%s := %s %s %s\n", result, left, operator, right);
+            //printf("\t%s := %s %s %s\n", result, left, operator, right);
             
             Instruction* instruction;
 
@@ -168,7 +168,7 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
 
             scope_declare(generator->local, symbol_temp(result, expression->type));
 
-            printf("\t%s := %s\n", result, arg);
+            //printf("\t%s := %s\n", result, arg);
 
             Instruction* instruction = instruction_copy(arg, result);
             array_push(generator->instructions, instruction);
@@ -188,7 +188,7 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
             char* result = (char*)expression->assignment.variable->identifier->lexeme;
             char* arg = ir_generate_expression(generator, expression->assignment.value);
 
-            printf("\t%s := %s\n", result, arg);
+            //printf("\t%s := %s\n", result, arg);
 
             Instruction* instruction = instruction_copy(arg, result);
             array_push(generator->instructions, instruction);
@@ -209,7 +209,7 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
             // -----===== The function prologue =====-----
 
             // 
-            printf("\tfunction_begin N\n");
+            //printf("\tfunction_begin N\n");
 
             // TODO(timo): Change the scope to function scope
             
@@ -229,7 +229,7 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
             instruction->value.integer = generator->local->offset;
             
             // -----===== The function epilogue =====-----
-            printf("\tfunction_end\n");
+            //printf("\tfunction_end\n");
             
             // What functions ends?
             instruction = instruction_function_end();
@@ -248,7 +248,7 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
                 AST_Expression* argument = (AST_Expression*)arguments->items[i];
                 char* arg = ir_generate_expression(generator, argument);
 
-                printf("\tparameter_push %s\n", arg);
+                //printf("\tparameter_push %s\n", arg);
 
                 instruction = instruction_param_push(arg);
                 array_push(generator->instructions, instruction);
@@ -264,7 +264,7 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
 
             // NOTE(timo): According to the Dragon Book the number of arguments is
             // important info to pass on in case of nested function calls
-            printf("\t%s := call %s, %d\n", result, arg, arguments->length);
+            //printf("\t%s := call %s, %d\n", result, arg, arguments->length);
 
             instruction = instruction_call(arg, result, arguments->length);
             array_push(generator->instructions, instruction);
@@ -275,7 +275,7 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
                 AST_Expression* argument = (AST_Expression*)arguments->items[i];
                 char* arg = ir_generate_expression(generator, argument);
 
-                printf("\tparameter_pop %s\n", arg);
+                //printf("\tparameter_pop %s\n", arg);
 
                 instruction = instruction_param_pop(arg);
                 array_push(generator->instructions, instruction);
@@ -317,7 +317,7 @@ void ir_generate_statement(IR_Generator* generator, AST_Statement* statement)
             generator->not_in_loop = false;
             generator->while_exit = label_exit;
 
-            printf("%s:\n", label_condition);
+            //printf("%s:\n", label_condition);
 
             instruction = instruction_label(label_condition);
             array_push(generator->instructions, instruction);
@@ -325,7 +325,7 @@ void ir_generate_statement(IR_Generator* generator, AST_Statement* statement)
             char* condition = ir_generate_expression(generator, statement->_while.condition);
 
             // if false, jump to label 2
-            printf("\tif_false %s goto %s\n", condition, label_exit);
+            //printf("\tif_false %s goto %s\n", condition, label_exit);
 
             instruction = instruction_goto_if_false(condition, label_exit);
             array_push(generator->instructions, instruction);
@@ -334,13 +334,13 @@ void ir_generate_statement(IR_Generator* generator, AST_Statement* statement)
             ir_generate_statement(generator, statement->_while.body);
             
             // go back to the start of the loop to test the condition again
-            printf("\tgoto %s\n", label_condition);
+            //printf("\tgoto %s\n", label_condition);
 
             instruction = instruction_goto(label_condition);
             array_push(generator->instructions, instruction);
             
             // exit
-            printf("%s:\n", label_exit);
+            //printf("%s:\n", label_exit);
 
             instruction = instruction_label(label_exit);
             array_push(generator->instructions, instruction);
@@ -365,7 +365,7 @@ void ir_generate_statement(IR_Generator* generator, AST_Statement* statement)
                 char* condition = ir_generate_expression(generator, statement->_if.condition);
                 
                 //
-                printf("\tif_false %s goto %s\n", condition, label_else);
+                //printf("\tif_false %s goto %s\n", condition, label_else);
 
                 instruction = instruction_goto_if_false(condition, label_else);
                 array_push(generator->instructions, instruction);
@@ -373,20 +373,20 @@ void ir_generate_statement(IR_Generator* generator, AST_Statement* statement)
                 ir_generate_statement(generator, statement->_if.then);
                 
                 //
-                printf("\tgoto %s\n", label_exit);
+                //printf("\tgoto %s\n", label_exit);
 
                 instruction = instruction_goto(label_exit);
                 array_push(generator->instructions, instruction);
                 
                 //
-                printf("%s:\n", label_else);
+                //printf("%s:\n", label_else);
                 instruction = instruction_label(label_else);
                 array_push(generator->instructions, instruction);
 
                 ir_generate_statement(generator, statement->_if._else);
                 
                 //
-                printf("%s:\n", label_exit);
+                //printf("%s:\n", label_exit);
 
                 instruction = instruction_label(label_exit);
                 array_push(generator->instructions, instruction);
@@ -401,7 +401,7 @@ void ir_generate_statement(IR_Generator* generator, AST_Statement* statement)
                 char* condition = ir_generate_expression(generator, statement->_if.condition);
                 
                 //
-                printf("\tif_false %s goto %s\n", condition, label_exit);
+                //printf("\tif_false %s goto %s\n", condition, label_exit);
 
                 instruction = instruction_goto_if_false(condition, label_exit);
                 array_push(generator->instructions, instruction);
@@ -409,7 +409,7 @@ void ir_generate_statement(IR_Generator* generator, AST_Statement* statement)
                 ir_generate_statement(generator, statement->_if.then);
                 
                 // 
-                printf("%s:\n", label_exit);
+                //printf("%s:\n", label_exit);
 
                 instruction = instruction_label(label_exit);
                 array_push(generator->instructions, instruction);
@@ -419,7 +419,7 @@ void ir_generate_statement(IR_Generator* generator, AST_Statement* statement)
         case STATEMENT_RETURN:
         {
             char* value = ir_generate_expression(generator, statement->_return.value);
-            printf("\treturn %s\n", value);
+            //printf("\treturn %s\n", value);
 
             Instruction* instruction = instruction_return(value);
             array_push(generator->instructions, instruction);
@@ -438,7 +438,7 @@ void ir_generate_statement(IR_Generator* generator, AST_Statement* statement)
             if (generator->not_in_loop)
             {
                 // TODO(timo): Add diagnostic
-                printf("[IR_GENERATOR] - Error: Trying to create break instruction when not in loop\n");
+                //printf("[IR_GENERATOR] - Error: Trying to create break instruction when not in loop\n");
                 exit(1);
             }
             else
@@ -482,13 +482,13 @@ void ir_generate_declaration(IR_Generator* generator, AST_Declaration* declarati
             // TODO(timo): This is probably the point where we need the abstraction for routines
 
             char* label = (char*)declaration->identifier->lexeme;
-            printf("_%s:\n", label);
+            //printf("_%s:\n", label);
 
             instruction = instruction_label(label);
             array_push(generator->instructions, instruction);
             
             /*
-            printf("\tfunction_begin %d\n", N);
+            //printf("\tfunction_begin %d\n", N);
 
             instruction = instruction_function_begin();
             array_push(generator->instructions, instruction);
@@ -506,7 +506,7 @@ void ir_generate_declaration(IR_Generator* generator, AST_Declaration* declarati
             generator->local = generator->global;
             
             /*
-            printf("\tfunction_end\n");
+            //printf("\tfunction_end\n");
 
             instruction = instruction_function_end();
             array_push(generator->instructions, instruction);

@@ -545,6 +545,7 @@ void code_generate(Code_Generator* generator)
 
     // Template end
     fprintf(generator->output,
+            // "\tmov\trbx, rax\t\t; save the return value into sys exit\n"
             "\tpush rax\t\t; caller save register for printf\n"
             "\tpush rcx\t\t; caller save register for printf\n"
             "\tmov\trdi, return_message\t\t; first argument of printf - format\n"
@@ -554,12 +555,12 @@ void code_generate(Code_Generator* generator)
             "\tpop\trcx\t\t; restore caller save register of printf\n"
             "\tpop\trax\t\t; restore caller save register of printf\n"
             "\tmov\trax, 0\t\t; exit success\n"
-            // "\tpop rbp ; leave the stack frame\n" // this could be used if we restore the stackpointer by adding the offset back
+            // "\tmov\trax, rbx\t\t; return value\n" // Return the value as a program exit code
             "\tleave\t\t; leave the current stack frame without manually setting it\n"
             "\tret\t\t; exit the program\n"
             "\n"
             "return_message:\n"
-            "\tdb 'Program exited with the value %s', 10, 0\n", "%d");
+            "\tdb 'Program exited with the value %s', 10, 0", "%d");
 
     fclose(generator->output);
 }

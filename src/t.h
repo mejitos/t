@@ -27,6 +27,15 @@ typedef struct AST_Expression AST_Expression;
 
 
 /*
+ *  Options
+ */
+typedef struct Options
+{
+    bool flag_verbose;
+} Options;
+
+
+/*
  *  General position struct for everyone to use
  *
  *  Since for now we will only support compiling of single file, there is no need to add the
@@ -71,8 +80,8 @@ void print_diagnostic(Diagnostic* diagnostic);
  *
  *  File: t.c
  */
-void compile(const char* source);
-void compile_from_file(const char* path);
+void compile(const char* source, Options options);
+void compile_from_file(const char* path, Options options);
 
 
 /*

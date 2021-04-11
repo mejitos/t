@@ -2,8 +2,79 @@
 #include <time.h>
 
 
-// TODO(timo): Functionality to take somekind of options as argument
-void compile(const char* source)
+void compile(const char* source, Options options)
+{
+    // Setup
+    Lexer lexer;
+    Parser parser;
+    hashtable* type_table;
+    Resolver resolver;
+    IR_Generator ir_generator;
+    Code_Generator code_generator;
+
+    // Lexing
+    lexer_init(&lexer, source);
+    lex(&lexer);
+
+    // Parsing
+    parser_init(&parser, lexer.tokens);
+    parse(&parser);
+
+    // Resolving
+    type_table = type_table_init();
+    resolver_init(&resolver, type_table);
+    resolve(&resolver, parser.declarations);
+
+    // IR generation
+    ir_generator_init(&ir_generator, resolver.global);
+    ir_generate(&ir_generator, parser.declarations);
+
+    // Code generation
+    code_generator_init(&code_generator, ir_generator.global, ir_generator.instructions);
+    code_generate(&code_generator);
+
+    // Assembler
+    char* assemble = "nasm -f elf64 -o main.o main.asm";
+    int assemble_error;
+
+    if ((assemble_error = system(assemble)) != 0)
+    {
+        printf("FAILED\n");
+        printf("Error code on command '%s': %d\n", assemble, assemble_error);
+    }
+
+    // Linker
+    char* link = "gcc -no-pie -o main main.o";
+    int link_error;
+
+    if ((link_error = system(link)) != 0)
+    {
+        printf("FAILED\n");
+        printf("Error code on command '%s': %d\n", link, link_error);
+    }
+    
+    // Teardown
+    ir_generator_free(&ir_generator);
+    resolver_free(&resolver);
+    type_table_free(type_table);
+    parser_free(&parser);
+    lexer_free(&lexer);
+    
+    // Remove created files
+    char* rm_files = "rm main.asm main.o";
+    int rm_files_error;
+    
+    if ((rm_files_error = system(rm_files)) != 0 )
+    {
+        printf("\n");
+        printf("Error code on command '%s': %d\n", rm_files, rm_files_error);
+    }
+}
+
+
+// TODO(timo): This is not a smart way of handling different compilation options
+// so instead of creating different functions for different options, do something more senseful
+void compile_verbose(const char* source, Options options)
 {
     Lexer lexer;
     Parser parser;
@@ -140,13 +211,11 @@ void compile(const char* source)
     char* rm_main_asm = "rm main.asm";
     int rm_main_asm_error;
     
-    /*
     if ((rm_main_asm_error = system(rm_main_asm)) != 0 )
     {
         printf("\n");
         printf("Error code on command '%s': %d\n", rm_main_asm, rm_main_asm_error);
     }
-    */
 
     char* rm_main_o = "rm main.o";
     int rm_main_o_error;
@@ -175,7 +244,7 @@ void compile(const char* source)
 }
 
 
-void compile_from_file(const char* path)
+void compile_from_file(const char* path, Options options)
 {
     FILE* file = fopen(path, "r");
 
@@ -207,7 +276,10 @@ void compile_from_file(const char* path)
     buffer[bytes_read] = 0;
     fclose(file);
     
-    compile(buffer);
+    if (options.flag_verbose)
+        compile_verbose(buffer, options);
+    else
+        compile(buffer, options);
 
     free(buffer);
 }
