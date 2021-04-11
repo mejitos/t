@@ -32,6 +32,7 @@ typedef struct AST_Expression AST_Expression;
 typedef struct Options
 {
     bool flag_verbose;
+    const char* program;
 } Options;
 
 
@@ -750,6 +751,9 @@ typedef struct Code_Generator
 
     Scope* global;
     Scope* local;
+
+    // TODO
+    const char* asm_file;
 
     // Used for register allocation stuff
     int destination;

@@ -514,7 +514,7 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
 
 void code_generate(Code_Generator* generator)
 {
-    if ((generator->output = fopen("main.asm", "w")) == NULL)
+    if ((generator->output = fopen(generator->asm_file, "w")) == NULL)
     {
         printf("Unable to create assembly file\n");
         return;

@@ -4,7 +4,8 @@
 
 int main(int argc, char** argv)
 {
-    Options options = { 0 };
+    Options options = { .flag_verbose = false,
+                        .program = "main" };
 
     if (argc < 2) 
     {
@@ -22,9 +23,13 @@ int main(int argc, char** argv)
     // argv[1] = source file being compiled
     // argv[2..*] = user passed arguments
     const char* file_path = argv[1];
-
+    
+    // TODO(timo): Create functionality to parse command line arguments
+    // Some kind of simple static function that iterates through the argv
     if (argc >= 3 && strcmp(argv[2], "-v") == 0)
         options.flag_verbose = true;
+    else if (argc >= 3)
+        options.program = argv[2];
     
     // TODO(timo): This probably should return somekind of code indicating the success
     // or non-success of the compiling process

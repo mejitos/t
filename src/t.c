@@ -4,6 +4,12 @@
 
 void compile(const char* source, Options options)
 {
+    if (! options.program)
+    {
+        printf("Need to pass name of the program\n");
+        exit(1);
+    }
+
     // Setup
     Lexer lexer;
     Parser parser;
@@ -31,10 +37,18 @@ void compile(const char* source, Options options)
 
     // Code generation
     code_generator_init(&code_generator, ir_generator.global, ir_generator.instructions);
+    
+    // TODO(timo): ...
+    char asm_file[64];
+    snprintf(asm_file, 64, "%s.asm", options.program);
+    code_generator.asm_file = asm_file;
+
     code_generate(&code_generator);
 
     // Assembler
-    char* assemble = "nasm -f elf64 -o main.o main.asm";
+    // char* assemble = "nasm -f elf64 -o main.o main.asm";
+    char assemble[128];
+    snprintf(assemble, 128, "nasm -f elf64 -o %s.o %s.asm", options.program, options.program);
     int assemble_error;
 
     if ((assemble_error = system(assemble)) != 0)
@@ -44,7 +58,9 @@ void compile(const char* source, Options options)
     }
 
     // Linker
-    char* link = "gcc -no-pie -o main main.o";
+    // char* link = "gcc -no-pie -o main main.o";
+    char link[128];
+    snprintf(link, 128, "gcc -no-pie -o %s %s.o", options.program, options.program);
     int link_error;
 
     if ((link_error = system(link)) != 0)
@@ -61,7 +77,9 @@ void compile(const char* source, Options options)
     lexer_free(&lexer);
     
     // Remove created files
-    char* rm_files = "rm main.asm main.o";
+    // char* rm_files = "rm main.asm main.o";
+    char rm_files[128];
+    snprintf(rm_files, 128, "rm %s.asm %s.o", options.program, options.program);
     int rm_files_error;
     
     if ((rm_files_error = system(rm_files)) != 0 )
@@ -141,6 +159,12 @@ void compile_verbose(const char* source, Options options)
     clock_t code_generating_start = clock();
     
     code_generator_init(&code_generator, ir_generator.global, ir_generator.instructions);
+
+    // TODO(timo): ...
+    char asm_file[64];
+    snprintf(asm_file, 64, "%s.asm", options.program);
+    code_generator.asm_file = asm_file;
+
     code_generate(&code_generator);
 
     clock_t code_generating_end = clock();
@@ -150,12 +174,14 @@ void compile_verbose(const char* source, Options options)
     printf("-----===== ASSEMBLY =====-----\n");
     printf("\n");
 
-    char* cat_main = "cat main.asm";
+    // char* cat_main = "cat main.asm";
+    char cat[128];
+    snprintf(cat, 128, "cat %s.asm", options.program);
     int cat_error;
 
-    if ((cat_error = system(cat_main)) != 0)
+    if ((cat_error = system(cat)) != 0)
     {
-        printf("Error code on command '%s': %d\n", cat_main, cat_error);
+        printf("Error code on command '%s': %d\n", cat, cat_error);
     }
 
     printf("\n");
@@ -166,7 +192,9 @@ void compile_verbose(const char* source, Options options)
 
     clock_t assembly_start = clock();
 
-    char* assemble = "nasm -f elf64 -o main.o main.asm";
+    // char* assemble = "nasm -f elf64 -o main.o main.asm";
+    char assemble[128];
+    snprintf(assemble, 128, "nasm -f elf64 -o %s.o %s.asm", options.program, options.program);
     int assemble_error;
 
     if ((assemble_error = system(assemble)) != 0)
@@ -185,7 +213,9 @@ void compile_verbose(const char* source, Options options)
 
     clock_t linker_start = clock();
 
-    char* link = "gcc -no-pie -o main main.o";
+    // char* link = "gcc -no-pie -o main main.o";
+    char link[128];
+    snprintf(link, 128, "gcc -no-pie -o %s %s.o", options.program, options.program);
     int link_error;
 
     if ((link_error = system(link)) != 0)
@@ -208,15 +238,18 @@ void compile_verbose(const char* source, Options options)
     parser_free(&parser);
     lexer_free(&lexer);
     
-    char* rm_main_asm = "rm main.asm";
-    int rm_main_asm_error;
+    char rm_files[128];
+    // char* rm_main_asm = "rm main.asm";
+    snprintf(rm_files, 128, "rm %s.asm %s.o", options.program, options.program);
+    int rm_files_error;
     
-    if ((rm_main_asm_error = system(rm_main_asm)) != 0 )
+    if ((rm_files_error = system(rm_files)) != 0 )
     {
         printf("\n");
-        printf("Error code on command '%s': %d\n", rm_main_asm, rm_main_asm_error);
+        printf("Error code on command '%s': %d\n", rm_files, rm_files_error);
     }
 
+    /*
     char* rm_main_o = "rm main.o";
     int rm_main_o_error;
 
@@ -225,6 +258,7 @@ void compile_verbose(const char* source, Options options)
         printf("\n");
         printf("Error code on command '%s': %d\n", rm_main_o, rm_main_o_error);
     }
+    */
 
     printf("DONE\n");
 
