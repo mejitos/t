@@ -12,7 +12,7 @@ Token* token(Token_Kind kind, const char* lexeme, int lexeme_length, Position po
     Token* token = xcalloc(1, sizeof (Token));
     token->kind = kind;
     token->lexeme = xcalloc(lexeme_length + 1, sizeof (char));
-    memcpy(token->lexeme, lexeme, lexeme_length);
+    memcpy((char*)token->lexeme, lexeme, lexeme_length);
     token->lexeme_length = lexeme_length;
     token->position = position;
 
