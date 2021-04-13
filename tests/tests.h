@@ -48,7 +48,6 @@ struct Test_Runner
 
 
 void test_runner_init(Test_Runner* runner);
-// void test_runner_append_test_set(Test_Runner* runner, const char* description, Test_Case test_cases[]);
 void test_runner_append_test_set(Test_Runner* runner, Test_Set* set);
 void test_runner_run(Test_Runner* runner);
 void test_runner_print_summary(Test_Runner* runner);
@@ -62,12 +61,5 @@ Test_Error* test_error(const char* test_set, const char* test_case, const char* 
 Test_Set* lexer_test_set();
 Test_Set* parser_test_set();
 Test_Set* resolver_test_set();
-
-void test_lexer();
-void test_parser();
-void test_resolver();
-void test_interpreter();
-void test_ir_generator();
-void test_example_files();
 
 #endif

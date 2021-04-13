@@ -239,6 +239,66 @@ AST_Expression* error_expression()
 }
 
 
+char* expression_str(Expression_Kind kind)
+{
+    switch (kind)
+    {
+        case EXPRESSION_NONE:       return "none";
+        case EXPRESSION_LITERAL:    return "literal expression";
+        case EXPRESSION_UNARY:      return "unary expression";
+        case EXPRESSION_BINARY:     return "binary expression";
+        case EXPRESSION_VARIABLE:   return "variable expression";
+        case EXPRESSION_ASSIGNMENT: return "assignment expression";
+        case EXPRESSION_INDEX:      return "index expression";
+        case EXPRESSION_FUNCTION:   return "function expression";
+        case EXPRESSION_CALL:       return "call expression";
+        default:                    return "invalid expression";
+    }
+}
+
+
+char* statement_str(Statement_Kind kind)
+{
+    switch (kind)
+    {
+        case STATEMENT_NONE:        return "none";
+        case STATEMENT_EXPRESSION:  return "expression statement";
+        case STATEMENT_DECLARATION: return "declaration statement";
+        case STATEMENT_WHILE:       return "while statement";
+        case STATEMENT_IF:          return "if statement";
+        case STATEMENT_BLOCK:       return "block statement";
+        case STATEMENT_RETURN:      return "return statement";
+        case STATEMENT_BREAK:       return "break statement";
+        default:                    return "invalid statement";
+    }
+}
+
+
+char* declaration_str(Declaration_Kind kind)
+{
+    switch (kind)
+    {
+        case DECLARATION_NONE:      return "none";
+        case DECLARATION_VARIABLE:  return "variable declaration";
+        case DECLARATION_FUNCTION:  return "function declaration";
+        default:                    return "invalid declaration";
+    }
+}
+
+
+char* type_specifier_str(Type_Specifier specifier)
+{
+    switch (specifier)
+    {
+        case TYPE_SPECIFIER_NONE:       return "none";
+        case TYPE_SPECIFIER_INT:        return "int";
+        case TYPE_SPECIFIER_ARRAY_INT:  return "[int]";
+        case TYPE_SPECIFIER_BOOL:       return "bool";
+        default:                        return "invalid type specifier";
+    }
+}
+
+
 void expression_free(AST_Expression* expression)
 {
     switch (expression->kind)

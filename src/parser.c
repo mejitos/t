@@ -53,7 +53,6 @@ void parser_free(Parser* parser)
 
 static void panic_mode(Parser* parser)
 {
-    // advance(parser);
     Token_Kind kind = parser->current_token->kind;
 
     do {

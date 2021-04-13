@@ -7,20 +7,6 @@
 static bool not_error = true;
 
 
-const char* expression_kinds[] =
-{
-    [EXPRESSION_NONE] = "none",
-    [EXPRESSION_LITERAL] = "literal expression",
-    [EXPRESSION_UNARY] = "unary expression",
-    [EXPRESSION_BINARY] = "binary expression",
-    [EXPRESSION_VARIABLE] = "variable expression",
-    [EXPRESSION_ASSIGNMENT] = "assignment expression",
-    [EXPRESSION_INDEX] = "index expression",
-    [EXPRESSION_FUNCTION] = "function expression",
-    [EXPRESSION_CALL] = "call expression",
-};
-
-
 stringbuilder* expression_to_string(AST_Expression* expression, stringbuilder* sb)
 {
     switch (expression->kind)
@@ -31,14 +17,12 @@ stringbuilder* expression_to_string(AST_Expression* expression, stringbuilder* s
         case EXPRESSION_BINARY:
             sb_append(sb, "(");
             expression_to_string(expression->binary.left, sb);
-            // sb_append(sb, lexemes[expression->binary._operator->kind]);
             sb_append(sb, expression->binary._operator->lexeme);
             expression_to_string(expression->binary.right, sb);
             sb_append(sb, ")");
             break;
         case EXPRESSION_UNARY:
             sb_append(sb, "(");
-            // sb_append(sb, lexemes[expression->unary._operator->kind]);
             sb_append(sb, expression->unary._operator->lexeme);
             expression_to_string(expression->unary.operand, sb);
             sb_append(sb, ")");
@@ -52,492 +36,509 @@ stringbuilder* expression_to_string(AST_Expression* expression, stringbuilder* s
 }
 
 
-void assert_expression_str(char* result, const char* expected)
+static void test_literal_expression_integer(Test_Runner* runner)
 {
-    if (strcmp(result, expected) == 0) return;
-    else
-    {
-        printf("Invalid expression '%s', expected '%s'", result, expected);
-        not_error = false;
-    }
-}
-
-
-void assert_literal_expression_integer(AST_Expression* expression, const char* value)
-{
-    if (expression->kind != EXPRESSION_LITERAL)
-    {
-        printf("\n\t\tInvalid expression kind '%s', expected literal expression", expression_kinds[expression->kind]);
-        not_error = false;
-    }
-    assert(expression->literal->kind == TOKEN_INTEGER_LITERAL);
-    assert(strcmp(expression->literal->lexeme, value) == 0);
-}
-
-
-void assert_literal_expression_boolean(AST_Expression* expression, const char* value)
-{
-    assert(expression->kind == EXPRESSION_LITERAL);
-    assert(expression->literal->kind == TOKEN_BOOLEAN_LITERAL);
-    assert(strcmp(expression->literal->lexeme, value) == 0);
-}
-
-
-void assert_unary_expression(AST_Expression* expression, Token_Kind _operator, Expression_Kind operand)
-{
-    assert(expression->kind == EXPRESSION_UNARY);
-    assert(expression->unary._operator->kind == _operator);
-    assert(expression->unary.operand->kind == operand);
-}
-
-
-void assert_unary_expression_integer(AST_Expression* expression, Token_Kind _operator, const char* operand)
-{
-    assert_unary_expression(expression, _operator, EXPRESSION_LITERAL);
-    assert_literal_expression_integer(expression->unary.operand, operand);
-}
-
-
-void assert_unary_expression_boolean(AST_Expression* expression, Token_Kind _operator, const char* operand)
-{
-    assert_unary_expression(expression, _operator, EXPRESSION_LITERAL);
-    assert_literal_expression_boolean(expression->unary.operand, operand);
-}
-
-
-void assert_binary_expression(AST_Expression* expression, Token_Kind _operator, Expression_Kind left, Expression_Kind right)
-{
-    assert(expression->kind == EXPRESSION_BINARY);
-    assert(expression->binary._operator->kind == _operator);
-    assert(expression->binary.left->kind = left);
-    assert(expression->binary.right->kind = right);
-}
-
-
-void assert_binary_expression_integer(AST_Expression* expression, Token_Kind _operator, const char* left, const char* right)
-{
-    assert_binary_expression(expression, _operator, EXPRESSION_LITERAL, EXPRESSION_LITERAL);
-    assert_literal_expression_integer(expression->binary.left, left);
-    assert_literal_expression_integer(expression->binary.right, right);
-}
-
-
-void assert_binary_expression_boolean(AST_Expression* expression, Token_Kind _operator, const char* left, const char* right)
-{
-    assert_binary_expression(expression, _operator, EXPRESSION_LITERAL, EXPRESSION_LITERAL);
-    assert_literal_expression_boolean(expression->binary.left, left);
-    assert_literal_expression_boolean(expression->binary.right, right);
-}
-
-
-void assert_variable_expression(AST_Expression* expression, const char* identifier)
-{
-    assert(expression->kind == EXPRESSION_VARIABLE);
-    assert(strcmp(expression->identifier->lexeme, identifier) == 0);
-}
-
-
-void assert_assignment_expression_integer(AST_Expression* expression, const char* identifier, const char* value)
-{
-    assert(expression->kind == EXPRESSION_ASSIGNMENT);
-    assert_variable_expression(expression->assignment.variable, identifier);
-    assert_literal_expression_integer(expression->assignment.value, value);
-}
-
-
-void assert_index_expression(AST_Expression* expression, const char* identifier, const char* value)
-{
-    if (expression->kind != EXPRESSION_INDEX)
-    {
-        printf("\n\t\tInvalid expression kind '%d', expected index expression");
-        not_error = false;
-    }
-    assert_variable_expression(expression->index.variable, identifier);
-    assert_literal_expression_integer(expression->index.value, value);
-}
-
-
-void assert_declaration_variable_integer(AST_Declaration* declaration, const char* identifier, Type_Specifier specifier, const char* value)
-{
-    assert(declaration->kind == DECLARATION_VARIABLE);
-    assert(strcmp(declaration->identifier->lexeme, identifier) == 0);
-    assert(declaration->specifier == specifier);
-    assert_literal_expression_integer(declaration->initializer, value);
-}
-
-
-void assert_declaration_function(AST_Declaration* declaration, const char* identifier, Type_Specifier specifier, int arity)
-{
-    assert(declaration->kind == DECLARATION_FUNCTION);
-    assert(strcmp(declaration->identifier->lexeme, identifier) == 0);
-    assert(declaration->specifier == specifier);
-    assert(declaration->initializer->kind == EXPRESSION_FUNCTION);
-    assert(declaration->initializer->function.arity == arity);
-}
-
-
-static void test_literal_expression()
-{
-    printf("\tLiteral expressions...");
-    not_error = true;
-
     Lexer lexer;
     Parser parser;
     AST_Expression* expression;
 
-    // Integer literal
     lexer_init(&lexer, "767");
     lex(&lexer);
 
     parser_init(&parser, lexer.tokens);
     expression = parse_expression(&parser);
     
-    assert_literal_expression_integer(expression, "767");
+    assert_expression(runner, expression->kind, EXPRESSION_LITERAL);
+    assert_token(runner, expression->literal, TOKEN_INTEGER_LITERAL, "767");
     
     expression_free(expression);
     parser_free(&parser);
     lexer_free(&lexer);
-    
-    // Boolean literal 
+
+    if (runner->error) runner->failed++;
+    else runner->passed++;
+}
+
+   
+static void test_literal_expression_boolean(Test_Runner* runner)
+{
+    Lexer lexer;
+    Parser parser;
+    AST_Expression* expression;
+
+    // true
     lexer_init(&lexer, "true");
     lex(&lexer);
 
     parser_init(&parser, lexer.tokens);
     expression = parse_expression(&parser);
-
-    assert_literal_expression_boolean(expression, "true");
+    
+    assert_expression(runner, expression->kind, EXPRESSION_LITERAL);
+    assert_token(runner, expression->literal, TOKEN_BOOLEAN_LITERAL, "true");
 
     expression_free(expression);
     parser_free(&parser);
     lexer_free(&lexer);
 
-    // Boolean literal 
+    // false
     lexer_init(&lexer, "false");
     lex(&lexer);
 
     parser_init(&parser, lexer.tokens);
     expression = parse_expression(&parser);
     
-    assert_literal_expression_boolean(expression, "false");
+    assert_expression(runner, expression->kind, EXPRESSION_LITERAL);
+    assert_token(runner, expression->literal, TOKEN_BOOLEAN_LITERAL, "false");
 
     expression_free(expression);
     parser_free(&parser);
     lexer_free(&lexer);
-    
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
+
+    if (runner->error) runner->failed++;
+    else runner->passed++;
 }
 
 
-static void test_unary_expression()
+static void test_unary_expression_plus(Test_Runner* runner)
 {
-    printf("\tUnary expressions...");
-    not_error = true;
-
     Lexer lexer;
     Parser parser;
     AST_Expression* expression;
 
-    // Unary minus
-    lexer_init(&lexer, "-42");
-    lex(&lexer);
-
-    parser_init(&parser, lexer.tokens);
-    expression = parse_expression(&parser);
-    
-    assert_unary_expression_integer(expression, TOKEN_MINUS, "42");
-
-    expression_free(expression);
-    parser_free(&parser);
-    lexer_free(&lexer);
-
-    // Unary plus 
     lexer_init(&lexer, "+42");
     lex(&lexer);
 
     parser_init(&parser, lexer.tokens);
     expression = parse_expression(&parser);
 
-    assert_unary_expression_integer(expression, TOKEN_PLUS, "42");
+    assert_expression(runner, expression->kind, EXPRESSION_UNARY);
+    assert_token(runner, expression->unary._operator, TOKEN_PLUS, "+");
+    assert_expression(runner, expression->unary.operand->kind, EXPRESSION_LITERAL);
+    assert_token(runner, expression->unary.operand->literal, TOKEN_INTEGER_LITERAL, "42");
 
     expression_free(expression);
     parser_free(&parser);
     lexer_free(&lexer);
 
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
+    if (runner->error) runner->failed++;
+    else runner->passed++;
 }
 
 
-static void test_binary_expression_arithmetic()
+static void test_unary_expression_minus(Test_Runner* runner)
 {
-    printf("\tArithmetic binary expressions...");
-    not_error = true;
-
     Lexer lexer;
     Parser parser;
     AST_Expression* expression;
 
-    // Binary plus expression
+    lexer_init(&lexer, "-42");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    expression = parse_expression(&parser);
+    
+    assert_expression(runner, expression->kind, EXPRESSION_UNARY);
+    assert_token(runner, expression->unary._operator, TOKEN_MINUS, "-");
+    assert_expression(runner, expression->unary.operand->kind, EXPRESSION_LITERAL);
+    assert_token(runner, expression->unary.operand->literal, TOKEN_INTEGER_LITERAL, "42");
+
+    expression_free(expression);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    if (runner->error) runner->failed++;
+    else runner->passed++;
+}
+
+
+static void test_binary_expression_plus(Test_Runner* runner)
+{
+    Lexer lexer;
+    Parser parser;
+    AST_Expression* expression;
+
     lexer_init(&lexer, "1 + 2");
     lex(&lexer);
 
     parser_init(&parser, lexer.tokens);
     expression = parse_expression(&parser);
     
-    assert_binary_expression_integer(expression, TOKEN_PLUS, "1", "2");
+    assert_expression(runner, expression->kind, EXPRESSION_BINARY);
+    assert_token(runner, expression->binary._operator, TOKEN_PLUS, "+");
+    assert_expression(runner, expression->binary.left->kind, EXPRESSION_LITERAL);
+    assert_token(runner, expression->binary.left->literal, TOKEN_INTEGER_LITERAL, "1");
+    assert_expression(runner, expression->binary.right->kind, EXPRESSION_LITERAL);
+    assert_token(runner, expression->binary.right->literal, TOKEN_INTEGER_LITERAL, "2");
 
     expression_free(expression);
     parser_free(&parser);
     lexer_free(&lexer);
-        
-    // Binary minus expression
+
+    if (runner->error) runner->failed++;
+    else runner->passed++;
+}
+
+
+static void test_binary_expression_minus(Test_Runner* runner)
+{
+    Lexer lexer;
+    Parser parser;
+    AST_Expression* expression;
+
     lexer_init(&lexer, "3 - 4");
     lex(&lexer);
 
     parser_init(&parser, lexer.tokens);
     expression = parse_expression(&parser);
-
-    assert_binary_expression_integer(expression, TOKEN_MINUS, "3", "4");
+        
+    assert_expression(runner, expression->kind, EXPRESSION_BINARY);
+    assert_token(runner, expression->binary._operator, TOKEN_MINUS, "-");
+    assert_expression(runner, expression->binary.left->kind, EXPRESSION_LITERAL);
+    assert_token(runner, expression->binary.left->literal, TOKEN_INTEGER_LITERAL, "3");
+    assert_expression(runner, expression->binary.right->kind, EXPRESSION_LITERAL);
+    assert_token(runner, expression->binary.right->literal, TOKEN_INTEGER_LITERAL, "4");
 
     expression_free(expression);
     parser_free(&parser);
     lexer_free(&lexer);
 
-    // Binary multiply expression
+    if (runner->error) runner->failed++;
+    else runner->passed++;
+}
+
+
+static void test_binary_expression_multiply(Test_Runner* runner)
+{
+    Lexer lexer;
+    Parser parser;
+    AST_Expression* expression;
+
     lexer_init(&lexer, "5 * 6");
     lex(&lexer);
 
     parser_init(&parser, lexer.tokens);
     expression = parse_expression(&parser);
 
-    assert_binary_expression_integer(expression, TOKEN_MULTIPLY, "5", "6");
+    assert_expression(runner, expression->kind, EXPRESSION_BINARY);
+    assert_token(runner, expression->binary._operator, TOKEN_MULTIPLY, "*");
+    assert_expression(runner, expression->binary.left->kind, EXPRESSION_LITERAL);
+    assert_token(runner, expression->binary.left->literal, TOKEN_INTEGER_LITERAL, "5");
+    assert_expression(runner, expression->binary.right->kind, EXPRESSION_LITERAL);
+    assert_token(runner, expression->binary.right->literal, TOKEN_INTEGER_LITERAL, "6");
 
     expression_free(expression);
     parser_free(&parser);
     lexer_free(&lexer);
 
-    // Binary division expression
+    if (runner->error) runner->failed++;
+    else runner->passed++;
+}
+
+
+static void test_binary_expression_division(Test_Runner* runner)
+{
+    Lexer lexer;
+    Parser parser;
+    AST_Expression* expression;
+
     lexer_init(&lexer, "7 / 8");
     lex(&lexer);
 
     parser_init(&parser, lexer.tokens);
     expression = parse_expression(&parser);
 
-    assert_binary_expression_integer(expression, TOKEN_DIVIDE, "7", "8");
+    assert_expression(runner, expression->kind, EXPRESSION_BINARY);
+    assert_token(runner, expression->binary._operator, TOKEN_DIVIDE, "/");
+    assert_expression(runner, expression->binary.left->kind, EXPRESSION_LITERAL);
+    assert_token(runner, expression->binary.left->literal, TOKEN_INTEGER_LITERAL, "7");
+    assert_expression(runner, expression->binary.right->kind, EXPRESSION_LITERAL);
+    assert_token(runner, expression->binary.right->literal, TOKEN_INTEGER_LITERAL, "8");
 
     expression_free(expression);
     parser_free(&parser);
     lexer_free(&lexer);
 
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
+    if (runner->error) runner->failed++;
+    else runner->passed++;
 }
 
 
-static void test_binary_expression_comparison()
+static void test_binary_expression_equal(Test_Runner* runner)
 {
-    printf("\tComparison binary expressions...");
-    not_error = true;
-
     Lexer lexer;
     Parser parser;
     AST_Expression* expression;
     
-    // Equality expression
     lexer_init(&lexer, "1 == 2");
     lex(&lexer);
 
     parser_init(&parser, lexer.tokens);
     expression = parse_expression(&parser);
     
-    assert_binary_expression_integer(expression, TOKEN_IS_EQUAL, "1", "2");
+    assert_expression(runner, expression->kind, EXPRESSION_BINARY);
+    assert_token(runner, expression->binary._operator, TOKEN_IS_EQUAL, "==");
+    assert_expression(runner, expression->binary.left->kind, EXPRESSION_LITERAL);
+    assert_token(runner, expression->binary.left->literal, TOKEN_INTEGER_LITERAL, "1");
+    assert_expression(runner, expression->binary.right->kind, EXPRESSION_LITERAL);
+    assert_token(runner, expression->binary.right->literal, TOKEN_INTEGER_LITERAL, "2");
 
     expression_free(expression);
     parser_free(&parser);
     lexer_free(&lexer);
 
-    // ----
+    if (runner->error) runner->failed++;
+    else runner->passed++;
+}
+
+
+static void test_binary_expression_not_equal(Test_Runner* runner)
+{
+    Lexer lexer;
+    Parser parser;
+    AST_Expression* expression;
+    
     lexer_init(&lexer, "1 != 2");
     lex(&lexer);
 
     parser_init(&parser, lexer.tokens);
     expression = parse_expression(&parser);
 
-    assert_binary_expression_integer(expression, TOKEN_NOT_EQUAL, "1", "2");
+    assert_expression(runner, expression->kind, EXPRESSION_BINARY);
+    assert_token(runner, expression->binary._operator, TOKEN_NOT_EQUAL, "!=");
+    assert_expression(runner, expression->binary.left->kind, EXPRESSION_LITERAL);
+    assert_token(runner, expression->binary.left->literal, TOKEN_INTEGER_LITERAL, "1");
+    assert_expression(runner, expression->binary.right->kind, EXPRESSION_LITERAL);
+    assert_token(runner, expression->binary.right->literal, TOKEN_INTEGER_LITERAL, "2");
 
     expression_free(expression);
     parser_free(&parser);
     lexer_free(&lexer);
+
+    if (runner->error) runner->failed++;
+    else runner->passed++;
+}
+
+
+static void test_binary_expression_less_than(Test_Runner* runner)
+{
+    Lexer lexer;
+    Parser parser;
+    AST_Expression* expression;
     
-    // Ordering expression
     lexer_init(&lexer, "1 < 2");
     lex(&lexer);
 
     parser_init(&parser, lexer.tokens);
     expression = parse_expression(&parser);
 
-    assert_binary_expression_integer(expression, TOKEN_LESS_THAN, "1", "2");
+    assert_expression(runner, expression->kind, EXPRESSION_BINARY);
+    assert_token(runner, expression->binary._operator, TOKEN_LESS_THAN, "<");
+    assert_expression(runner, expression->binary.left->kind, EXPRESSION_LITERAL);
+    assert_token(runner, expression->binary.left->literal, TOKEN_INTEGER_LITERAL, "1");
+    assert_expression(runner, expression->binary.right->kind, EXPRESSION_LITERAL);
+    assert_token(runner, expression->binary.right->literal, TOKEN_INTEGER_LITERAL, "2");
 
     expression_free(expression);
     parser_free(&parser);
     lexer_free(&lexer);
+
+    if (runner->error) runner->failed++;
+    else runner->passed++;
+}
+
+
+static void test_binary_expression_less_than_equal(Test_Runner* runner)
+{
+    Lexer lexer;
+    Parser parser;
+    AST_Expression* expression;
     
-    // ----
     lexer_init(&lexer, "1 <= 2");
     lex(&lexer);
 
     parser_init(&parser, lexer.tokens);
     expression = parse_expression(&parser);
 
-    assert_binary_expression_integer(expression, TOKEN_LESS_THAN_EQUAL, "1", "2");
+    assert_expression(runner, expression->kind, EXPRESSION_BINARY);
+    assert_token(runner, expression->binary._operator, TOKEN_LESS_THAN_EQUAL, "<=");
+    assert_expression(runner, expression->binary.left->kind, EXPRESSION_LITERAL);
+    assert_token(runner, expression->binary.left->literal, TOKEN_INTEGER_LITERAL, "1");
+    assert_expression(runner, expression->binary.right->kind, EXPRESSION_LITERAL);
+    assert_token(runner, expression->binary.right->literal, TOKEN_INTEGER_LITERAL, "2");
 
     expression_free(expression);
     parser_free(&parser);
     lexer_free(&lexer);
 
-    // ----
+    if (runner->error) runner->failed++;
+    else runner->passed++;
+}
+
+
+static void test_binary_expression_greater_than(Test_Runner* runner)
+{
+    Lexer lexer;
+    Parser parser;
+    AST_Expression* expression;
+    
     lexer_init(&lexer, "1 > 2");
     lex(&lexer);
 
     parser_init(&parser, lexer.tokens);
     expression = parse_expression(&parser);
 
-    assert_binary_expression_integer(expression, TOKEN_GREATER_THAN, "1", "2");
+    assert_expression(runner, expression->kind, EXPRESSION_BINARY);
+    assert_token(runner, expression->binary._operator, TOKEN_GREATER_THAN, ">");
+    assert_expression(runner, expression->binary.left->kind, EXPRESSION_LITERAL);
+    assert_token(runner, expression->binary.left->literal, TOKEN_INTEGER_LITERAL, "1");
+    assert_expression(runner, expression->binary.right->kind, EXPRESSION_LITERAL);
+    assert_token(runner, expression->binary.right->literal, TOKEN_INTEGER_LITERAL, "2");
 
     expression_free(expression);
     parser_free(&parser);
     lexer_free(&lexer);
 
-    // ----
+    if (runner->error) runner->failed++;
+    else runner->passed++;
+}
+
+
+static void test_binary_expression_greater_than_equal(Test_Runner* runner)
+{
+    Lexer lexer;
+    Parser parser;
+    AST_Expression* expression;
+    
     lexer_init(&lexer, "1 >= 2");
     lex(&lexer);
 
     parser_init(&parser, lexer.tokens);
     expression = parse_expression(&parser);
 
-    assert_binary_expression_integer(expression, TOKEN_GREATER_THAN_EQUAL, "1", "2");
+    assert_expression(runner, expression->kind, EXPRESSION_BINARY);
+    assert_token(runner, expression->binary._operator, TOKEN_GREATER_THAN_EQUAL, ">=");
+    assert_expression(runner, expression->binary.left->kind, EXPRESSION_LITERAL);
+    assert_token(runner, expression->binary.left->literal, TOKEN_INTEGER_LITERAL, "1");
+    assert_expression(runner, expression->binary.right->kind, EXPRESSION_LITERAL);
+    assert_token(runner, expression->binary.right->literal, TOKEN_INTEGER_LITERAL, "2");
     
     expression_free(expression);
     parser_free(&parser);
     lexer_free(&lexer);
 
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
+    if (runner->error) runner->failed++;
+    else runner->passed++;
 }
 
 
-static void test_logical_expression()
+static void test_logical_expression_and(Test_Runner* runner)
 {
-    printf("\tLogical expressions...");
-    not_error = true;
-
     Lexer lexer;
     Parser parser;
     AST_Expression* expression;
 
-    // --- and
     lexer_init(&lexer, "true and false");
     lex(&lexer);
 
     parser_init(&parser, lexer.tokens);
     expression = parse_expression(&parser);
 
-    assert_binary_expression_boolean(expression, TOKEN_AND, "true", "false");
+    assert_expression(runner, expression->kind, EXPRESSION_BINARY);
+    assert_token(runner, expression->binary._operator, TOKEN_AND, "and");
+    assert_expression(runner, expression->binary.left->kind, EXPRESSION_LITERAL);
+    assert_token(runner, expression->binary.left->literal, TOKEN_BOOLEAN_LITERAL, "true");
+    assert_expression(runner, expression->binary.right->kind, EXPRESSION_LITERAL);
+    assert_token(runner, expression->binary.right->literal, TOKEN_BOOLEAN_LITERAL, "false");
     
     expression_free(expression);
     parser_free(&parser);
     lexer_free(&lexer);
 
-    // --- or 
+    if (runner->error) runner->failed++;
+    else runner->passed++;
+}
+
+
+static void test_logical_expression_or(Test_Runner* runner)
+{
+    Lexer lexer;
+    Parser parser;
+    AST_Expression* expression;
+
     lexer_init(&lexer, "true or false");
     lex(&lexer);
 
     parser_init(&parser, lexer.tokens);
     expression = parse_expression(&parser);
 
-    assert_binary_expression_boolean(expression, TOKEN_OR, "true", "false");
+    assert_expression(runner, expression->kind, EXPRESSION_BINARY);
+    assert_token(runner, expression->binary._operator, TOKEN_OR, "or");
+    assert_expression(runner, expression->binary.left->kind, EXPRESSION_LITERAL);
+    assert_token(runner, expression->binary.left->literal, TOKEN_BOOLEAN_LITERAL, "true");
+    assert_expression(runner, expression->binary.right->kind, EXPRESSION_LITERAL);
+    assert_token(runner, expression->binary.right->literal, TOKEN_BOOLEAN_LITERAL, "false");
     
     expression_free(expression);
     parser_free(&parser);
     lexer_free(&lexer);
 
-    // --- not
+    if (runner->error) runner->failed++;
+    else runner->passed++;
+}
+
+
+static void test_logical_expression_not(Test_Runner* runner)
+{
+    Lexer lexer;
+    Parser parser;
+    AST_Expression* expression;
+
     lexer_init(&lexer, "not true");
     lex(&lexer);
 
     parser_init(&parser, lexer.tokens);
     expression = parse_expression(&parser);
-
-    assert_unary_expression_boolean(expression, TOKEN_NOT, "true");
+    
+    assert_expression(runner, expression->kind, EXPRESSION_UNARY);
+    assert_token(runner, expression->unary._operator, TOKEN_NOT, "not");
+    assert_expression(runner, expression->unary.operand->kind, EXPRESSION_LITERAL);
+    assert_token(runner, expression->unary.operand->literal, TOKEN_BOOLEAN_LITERAL, "true");
     
     expression_free(expression);
     parser_free(&parser);
     lexer_free(&lexer);
 
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
+    if (runner->error) runner->failed++;
+    else runner->passed++;
 }
 
 
-static void test_variable_declaration()
+static void test_variable_expression(Test_Runner* runner)
 {
-    printf("\tVariable declaration...");
-    not_error = true;
-
-    Lexer lexer;
-    Parser parser;
-    AST_Declaration* declaration;
-
-    lexer_init(&lexer, "foo: int = 42;"); 
-    lex(&lexer);
-
-    parser_init(&parser, lexer.tokens);
-    declaration = parse_declaration(&parser);
-
-    assert_declaration_variable_integer(declaration, "foo", TYPE_SPECIFIER_INT, "42");
-
-    declaration_free(declaration);
-    parser_free(&parser);
-    lexer_free(&lexer);
-
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
-}
-
-
-static void test_variable_expression()
-{
-    printf("\tVariable expression...");
-    not_error = true;
-
     Lexer lexer;
     Parser parser;
     AST_Expression* expression;
 
-    // Base case for variable expression
     lexer_init(&lexer, "foo");
     lex(&lexer);
 
     parser_init(&parser, lexer.tokens);
     expression = parse_expression(&parser);
-
-    assert_variable_expression(expression, "foo");
+    
+    assert_expression(runner, expression->kind, EXPRESSION_VARIABLE);
+    assert_token(runner, expression->identifier, TOKEN_IDENTIFIER, "foo");
     
     expression_free(expression);
     parser_free(&parser);
     lexer_free(&lexer);
 
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
+    if (runner->error) runner->failed++;
+    else runner->passed++;
 }
 
 
-static void test_assignment_expression()
+static void test_assignment_expression(Test_Runner* runner)
 {
-    printf("\tAssignment expression...");
-    not_error = true;
-    
     Lexer lexer;
     Parser parser;
     AST_Expression* expression;
@@ -547,24 +548,24 @@ static void test_assignment_expression()
 
     parser_init(&parser, lexer.tokens);
     expression = parse_expression(&parser);
-
-    assert_assignment_expression_integer(expression, "foo", "345");
-    assert_position(expression->position, 1, 1, 1, 10); 
+    
+    assert_expression(runner, expression->kind, EXPRESSION_ASSIGNMENT);
+    assert_expression(runner, expression->assignment.variable->kind, EXPRESSION_VARIABLE);
+    assert_token(runner, expression->assignment.variable->identifier, TOKEN_IDENTIFIER, "foo");
+    assert_expression(runner, expression->assignment.value->kind, EXPRESSION_LITERAL);
+    assert_token(runner, expression->assignment.value->literal, TOKEN_INTEGER_LITERAL, "345");
     
     expression_free(expression);
     parser_free(&parser);
     lexer_free(&lexer);
 
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
+    if (runner->error) runner->failed++;
+    else runner->passed++;
 }
 
 
-static void test_index_expression()
+static void test_index_expression(Test_Runner* runner)
 {
-    printf("\tIndex expression...");
-    not_error = true;
-
     Lexer lexer;
     Parser parser;
     AST_Expression* expression;
@@ -575,22 +576,23 @@ static void test_index_expression()
     parser_init(&parser, lexer.tokens);
     expression = parse_expression(&parser);
 
-    assert_index_expression(expression, "foo", "0");
+    assert_expression(runner, expression->kind, EXPRESSION_INDEX);
+    assert_expression(runner, expression->index.variable->kind, EXPRESSION_VARIABLE);
+    assert_token(runner, expression->index.variable->identifier, TOKEN_IDENTIFIER, "foo");
+    assert_expression(runner, expression->index.value->kind, EXPRESSION_LITERAL);
+    assert_token(runner, expression->index.value->literal, TOKEN_INTEGER_LITERAL, "0");
 
     expression_free(expression);
     parser_free(&parser);
     lexer_free(&lexer);
 
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
+    if (runner->error) runner->failed++;
+    else runner->passed++;
 }
 
 
-static void test_function_expression()
+static void test_function_expression(Test_Runner* runner)
 {
-    printf("\tFunction expression...");
-    not_error = true;
-
     Lexer lexer;
     Parser parser;
     AST_Expression* expression;
@@ -603,22 +605,18 @@ static void test_function_expression()
 
     parser_init(&parser, lexer.tokens);
     expression = parse_expression(&parser);
-
-    assert(expression->kind == EXPRESSION_FUNCTION);
-    assert(expression->function.arity == 2);
+    
+    assert_expression(runner, expression->kind, EXPRESSION_FUNCTION);
+    assert_base(runner, expression->function.arity == 2,
+        "Function got %d parameters, expected 2", expression->function.arity);
 
     parameters = expression->function.parameters;
-    assert(parameters->length == 2);
-    
-    parameter = parameters->items[0];
-    assert(strcmp(parameter->identifier->lexeme, "foo") == 0);
-    assert(parameter->specifier == TYPE_SPECIFIER_INT);
-    
-    parameter = parameters->items[1];
-    assert(strcmp(parameter->identifier->lexeme, "bar") == 0);
-    assert(parameter->specifier == TYPE_SPECIFIER_BOOL);
 
-    assert(expression->function.body->kind == STATEMENT_BLOCK);
+    assert_base(runner, parameters->length == 2,
+        "Invalid number of parameters %d, expected 2", parameters->length);
+    assert_parameter(runner, parameters->items[0], "foo", TYPE_SPECIFIER_INT);
+    assert_parameter(runner, parameters->items[1], "bar", TYPE_SPECIFIER_BOOL);
+    assert_statement(runner, expression->function.body->kind, STATEMENT_BLOCK);
 
     expression_free(expression);
     parser_free(&parser);
@@ -631,29 +629,27 @@ static void test_function_expression()
     parser_init(&parser, lexer.tokens);
     expression = parse_expression(&parser);
 
-    assert(expression->kind == EXPRESSION_FUNCTION);
-    assert(expression->function.arity == 0);
+    assert_expression(runner, expression->kind, EXPRESSION_FUNCTION);
+    assert_base(runner, expression->function.arity == 0,
+        "Function got %d parameters, expected 0", expression->function.arity);
 
     parameters = expression->function.parameters;
-    assert(parameters == NULL);
-    
-    assert(expression->function.body->kind == STATEMENT_BLOCK);
+
+    assert_base(runner, parameters == NULL,
+        "There should be no parameters");
+    assert_statement(runner, expression->function.body->kind, STATEMENT_BLOCK);
 
     expression_free(expression);
     parser_free(&parser);
     lexer_free(&lexer);
 
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
+    if (runner->error) runner->failed++;
+    else runner->passed++;
 }
 
 
-
-static void test_call_expression()
+static void test_call_expression(Test_Runner* runner)
 {
-    printf("\tCall expression...");
-    not_error = true;
-
     Lexer lexer;
     Parser parser;
     AST_Expression* expression;
@@ -665,28 +661,33 @@ static void test_call_expression()
     parser_init(&parser, lexer.tokens);
     expression = parse_expression(&parser);
 
-    assert(expression->kind == EXPRESSION_CALL);
-    assert_variable_expression(expression->call.variable, "foo");
+    assert_expression(runner, expression->kind, EXPRESSION_CALL);
+    assert_expression(runner, expression->call.variable->kind, EXPRESSION_VARIABLE);
+    assert_token(runner, expression->call.variable->identifier, TOKEN_IDENTIFIER, "foo");
     
     array* arguments = expression->call.arguments;
-    assert(arguments->length == 2);
+    assert_base(runner, arguments->length == 2,
+        "Invalid number of arguments %d, expected 2", arguments->length);
     
     argument = arguments->items[0];
-    assert_literal_expression_integer(argument, "0");
+    assert_expression(runner, argument->kind, EXPRESSION_LITERAL);
+    assert_token(runner, argument->literal, TOKEN_INTEGER_LITERAL, "0");
 
     argument = arguments->items[1];
-    assert_variable_expression(argument, "bar");
+    assert_expression(runner, argument->kind, EXPRESSION_VARIABLE);
+    assert_token(runner, argument->identifier, TOKEN_IDENTIFIER, "bar");
 
     expression_free(expression);
     parser_free(&parser);
     lexer_free(&lexer);
 
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
+    if (runner->error) runner->failed++;
+    else runner->passed++;
 }
 
 
-static void test_order_of_arithmetic_operations()
+/*
+static void test_order_of_arithmetic_operations(Test_Runner* runner)
 {
     printf("\tOrder of arithmetic operations...");
     not_error = true;
@@ -766,13 +767,11 @@ static void test_order_of_arithmetic_operations()
     if (not_error) printf("PASSED\n");
     else printf("\n");
 }
+*/
 
 
-static void test_expression_statement()
+static void test_expression_statement(Test_Runner* runner)
 {
-    printf("\tExpression statements...");
-    not_error = true;
-    
     Lexer lexer;
     Parser parser;
     AST_Statement* statement;
@@ -784,19 +783,20 @@ static void test_expression_statement()
     parser_init(&parser, lexer.tokens);
     statement = parse_statement(&parser);
 
-    assert(statement->kind == STATEMENT_EXPRESSION);
-    assert_binary_expression_integer(statement->expression, TOKEN_PLUS, "1", "1");
+    assert_statement(runner, statement->kind, STATEMENT_EXPRESSION);
+    // assert_binary_expression_integer(statement->expression, TOKEN_PLUS, "1", "1");
 
     statement_free(statement);
     parser_free(&parser);
     lexer_free(&lexer);
 
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
+    if (runner->error) runner->failed++;
+    else runner->passed++;
 }
 
 
-static void test_block_statement()
+/*
+static void test_block_statement(Test_Runner* runner)
 {
     printf("\tBlock statement...");
     not_error = true;
@@ -823,7 +823,7 @@ static void test_block_statement()
 }
 
 
-static void test_if_statement()
+static void test_if_statement(Test_Runner* runner)
 {
     printf("\tIf statement...");
     not_error = true;
@@ -852,7 +852,7 @@ static void test_if_statement()
 }
 
 
-static void test_while_statement()
+static void test_while_statement(Test_Runner* runner)
 {
     printf("\tWhile statement...");
     not_error = true;
@@ -880,7 +880,7 @@ static void test_while_statement()
 }
 
 
-static void test_break_statement()
+static void test_break_statement(Test_Runner* runner)
 {
     printf("\tBreak statement...");
     not_error = true;
@@ -906,7 +906,7 @@ static void test_break_statement()
 }
 
 
-static void test_return_statement()
+static void test_return_statement(Test_Runner* runner)
 {
     printf("\tReturn statement...");
     not_error = true;
@@ -933,7 +933,7 @@ static void test_return_statement()
 }
 
 
-static void test_declaration_statement()
+static void test_declaration_statement(Test_Runner* runner)
 {
     printf("\tDeclaration statement...");
     not_error = true;
@@ -960,7 +960,7 @@ static void test_declaration_statement()
 }
 
 
-static void test_type_specifier()
+static void test_type_specifier(Test_Runner* runner)
 {
     printf("\tType specifier...");
     not_error = true;
@@ -1010,7 +1010,33 @@ static void test_type_specifier()
 }
 
 
-static void test_function_declaration()
+static void test_variable_declaration(Test_Runner* runner)
+{
+    printf("\tVariable declaration...");
+    not_error = true;
+
+    Lexer lexer;
+    Parser parser;
+    AST_Declaration* declaration;
+
+    lexer_init(&lexer, "foo: int = 42;"); 
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    declaration = parse_declaration(&parser);
+
+    assert_declaration_variable_integer(declaration, "foo", TYPE_SPECIFIER_INT, "42");
+
+    declaration_free(declaration);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    if (not_error) printf("PASSED\n");
+    else printf("\n");
+}
+
+
+static void test_function_declaration(Test_Runner* runner)
 {
     printf("\tFunction declartion...");
     not_error = true;
@@ -1039,7 +1065,7 @@ static void test_function_declaration()
 }
 
 
-static void test_small_program()
+static void test_small_program(Test_Runner* runner)
 {
     printf("\tSmall program...");
     not_error = true;
@@ -1086,7 +1112,7 @@ static void test_small_program()
 }
 
 
-static void test_diagnose_invalid_type_specifier()
+static void test_diagnose_invalid_type_specifier(Test_Runner* runner)
 {
     printf("\tDiagnose invalid type specifier...");
     not_error = true;
@@ -1156,7 +1182,7 @@ static void test_diagnose_invalid_type_specifier()
 }
 
 
-static void test_diagnose_invalid_primary_expression_starter()
+static void test_diagnose_invalid_primary_expression_starter(Test_Runner* runner)
 {
     printf("\tDiagnose invalid primay expression starter...");
     not_error = true;
@@ -1190,7 +1216,7 @@ static void test_diagnose_invalid_primary_expression_starter()
 }
 
 
-static void test_diagnose_invalid_assignment_target()
+static void test_diagnose_invalid_assignment_target(Test_Runner* runner)
 {
     printf("\tDiagnose invalid assignment target...");
     not_error = true;
@@ -1238,7 +1264,7 @@ static void test_diagnose_invalid_assignment_target()
 }
 
 
-static void test_diagnose_missing_semicolon()
+static void test_diagnose_missing_semicolon(Test_Runner* runner)
 {
     printf("\tDiagnose missing semicolon...");
     not_error = true;
@@ -1302,7 +1328,7 @@ static void test_diagnose_missing_semicolon()
 }
 
 
-static void test_diagnose_missing_closing_curlybrace()
+static void test_diagnose_missing_closing_curlybrace(Test_Runner* runner)
 {
     printf("\tDiagnose missing closing curlybrace...");
     not_error = true;
@@ -1333,7 +1359,7 @@ static void test_diagnose_missing_closing_curlybrace()
 }
 
 
-static void test_diagnose_missing_closing_parenthesis()
+static void test_diagnose_missing_closing_parenthesis(Test_Runner* runner)
 {
     printf("\tDiagnose missing closing parenthesis...");
     not_error = true;
@@ -1369,7 +1395,7 @@ static void test_diagnose_missing_closing_parenthesis()
 }
 
 
-static void test_diagnose_invalid_while_statement()
+static void test_diagnose_invalid_while_statement(Test_Runner* runner)
 {
     printf("\tDiagnose invalid while statement...");
     not_error = true;
@@ -1401,7 +1427,7 @@ static void test_diagnose_invalid_while_statement()
 }
 
 
-static void test_diagnose_invalid_if_statement()
+static void test_diagnose_invalid_if_statement(Test_Runner* runner)
 {
     printf("\tDiagnose invalid if statement...");
     not_error = true;
@@ -1433,7 +1459,7 @@ static void test_diagnose_invalid_if_statement()
 }
 
 
-static void test_panic_mode_statement()
+static void test_panic_mode_statement(Test_Runner* runner)
 {
     printf("\tPanic mode at statement level...");
     not_error = true;
@@ -1490,12 +1516,10 @@ static void test_panic_mode_statement()
     assert(strcmp(diagnostic->message, message) == 0);
     
     // NOTE(timo): This is not the correct behaviour
-    /*
-    message = ":PARSER - SyntaxError: Invalid token 'int', expected ';'\n";
-    diagnostic = parser.diagnostics->items[1];
+    // message = ":PARSER - SyntaxError: Invalid token 'int', expected ';'\n";
+    // diagnostic = parser.diagnostics->items[1];
 
-    assert(strcmp(diagnostic->message, message) == 0);
-    */
+    // assert(strcmp(diagnostic->message, message) == 0);
 
     statement_free(statement);
     parser_free(&parser);
@@ -1506,7 +1530,7 @@ static void test_panic_mode_statement()
 }
 
 
-static void test_panic_mode_declaration()
+static void test_panic_mode_declaration(Test_Runner* runner)
 {
     printf("\tPanic mode at declaration level...");
     not_error = true;
@@ -1599,8 +1623,45 @@ static void test_panic_mode_declaration()
     if (not_error) printf("PASSED\n");
     else printf("\n");
 }
+*/
 
 
+Test_Set* parser_test_set()
+{
+    Test_Set* set = test_set("Parser");
+
+    array_push(set->tests, test_case("Literal expression integer", test_literal_expression_integer));
+    array_push(set->tests, test_case("Literal expression boolean", test_literal_expression_boolean));
+    array_push(set->tests, test_case("Unary expression plus", test_unary_expression_plus));
+    array_push(set->tests, test_case("Unary expression minus", test_unary_expression_minus));
+    array_push(set->tests, test_case("Binary expression plus", test_binary_expression_plus));
+    array_push(set->tests, test_case("Binary expression minus", test_binary_expression_minus));
+    array_push(set->tests, test_case("Binary expression multiply", test_binary_expression_multiply));
+    array_push(set->tests, test_case("Binary expression division", test_binary_expression_division));
+    array_push(set->tests, test_case("Binary expression equal", test_binary_expression_equal));
+    array_push(set->tests, test_case("Binary expression not equal", test_binary_expression_not_equal));
+    array_push(set->tests, test_case("Binary expression less than", test_binary_expression_less_than));
+    array_push(set->tests, test_case("Binary expression less than or equal", test_binary_expression_less_than_equal));
+    array_push(set->tests, test_case("Binary expression greater than", test_binary_expression_greater_than));
+    array_push(set->tests, test_case("Binary expression greater than or equal", test_binary_expression_greater_than_equal));
+    array_push(set->tests, test_case("Logical expression and", test_logical_expression_and));
+    array_push(set->tests, test_case("Logical expression or", test_logical_expression_or));
+    array_push(set->tests, test_case("Logical expression not", test_logical_expression_not));
+    array_push(set->tests, test_case("Variable expression", test_variable_expression));
+    array_push(set->tests, test_case("Assignment expression", test_assignment_expression));
+    array_push(set->tests, test_case("Index expression", test_index_expression));
+    array_push(set->tests, test_case("Function expression", test_function_expression));
+    array_push(set->tests, test_case("Call expression", test_call_expression));
+
+    array_push(set->tests, test_case("Expression statement", test_expression_statement));
+
+    set->length = set->tests->length;
+
+    return set;
+}
+
+
+/*
 void test_parser()
 {
     printf("Running parser tests...\n");
@@ -1661,3 +1722,4 @@ void test_parser()
     test_panic_mode_statement();
     test_panic_mode_declaration();
 }
+*/

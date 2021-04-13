@@ -16,6 +16,7 @@ int main(int argc, char** argv)
 
     // TODO(timo): Collect tests based on user arguments
     test_runner_append_test_set(&runner, lexer_test_set());
+    test_runner_append_test_set(&runner, parser_test_set());
 
     clock_t tests_start = clock();
     test_runner_run(&runner);

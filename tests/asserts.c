@@ -44,3 +44,43 @@ void assert_token(Test_Runner* runner, Token* token, Token_Kind kind, const char
     assert_base(runner, strcmp(token->lexeme, lexeme) == 0,
         "Invalid lexeme '%s', expected '%s'", token->lexeme, lexeme);
 }
+
+
+void assert_expression_str(Test_Runner* runner, char* result, const char* expected)
+{
+    if (strcmp(result, expected) == 0) return;
+    else
+    {
+        printf("Invalid expression '%s', expected '%s'", result, expected);
+        // not_error = false;
+    }
+}
+
+
+void assert_expression(Test_Runner* runner, Expression_Kind actual, Expression_Kind expected)
+{
+    assert_base(runner, actual == expected,
+        "Invalid expression kind '%s', expected '%s'", expression_str(actual), expression_str(expected));
+}
+
+
+void assert_parameter(Test_Runner* runner, Parameter* parameter, const char* identifier, Type_Specifier specifier)
+{
+    assert_token(runner, parameter->identifier, TOKEN_IDENTIFIER, identifier);
+    assert_base(runner, parameter->specifier == specifier,
+        "Invalid type specifier '%s', expected '%s'", type_specifier_str(parameter->specifier), type_specifier_str(specifier));
+}
+
+
+void assert_statement(Test_Runner* runner, Statement_Kind actual, Statement_Kind expected)
+{
+    assert_base(runner, actual == expected,
+        "Invalid statement kind '%s', expected '%s'", statement_str(actual), statement_str(expected));
+}
+
+
+void assert_declaration(Test_Runner* runner, Declaration_Kind actual, Declaration_Kind expected)
+{
+    assert_base(runner, actual == expected,
+        "Invalid statement kind '%s', expected '%s'", declaration_str(actual), declaration_str(expected));
+}
