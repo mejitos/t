@@ -28,6 +28,7 @@ void lexer_free(Lexer* lexer)
         diagnostic = NULL;
     }
 
+    // NOTE(timo): This function will set the array to NULL after freeing
     array_free(lexer->diagnostics);
 
     // NOTE(timo): It is the callers responsibility to "unwind" the array
@@ -224,8 +225,6 @@ void lex(Lexer* lexer)
                 lexer->position.column_end += 1;
                 continue;
             }
-            // TODO(timo): I could just group these operator things to a single block
-            // like I did with the identifiers
             case '+':
                 array_push(lexer->tokens, token(TOKEN_PLUS, "+", 1, lexer->position));
                 advance(lexer, 1);
