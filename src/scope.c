@@ -117,21 +117,17 @@ void dump_scope(Scope* scope, int indentation)
             switch (symbol->kind)
             {
                 case SYMBOL_FUNCTION:
-                    // printf("function\t%s\t\t%s\t%d\t%d\n", symbol->identifier, type_as_string(symbol->type), symbol->type->size, symbol->type->offset);
-                    printf("function\t%s\t\t%s\t%d\t%d\n", symbol->identifier, type_as_string(symbol->type), symbol->type->size, symbol->offset);
+                    printf("function\t%s\t\t%s\t%d\t%d\n", symbol->identifier, type_as_string(symbol->type->kind), symbol->type->size, symbol->offset);
                     dump_scope(symbol->type->function.scope, indentation + 1);
                     break;
                 case SYMBOL_VARIABLE:
-                    // printf("variable\t%s\t\t%s\t%d\t%d\n", symbol->identifier, type_as_string(symbol->type), symbol->type->size, symbol->type->offset);
-                    printf("variable\t%s\t\t%s\t%d\t%d\n", symbol->identifier, type_as_string(symbol->type), symbol->type->size, symbol->offset);
+                    printf("variable\t%s\t\t%s\t%d\t%d\n", symbol->identifier, type_as_string(symbol->type->kind), symbol->type->size, symbol->offset);
                     break;
                 case SYMBOL_PARAMETER:
-                    // printf("parameter\t%s\t\t%s\t%d\t%d\n", symbol->identifier, type_as_string(symbol->type), symbol->type->size, symbol->type->offset);
-                    printf("parameter\t%s\t\t%s\t%d\t%d\n", symbol->identifier, type_as_string(symbol->type), symbol->type->size, symbol->offset);
+                    printf("parameter\t%s\t\t%s\t%d\t%d\n", symbol->identifier, type_as_string(symbol->type->kind), symbol->type->size, symbol->offset);
                     break;
                 case SYMBOL_TEMP:
-                    // printf("temporary\t%s\t\t%s\t%d\t%d\n", symbol->identifier, type_as_string(symbol->type), symbol->type->size, symbol->type->offset);
-                    printf("temporary\t%s\t\t%s\t%d\t%d\n", symbol->identifier, type_as_string(symbol->type), symbol->type->size, symbol->offset);
+                    printf("temporary\t%s\t\t%s\t%d\t%d\n", symbol->identifier, type_as_string(symbol->type->kind), symbol->type->size, symbol->offset);
                     break;
                 default:
                     break;

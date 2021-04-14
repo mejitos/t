@@ -86,3 +86,10 @@ void assert_type_specifier(Test_Runner* runner, Type_Specifier actual, Type_Spec
     assert_base(runner, actual == expected,
         "Invalid type specifier '%s', expected '%s'", type_specifier_str(actual), type_specifier_str(expected));
 }
+
+
+void assert_type(Test_Runner* runner, Type_Kind actual, Type_Kind expected)
+{
+    assert_base(runner, actual == expected,
+        "Invalid type '%s', expected '%s'", type_as_string(actual), type_as_string(expected));
+}

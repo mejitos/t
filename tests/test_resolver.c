@@ -1,22 +1,11 @@
 #include "asserts.h"
 #include "tests.h"
 #include "../src/t.h"
+//#include "../src/array.h"
 
 
-static bool not_error = true;
-
-
-static void test_resolve_literal_expression()
+static void test_resolve_literal_expression(Test_Runner* runner)
 {
-    printf("\tLiteral expression...");
-    not_error = true;
-
-    Lexer lexer;
-    Parser parser;
-    Resolver resolver;
-    hashtable* type_table;
-    AST_Expression* expression;
-
     const char* tests[] =
     {
         "42",
@@ -31,6 +20,12 @@ static void test_resolve_literal_expression()
         { TYPE_BOOLEAN, 0 },
     };
 
+    Lexer lexer;
+    Parser parser;
+    Resolver resolver;
+    hashtable* type_table;
+    AST_Expression* expression;
+
     for (int i = 0; i < sizeof (tests) / sizeof (*tests); i++)
     {
         lexer_init(&lexer, tests[i]);
@@ -39,19 +34,23 @@ static void test_resolve_literal_expression()
         parser_init(&parser, lexer.tokens);
         expression = parse_expression(&parser);
 
-        assert(expression->kind == EXPRESSION_LITERAL);
+        assert_expression(runner, expression->kind, EXPRESSION_LITERAL);
         
         type_table = type_table_init();
         resolver_init(&resolver, type_table);
+
         Type* type = resolve_expression(&resolver, expression);
 
-        assert(resolver.diagnostics->length == 0);
-        assert(type->kind == results[i][0]);
+        assert_base(runner, resolver.diagnostics->length == 0,
+            "Invalid number of resolver diagnostics: %d, expected 0", resolver.diagnostics->length);
+        assert_type(runner, type->kind, results[i][0]);
 
         if (type->kind == TYPE_INTEGER)
-            assert(expression->value.integer == results[i][1]);
+            assert_base(runner, expression->value.integer == results[i][1],
+                "Invalid integer value %d, expected, %d", expression->value.integer, results[i][1]);
         else if (type->kind == TYPE_BOOLEAN)
-            assert(expression->value.boolean == results[i][1]);
+            assert_base(runner, expression->value.boolean == results[i][1],
+                "Invalid boolean value '%s', expected '%s'", expression->value.boolean ? "false" : "true", results[i][1] ? "false" : "true");
 
         expression_free(expression);
         resolver_free(&resolver);
@@ -60,17 +59,13 @@ static void test_resolve_literal_expression()
         lexer_free(&lexer);
     }
 
-
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
+    if (runner->error) runner->failed++;
+    else runner->passed++;
 }
 
 
-static void test_diagnose_integer_overflow_literal()
+static void test_diagnose_integer_overflow_literal(Test_Runner* runner)
 {
-    printf("\tDiagnose integer overflow in integer literal...");
-    not_error = true;
-
     Lexer lexer;
     Parser parser;
     Resolver resolver;
@@ -89,11 +84,14 @@ static void test_diagnose_integer_overflow_literal()
     resolver_init(&resolver, type_table);
     resolve_expression(&resolver, expression);
 
-    assert(resolver.diagnostics->length == 1);
+    assert_base(runner, resolver.diagnostics->length == 1,
+        "Invalid number of resolver diagnostics: %d, expected 1", resolver.diagnostics->length);
 
-    diagnostic = resolver.diagnostics->items[0];
     message = ":RESOLVER - OverflowError: Integer overflow in integer literal. Maximum integer value is abs(2147483647)";
-    assert(strcmp(diagnostic->message, message) == 0);
+    diagnostic = resolver.diagnostics->items[0];
+
+    assert_base(runner, strcmp(diagnostic->message, message) == 0,
+        "Invalid diagnostic '%s', expected '%s'", diagnostic->message, message);
 
     expression_free(expression);
     resolver_free(&resolver);
@@ -101,22 +99,13 @@ static void test_diagnose_integer_overflow_literal()
     parser_free(&parser);
     lexer_free(&lexer);
 
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
+    if (runner->error) runner->failed++;
+    else runner->passed++;
 }
 
 
-static void test_resolve_unary_expression()
+static void test_resolve_unary_expression(Test_Runner* runner)
 {
-    printf("\tUnary expression...");
-    not_error = true;
-
-    Lexer lexer;
-    Parser parser;
-    Resolver resolver;
-    hashtable* type_table;
-    AST_Expression* expression;
-
     const char* tests[] =
     {
         "+42",
@@ -131,6 +120,12 @@ static void test_resolve_unary_expression()
         TYPE_BOOLEAN,
     };
 
+    Lexer lexer;
+    Parser parser;
+    Resolver resolver;
+    hashtable* type_table;
+    AST_Expression* expression;
+
     for (size_t i = 0; i < sizeof (tests) / sizeof (*tests); i++)
     {
         lexer_init(&lexer, tests[i]);
@@ -139,15 +134,16 @@ static void test_resolve_unary_expression()
         parser_init(&parser, lexer.tokens);
         expression = parse_expression(&parser);
 
-        assert(expression->kind == EXPRESSION_UNARY);
-        assert(expression->unary.operand->kind == EXPRESSION_LITERAL);
+        assert_expression(runner, expression->kind, EXPRESSION_UNARY);
+        assert_expression(runner, expression->unary.operand->kind, EXPRESSION_LITERAL);
         
         type_table = type_table_init();
         resolver_init(&resolver, type_table);
         Type* type = resolve_expression(&resolver, expression);
 
-        assert(resolver.diagnostics->length == 0);
-        assert(type->kind == results[i]);
+        assert_base(runner, resolver.diagnostics->length == 0,
+            "Invalid number of resolver diagnostics: %d, expected 0", resolver.diagnostics->length);
+        assert_type(runner, type->kind, results[i]);
 
         expression_free(expression);
         resolver_free(&resolver);
@@ -156,16 +152,13 @@ static void test_resolve_unary_expression()
         lexer_free(&lexer);
     }
 
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
+    if (runner->error) runner->failed++;
+    else runner->passed++;
 }
 
 
-static void test_diagnose_invalid_operand_types_unary_expression()
+static void test_diagnose_invalid_operand_types_unary_expression(Test_Runner* runner)
 {
-    printf("\tDiagnose invalid operand types in unary expression...");
-    not_error = true;
-
     const char* tests[] =
     {
         "+true",
@@ -199,10 +192,13 @@ static void test_diagnose_invalid_operand_types_unary_expression()
         resolver_init(&resolver, type_table);
         resolve_expression(&resolver, expression);
 
-        assert(resolver.diagnostics->length == 1);
+        assert_base(runner, resolver.diagnostics->length == 1,
+            "Invalid number of resolver diagnostics: %d, expected 1", resolver.diagnostics->length);
 
         diagnostic = resolver.diagnostics->items[0];
-        assert(strcmp(diagnostic->message, results[i]) == 0);
+
+        assert_base(runner, strcmp(diagnostic->message, results[i]) == 0,
+            "Invalid diagnostic '%s', expected '%s'", diagnostic->message, results[i]);
 
         expression_free(expression);
         resolver_free(&resolver);
@@ -211,22 +207,13 @@ static void test_diagnose_invalid_operand_types_unary_expression()
         lexer_free(&lexer);
     }
 
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
+    if (runner->error) runner->failed++;
+    else runner->passed++;
 }
 
 
-static void test_resolve_binary_expression()
+static void test_resolve_binary_expression(Test_Runner* runner)
 {
-    printf("\tBinary expression...");
-    not_error = true;
-
-    Lexer lexer;
-    Parser parser;
-    Resolver resolver;
-    hashtable* type_table;
-    AST_Expression* expression;
-
     const char* tests[] =
     {
         "1 + 2",
@@ -259,6 +246,12 @@ static void test_resolve_binary_expression()
         TYPE_BOOLEAN,
     };
 
+    Lexer lexer;
+    Parser parser;
+    Resolver resolver;
+    hashtable* type_table;
+    AST_Expression* expression;
+
     for (size_t i = 0; i < sizeof (tests) / sizeof (*tests); i++)
     {
         lexer_init(&lexer, tests[i]);
@@ -267,16 +260,17 @@ static void test_resolve_binary_expression()
         parser_init(&parser, lexer.tokens);
         AST_Expression* expression = parse_expression(&parser);
 
-        assert(expression->kind == EXPRESSION_BINARY);
-        assert(expression->binary.left->kind == EXPRESSION_LITERAL);
-        assert(expression->binary.right->kind == EXPRESSION_LITERAL);
+        assert_expression(runner, expression->kind, EXPRESSION_BINARY);
+        assert_expression(runner, expression->binary.left->kind, EXPRESSION_LITERAL);
+        assert_expression(runner, expression->binary.right->kind, EXPRESSION_LITERAL);
         
         type_table = type_table_init();
         resolver_init(&resolver, type_table);
         Type* type = resolve_expression(&resolver, expression);
         
-        assert(resolver.diagnostics->length == 0);
-        assert(type->kind == results[i]);
+        assert_base(runner, resolver.diagnostics->length == 0,
+            "Invalid number of resolver diagnostics: %d, expected 0", resolver.diagnostics->length);
+        assert_type(runner, type->kind, results[i]);
 
         expression_free(expression);
         resolver_free(&resolver);
@@ -285,23 +279,13 @@ static void test_resolve_binary_expression()
         lexer_free(&lexer);
     }
 
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
+    if (runner->error) runner->failed++;
+    else runner->passed++;
 }
 
 
-static void test_diagnose_invalid_operand_types_binary_expression()
+static void test_diagnose_invalid_operand_types_binary_expression(Test_Runner* runner)
 {
-    printf("\tDiagnose invalid operand types in binary expression...");
-    not_error = true;
-
-    Lexer lexer;
-    Parser parser;
-    Resolver resolver;
-    hashtable* type_table;
-    AST_Expression* expression;
-    Diagnostic* diagnostic;
-
     const char* tests[] =
     {
         "1 + true",
@@ -330,6 +314,13 @@ static void test_diagnose_invalid_operand_types_binary_expression()
         ":RESOLVER - TypeError: Unsupported operand types 'bool' and 'bool' for binary '>='",
     };
 
+    Lexer lexer;
+    Parser parser;
+    Resolver resolver;
+    hashtable* type_table;
+    AST_Expression* expression;
+    Diagnostic* diagnostic;
+
     for (size_t i = 0; i < sizeof (tests) / sizeof (*tests); i++)
     {
         lexer_init(&lexer, tests[i]);
@@ -342,10 +333,13 @@ static void test_diagnose_invalid_operand_types_binary_expression()
         resolver_init(&resolver, type_table);
         resolve_expression(&resolver, expression);
 
-        assert(resolver.diagnostics->length == 1);
+        assert_base(runner, resolver.diagnostics->length == 1,
+            "Invalid number of resolver diagnostics: %d, expected 1", resolver.diagnostics->length);
 
         diagnostic = resolver.diagnostics->items[0];
-        assert(strcmp(diagnostic->message, results[i]) == 0);
+
+        assert_base(runner, strcmp(diagnostic->message, results[i]) == 0,
+            "Invalid diagnostic '%s', expected '%s'", diagnostic->message, results[i]);
 
         expression_free(expression);
         resolver_free(&resolver);
@@ -354,21 +348,19 @@ static void test_diagnose_invalid_operand_types_binary_expression()
         lexer_free(&lexer);
     }
 
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
+    if (runner->error) runner->failed++;
+    else runner->passed++;
 }
 
 
-static void test_resolve_variable_expression()
+static void test_resolve_variable_expression(Test_Runner* runner)
 {
-    printf("\tVariable expression...");
-    not_error = true;
-    
     Lexer lexer;
     Parser parser;
     Resolver resolver;
     hashtable* type_table;
     AST_Statement* statement;
+
     const char* source = "{\n    foo: int = 42;\n    foo;\n}";
 
     lexer_init(&lexer, source); 
@@ -378,19 +370,22 @@ static void test_resolve_variable_expression()
     statement = parse_statement(&parser);
     array* statements = statement->block.statements;
 
-    assert(statement->kind == STATEMENT_BLOCK);
-    assert(statements->length == 2);
+    assert_statement(runner, statement->kind, STATEMENT_BLOCK);
+    assert_base(runner, statements->length == 2,
+        "Invalid number of statements in block: %d, expected %2", statements->length);
     
     type_table = type_table_init();
     resolver_init(&resolver, type_table);
     resolve_statement(&resolver, statements->items[0]);
     
-    assert(resolver.diagnostics->length == 0);
-    assert(resolver.global->symbols->count == 1);
+    assert_base(runner, resolver.diagnostics->length == 0,
+        "Invalid number of resolver diagnostics: %d, expected 0", resolver.diagnostics->length);
+    assert_base(runner, resolver.global->symbols->count == 1,
+        "Invalid number of symbols in symbol table: %d, expected 1", resolver.global->symbols->count);
     
     Type* type = resolve_expression(&resolver, ((AST_Statement*)(statements->items[1]))->expression);
     
-    assert(type->kind == TYPE_INTEGER);
+    assert_type(runner, type->kind, TYPE_INTEGER);
     
     statement_free(statement);
     resolver_free(&resolver);
@@ -398,16 +393,13 @@ static void test_resolve_variable_expression()
     parser_free(&parser);
     lexer_free(&lexer);
 
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
+    if (runner->error) runner->failed++;
+    else runner->passed++;
 }
 
 
-static void test_diagnose_referencing_variable_before_declaring()
+static void test_diagnose_referencing_variable_before_declaring(Test_Runner* runner)
 {
-    printf("\tDiagnose referensing variable before declaring it...");
-    not_error = true;
-
     Lexer lexer;
     Parser parser;
     Resolver resolver;
@@ -426,12 +418,14 @@ static void test_diagnose_referencing_variable_before_declaring()
     resolver_init(&resolver, type_table);
     resolve_expression(&resolver, expression);
 
-    assert(resolver.diagnostics->length == 1);
+    assert_base(runner, resolver.diagnostics->length == 1,
+        "Invalid number of resolver diagnostics: %d, expected 1", resolver.diagnostics->length);
     
-    diagnostic = resolver.diagnostics->items[0];
     message = ":RESOLVER - SyntaxError: Referencing identifier 'foo' before declaring it";
+    diagnostic = resolver.diagnostics->items[0];
 
-    assert(strcmp(diagnostic->message, message) == 0);
+    assert_base(runner, strcmp(diagnostic->message, message) == 0,
+        "Invalid diagnostic '%s', expected '%s'", diagnostic->message, message);
     
     expression_free(expression);
     resolver_free(&resolver);
@@ -439,16 +433,13 @@ static void test_diagnose_referencing_variable_before_declaring()
     parser_free(&parser);
     lexer_free(&lexer);
 
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
+    if (runner->error) runner->failed++;
+    else runner->passed++;
 }
 
 
-static void test_resolve_assignment_expression()
+static void test_resolve_assignment_expression(Test_Runner* runner)
 {
-    printf("\tAssignment expression...");
-    not_error = true;
-
     Lexer lexer;
     Parser parser;
     Resolver resolver;
@@ -456,6 +447,7 @@ static void test_resolve_assignment_expression()
     AST_Statement* statement;
     AST_Statement* statement_block;
     Symbol* symbol;
+
     const char* source = "{\n    foo: int = 42;\n    foo := 7;\n}";
 
     lexer_init(&lexer, source); 
@@ -465,8 +457,9 @@ static void test_resolve_assignment_expression()
     statement_block = parse_statement(&parser);
     array* statements = statement_block->block.statements;
 
-    assert(statement_block->kind == STATEMENT_BLOCK);
-    assert(statements->length == 2);
+    assert_statement(runner, statement_block->kind, STATEMENT_BLOCK);
+    assert_base(runner, statements->length == 2,
+        "Invalid number of statements in block: %d, expected %2", statements->length);
     
     type_table = type_table_init();
     resolver_init(&resolver, type_table);
@@ -474,16 +467,19 @@ static void test_resolve_assignment_expression()
     statement = statements->items[0];
     resolve_statement(&resolver, statement);
 
-    assert(resolver.global->symbols->count == 1);
+    assert_base(runner, resolver.global->symbols->count == 1,
+        "Invalid number of symbols in symbol table: %d, expected 1", resolver.global->symbols->count);
 
     statement = statements->items[1];
-    assert(statement->kind == STATEMENT_EXPRESSION);
-    assert(statement->expression->kind == EXPRESSION_ASSIGNMENT);
+
+    assert_statement(runner, statement->kind, STATEMENT_EXPRESSION);
+    assert_expression(runner, statement->expression->kind, EXPRESSION_ASSIGNMENT);
 
     Type* type = resolve_expression(&resolver, statement->expression);
-    assert(type->kind == TYPE_INTEGER);
 
-    assert(resolver.diagnostics->length == 0);
+    assert_type(runner, type->kind, TYPE_INTEGER);
+    assert_base(runner, resolver.diagnostics->length == 0,
+        "Invalid number of resolver diagnostics: %d, expected 0", resolver.diagnostics->length);
     
     statement_free(statement_block);
     resolver_free(&resolver);
@@ -491,16 +487,13 @@ static void test_resolve_assignment_expression()
     parser_free(&parser);
     lexer_free(&lexer);
 
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
+    if (runner->error) runner->failed++;
+    else runner->passed++;
 }
 
 
-static void test_diagnose_conflicting_types_assignment_expression()
+static void test_diagnose_conflicting_types_assignment_expression(Test_Runner* runner)
 {
-    printf("\tDiagnose conflicting types in assignment expression...");
-    not_error = true;
-
     Lexer lexer;
     Parser parser;
     Resolver resolver;
@@ -525,12 +518,14 @@ static void test_diagnose_conflicting_types_assignment_expression()
     resolver_init(&resolver, type_table);
     resolve_statement(&resolver, statement);
     
-    assert(resolver.diagnostics->length == 1);
+    assert_base(runner, resolver.diagnostics->length == 1,
+        "Invalid number of resolver diagnostics: %d, expected 1", resolver.diagnostics->length);
 
     message = ":RESOLVER - TypeError: Conflicting types in assignment expression. Assigning to 'int' from 'bool'";
     diagnostic = resolver.diagnostics->items[0];
 
-    assert(strcmp(diagnostic->message, message) == 0);
+    assert_base(runner, strcmp(diagnostic->message, message) == 0,
+        "Invalid diagnostic '%s', expected '%s'", diagnostic->message, message);
     
     statement_free(statement);
     resolver_free(&resolver);
@@ -538,16 +533,13 @@ static void test_diagnose_conflicting_types_assignment_expression()
     parser_free(&parser);
     lexer_free(&lexer);
 
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
+    if (runner->error) runner->failed++;
+    else runner->passed++;
 }
 
 
-static void test_resolve_index_expression()
+static void test_resolve_index_expression(Test_Runner* runner)
 {
-    printf("\tIndex expression...");
-    not_error = true;
-
     Lexer lexer;
     Parser parser;
     hashtable* type_table;
@@ -555,15 +547,12 @@ static void test_resolve_index_expression()
     AST_Expression* expression;
     AST_Declaration* declaration;
 
-    printf("\n\t\tNOT IMPLEMENTED");
-    not_error = false;
-    
     /*
     // TODO(timo): In our case the array subscription needs more context to
     // be used, so therefore the testing needs all that context. We need to
     // handle the resolving of the function expression first
     const char* source = "main: int = (argc: int, argv: [int]) => {\n"
-                         "    return 0;\n"
+                         "    return argv[0];\n"
                          "};";
 
     lexer_init(&lexer, source); 
@@ -598,69 +587,53 @@ static void test_resolve_index_expression()
     lexer_free(&lexer);
     */
 
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
+    if (runner->error) runner->failed++;
+    else runner->passed++;
 }
 
 
-static void test_diagnose_variable_is_not_subsriptable()
+static void test_diagnose_variable_is_not_subscriptable(Test_Runner* runner)
 {
-    printf("\tDiagnose variable is not subscriptable...");
-    not_error = true;
-
     Lexer lexer;
     Parser parser;
     hashtable* type_table;
     Resolver resolver;
     AST_Statement* statement;
-
-    printf("\n\t\tNOT IMPLEMENTED");
-    not_error = false;
 
     // ":RESOLVER - TypeError: '%s' is not subscriptable.",
 
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
+    if (runner->error) runner->failed++;
+    else runner->passed++;
 }
 
 
-static void test_diagnose_invalid_array_subscript()
+static void test_diagnose_invalid_array_subscript(Test_Runner* runner)
 {
-    printf("\tDiagnose invalid array subscript...");
-    not_error = true;
-
     Lexer lexer;
     Parser parser;
     hashtable* type_table;
     Resolver resolver;
     AST_Statement* statement;
 
-    printf("\n\t\tNOT IMPLEMENTED");
-    not_error = false;
-
     // ":RESOLVER - TypeError: Array subscripts must be integers.",
 
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
+    if (runner->error) runner->failed++;
+    else runner->passed++;
 }
 
 
-static void test_diagnose_invalid_array_subscript_boundaries()
+static void test_diagnose_invalid_array_subscript_boundaries(Test_Runner* runner)
 {
-    printf("\tDiagnose invalid array subscript boundaries...");
-    not_error = true;
-
-    printf("\n\t\tNOT IMPLEMENTED");
-    not_error = false;
 
     // ":RESOLVER - IndexError: Array subscript less than zero.",
 
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
+    if (runner->error) runner->failed++;
+    else runner->passed++;
 }
 
 
-static void test_resolve_function_expression()
+/*
+static void test_resolve_function_expression(Test_Runner* runner)
 {
     printf("\tFunction expression...");
     not_error = true;
@@ -741,7 +714,7 @@ static void test_resolve_function_expression()
 }
 
 
-static void test_resolve_call_expression()
+static void test_resolve_call_expression(Test_Runner* runner)
 {
     printf("\tCall expression...");
     not_error = true;
@@ -788,7 +761,7 @@ static void test_resolve_call_expression()
 }
 
 
-static void test_diagnose_callee_is_not_callable()
+static void test_diagnose_callee_is_not_callable(Test_Runner* runner)
 {
     printf("\tDiagnose callee is not callable...");
     not_error = true;
@@ -833,7 +806,7 @@ static void test_diagnose_callee_is_not_callable()
 }
 
 
-static void test_diagnose_invalid_number_of_arguments()
+static void test_diagnose_invalid_number_of_arguments(Test_Runner* runner)
 {
     printf("\tDiagnose invalid number of function arguments...");
     not_error = true;
@@ -881,7 +854,7 @@ static void test_diagnose_invalid_number_of_arguments()
 }
 
 
-static void test_diagnose_invalid_type_of_argument()
+static void test_diagnose_invalid_type_of_argument(Test_Runner* runner)
 {
     printf("\tDiagnose invalid type(s) of argument(s)...");
     not_error = true;
@@ -929,7 +902,7 @@ static void test_diagnose_invalid_type_of_argument()
 }
 
 
-void test_resolve_declaration_statement_variable()
+void test_resolve_declaration_statement_variable(Test_Runner* runner)
 {
     printf("\tVariable declaration statement...");
     not_error = true;
@@ -1010,7 +983,7 @@ void test_resolve_declaration_statement_variable()
 }
 
     
-static void test_resolve_if_statement()
+static void test_resolve_if_statement(Test_Runner* runner)
 {
     printf("\tIf statement...");
     not_error = true;
@@ -1053,7 +1026,7 @@ static void test_resolve_if_statement()
 }
 
 
-static void test_resolve_while_statement()
+static void test_resolve_while_statement(Test_Runner* runner)
 {
     printf("\tWhile statement...");
     not_error = true;
@@ -1091,7 +1064,7 @@ static void test_resolve_while_statement()
 }
 
 
-static void test_resolve_return_statement()
+static void test_resolve_return_statement(Test_Runner* runner)
 {
     printf("\tReturn statement...");
     not_error = true;
@@ -1128,7 +1101,7 @@ static void test_resolve_return_statement()
 }
 
 
-static void test_resolve_break_statement()
+static void test_resolve_break_statement(Test_Runner* runner)
 {
     printf("\tResolve break statement...");
     not_error = true;
@@ -1143,7 +1116,7 @@ static void test_resolve_break_statement()
 }
 
 
-static void test_diagnose_no_break_statement_outside_loops()
+static void test_diagnose_no_break_statement_outside_loops(Test_Runner* runner)
 {
     printf("\tDiagnose no break statement outside loops...");
     not_error = true;
@@ -1193,7 +1166,7 @@ static void test_diagnose_no_break_statement_outside_loops()
 }
 
 
-static void test_resolve_variable_declaration()
+static void test_resolve_variable_declaration(Test_Runner* runner)
 {
     printf("\tVariable declaration...");
     not_error = true;
@@ -1272,7 +1245,7 @@ static void test_resolve_variable_declaration()
 }
 
 
-void test_resolve_multiple_global_variable_declarations()
+static void test_resolve_multiple_global_variable_declarations(Test_Runner* runner)
 {
     printf("\tMultiple global variable declarations...");
     not_error = true;
@@ -1349,7 +1322,7 @@ void test_resolve_multiple_global_variable_declarations()
 }
 
 
-static void test_resolve_function_declaration()
+static void test_resolve_function_declaration(Test_Runner* runner)
 {
     printf("\tFunction declaration...");
     not_error = true;
@@ -1387,6 +1360,7 @@ static void test_resolve_function_declaration()
     if (not_error) printf("PASSED\n");
     else printf("\n");
 }
+*/
 
 
 /*
@@ -1425,7 +1399,8 @@ void test_resolve_order_independent_global_variable_declarations(Lexer* lexer, P
 */
 
 
-static void test_resolve_local_scopes()
+/*
+static void test_resolve_local_scopes(Test_Runner* runner)
 {
     printf("\tLocal scopes...");
     not_error = true;
@@ -1479,32 +1454,51 @@ static void test_resolve_local_scopes()
     if (not_error) printf("PASSED\n");
     else printf("\n");
 }
+*/
 
 
+Test_Set* resolver_test_set()
+{
+    Test_Set* set = test_set("Resolver");
+
+    // Literals
+    array_push(set->tests, test_case("Literal expression", test_resolve_literal_expression));
+    array_push(set->tests, test_case("Diagnose integer overlow in integer literal", test_diagnose_integer_overflow_literal));
+
+    // Unary
+    array_push(set->tests, test_case("Unary expression", test_resolve_unary_expression));
+    array_push(set->tests, test_case("Diagnose invalid unary operands", test_diagnose_invalid_operand_types_unary_expression));
+
+    // Binary
+    array_push(set->tests, test_case("Binary expression", test_resolve_binary_expression));
+    array_push(set->tests, test_case("Diagnose invalid binary operands", test_diagnose_invalid_operand_types_binary_expression));
+
+    // Variable
+    array_push(set->tests, test_case("Variable expression", test_resolve_variable_expression));
+    array_push(set->tests, test_case("Diagnose referencing variable before declaring it", test_diagnose_referencing_variable_before_declaring));
+
+    // Assignment
+    array_push(set->tests, test_case("Assignment expression", test_resolve_assignment_expression));
+    array_push(set->tests, test_case("Diagnose conflicting types in assignment", test_diagnose_conflicting_types_assignment_expression));
+
+    // Index expression / subscript
+    array_push(set->tests, test_case("Index expression", test_resolve_index_expression));
+    array_push(set->tests, test_case("Diagnose variable is not subscriptable", test_diagnose_variable_is_not_subscriptable));
+    array_push(set->tests, test_case("Diagnose invalid array subscript", test_diagnose_invalid_array_subscript));
+    array_push(set->tests, test_case("Diagnose invalid array subscript boundaries", test_diagnose_invalid_array_subscript_boundaries));
+    
+    set->length = set->tests->length;
+
+    return set;
+}
+
+
+/*
 void test_resolver()
 {
-    printf("Running resolver tests...\n");
+    // TODO(timo): Integer overflow checks in unary (positive and negative)
 
-    Lexer lexer;
-    Parser parser;
-    Resolver resolver;
-
-    test_resolve_literal_expression();
-    test_diagnose_integer_overflow_literal();
-
-    test_resolve_unary_expression();
-    test_diagnose_invalid_operand_types_unary_expression();
-    // TODO(timo): Integer overflow checks (positive and negative)
-
-    test_resolve_binary_expression();
-    test_diagnose_invalid_operand_types_binary_expression();
-    // TODO(timo): Integer overflow checks (positive and negative)
-
-    test_resolve_variable_expression();
-    test_diagnose_referencing_variable_before_declaring();
-
-    test_resolve_assignment_expression();
-    test_diagnose_conflicting_types_assignment_expression();
+    // TODO(timo): Integer overflow checks in binary (positive and negative)
 
     test_resolve_index_expression();
     test_diagnose_variable_is_not_subsriptable();
@@ -1546,7 +1540,7 @@ void test_resolver()
 
     test_resolve_variable_declaration();
 
-    test_resolve_multiple_global_variable_declarations(&lexer, &parser, &resolver);
+    test_resolve_multiple_global_variable_declarations();
 
     // TODO(timo): Diagnose errors while resolving variable declarations
 
@@ -1567,3 +1561,4 @@ void test_resolver()
 
     test_resolve_local_scopes();
 }
+*/

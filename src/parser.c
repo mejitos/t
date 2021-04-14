@@ -34,6 +34,7 @@ void parser_free(Parser* parser)
         diagnostic = NULL;
     }
 
+    // NOTE(timo): The array itself is set to NULL in the function
     array_free(parser->diagnostics);
 
     for (int i = 0; i < parser->declarations->length; i++)
@@ -161,11 +162,9 @@ Type_Specifier parse_type_specifier(Parser* parser)
 
 static AST_Statement* parse_return_statement(Parser* parser)
 {
-    // Statement start
     advance(parser); // skip the keyword
     AST_Expression* value = parse_expression(parser);
     expect_token(parser, TOKEN_SEMICOLON, ";", false);
-    // Statement end
 
     return return_statement(value);
 }
@@ -173,7 +172,6 @@ static AST_Statement* parse_return_statement(Parser* parser)
 
 static AST_Statement* parse_block_statement(Parser* parser)
 {
-    // Statement start
     // NOTE(timo): This expect is important later when we can just assign
     // any statement to if and while statements and to function expressions
     expect_token(parser, TOKEN_LEFT_CURLYBRACE, "{", true);
@@ -188,7 +186,6 @@ static AST_Statement* parse_block_statement(Parser* parser)
     }
 
     expect_token(parser, TOKEN_RIGHT_CURLYBRACE, "}", true);
-    // Statement end
 
     return block_statement(statements, statements->length);
 }
@@ -196,13 +193,11 @@ static AST_Statement* parse_block_statement(Parser* parser)
 
 static AST_Statement* parse_expression_statement(Parser* parser)
 {
-    // Statement start
     // TODO(timo): We could check here for all the allowed expression statements
     // e.g. literal expression cannot be expression statement and therefore before
     // the expect_token() we need like expect_expression() or something like that
     AST_Expression* expression = parse_expression(parser);
     expect_token(parser, TOKEN_SEMICOLON, ";", true);
-    // Statement end
 
     return expression_statement(expression);
 }
@@ -551,7 +546,6 @@ AST_Expression* parse_expression(Parser* parser)
 
 AST_Declaration* parse_declaration(Parser* parser)
 {
-    // Declaration start
     Token* identifier = parser->current_token;
 
     expect_token(parser, TOKEN_IDENTIFIER, "identifier", true);
@@ -564,7 +558,6 @@ AST_Declaration* parse_declaration(Parser* parser)
     AST_Expression* initializer = parse_expression(parser);
 
     expect_token(parser, TOKEN_SEMICOLON, ";", true);
-    // Declaration end
 
     if (initializer->kind == EXPRESSION_FUNCTION)
         return function_declaration(identifier, specifier, initializer);

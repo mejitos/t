@@ -150,7 +150,7 @@ static Type* resolve_unary_expression(Resolver* resolver, AST_Expression* expres
                 Diagnostic* _diagnostic = diagnostic(
                     DIAGNOSTIC_ERROR, expression->position,
                     ":RESOLVER - TypeError: Unsupported operand type '%s' for unary '+'",
-                    type_as_string(operand_type));
+                    type_as_string(operand_type->kind));
                 array_push(resolver->diagnostics, _diagnostic);
                 break;
             }
@@ -171,7 +171,7 @@ static Type* resolve_unary_expression(Resolver* resolver, AST_Expression* expres
                 Diagnostic* _diagnostic = diagnostic(
                     DIAGNOSTIC_ERROR, expression->position,
                     ":RESOLVER - TypeError: Unsupported operand type '%s' for unary '-'",
-                    type_as_string(operand_type));
+                    type_as_string(operand_type->kind));
                 array_push(resolver->diagnostics, _diagnostic);
                 break;
             }
@@ -192,7 +192,7 @@ static Type* resolve_unary_expression(Resolver* resolver, AST_Expression* expres
                 Diagnostic* _diagnostic = diagnostic(
                     DIAGNOSTIC_ERROR, expression->position,
                     ":RESOLVER - TypeError: Unsupported operand type '%s' for unary 'not'",
-                    type_as_string(operand_type));
+                    type_as_string(operand_type->kind));
                 array_push(resolver->diagnostics, _diagnostic);
             }
             break;
@@ -232,7 +232,7 @@ static Type* resolve_binary_expression(Resolver* resolver, AST_Expression* expre
                 Diagnostic* _diagnostic = diagnostic(
                     DIAGNOSTIC_ERROR, expression->position,
                     ":RESOLVER - TypeError: Unsupported operand types '%s' and '%s' for binary '%s'",
-                    type_as_string(type_left), type_as_string(type_right), _operator->lexeme);
+                    type_as_string(type_left->kind), type_as_string(type_right->kind), _operator->lexeme);
                 array_push(resolver->diagnostics, _diagnostic);
             }
             type = type_left;
@@ -245,7 +245,7 @@ static Type* resolve_binary_expression(Resolver* resolver, AST_Expression* expre
                 Diagnostic* _diagnostic = diagnostic(
                     DIAGNOSTIC_ERROR, expression->position,
                     ":RESOLVER - TypeError: Unsupported operand types '%s' and '%s' for binary '%s'",
-                    type_as_string(type_left), type_as_string(type_right), _operator->lexeme);
+                    type_as_string(type_left->kind), type_as_string(type_right->kind), _operator->lexeme);
                 array_push(resolver->diagnostics, _diagnostic);
             }
             type = hashtable_get(resolver->type_table, "bool");
@@ -261,7 +261,7 @@ static Type* resolve_binary_expression(Resolver* resolver, AST_Expression* expre
                 Diagnostic* _diagnostic = diagnostic(
                     DIAGNOSTIC_ERROR, expression->position,
                     ":RESOLVER - TypeError: Unsupported operand types '%s' and '%s' for binary '%s'",
-                    type_as_string(type_left), type_as_string(type_right), _operator->lexeme);
+                    type_as_string(type_left->kind), type_as_string(type_right->kind), _operator->lexeme);
                 array_push(resolver->diagnostics, _diagnostic);
             }
             type = hashtable_get(resolver->type_table, "bool");
@@ -317,7 +317,7 @@ static Type* resolve_assignment_expression(Resolver* resolver, AST_Expression* e
         Diagnostic* _diagnostic = diagnostic(
             DIAGNOSTIC_ERROR, expression->position,
             ":RESOLVER - TypeError: Conflicting types in assignment expression. Assigning to '%s' from '%s'",
-            type_as_string(variable_type), type_as_string(value_type));
+            type_as_string(variable_type->kind), type_as_string(value_type->kind));
         array_push(resolver->diagnostics, _diagnostic);
     }
 
@@ -488,7 +488,7 @@ static Type* resolve_call_expression(Resolver* resolver, AST_Expression* express
                 Diagnostic* _diagnostic = diagnostic(
                     DIAGNOSTIC_ERROR, expression->position,
                     ":RESOLVER - TypeError: Parameter '%s' is of type '%s', but argument of type '%s' was given.", 
-                    parameter->identifier, type_as_string(parameter_type), type_as_string(argument_type));
+                    parameter->identifier, type_as_string(parameter_type->kind), type_as_string(argument_type->kind));
                 array_push(resolver->diagnostics, _diagnostic);
             }
         }

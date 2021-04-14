@@ -434,7 +434,7 @@ Type* type_function();
 Type* type_array(Type* element_type);
 void type_free(Type* type);
 hashtable* type_table_init();
-const char* type_as_string(Type* type);
+const char* type_as_string(Type_Kind kind);
 void type_table_free(hashtable* table);
 
 

@@ -20,6 +20,7 @@ void assert_parameter(Test_Runner* runner, Parameter* parameter, const char* ide
 void assert_statement(Test_Runner* runner, Statement_Kind actual, Statement_Kind expected);
 void assert_declaration(Test_Runner* runner, Declaration_Kind actual, Declaration_Kind expected);
 void assert_type_specifier(Test_Runner* runner, Type_Specifier actual, Type_Specifier expected);
+void assert_type(Test_Runner* runner, Type_Kind actual, Type_Kind expected);
 
 
 #endif

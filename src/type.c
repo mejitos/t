@@ -70,9 +70,9 @@ Type* type_array(Type* element_type)
 }
 
 
-const char* type_as_string(Type* type)
+const char* type_as_string(Type_Kind kind)
 {
-    switch (type->kind)
+    switch (kind)
     {
         case TYPE_NONE:
             return "none";
@@ -81,11 +81,14 @@ const char* type_as_string(Type* type)
         case TYPE_BOOLEAN:
             return "bool";
         case TYPE_FUNCTION:
-            return type_as_string(type->function.return_type);
+            // TODO(timo): Probably should return something else
+            return "function";
+            // return type_as_string(type->function.return_type);
         case TYPE_ARRAY:
             // TODO(timo): I probably should return something else but since the array 
             // is just array of elements type of element type and basically a pointer type
-            return type_as_string(type->array.element_type);
+            return "array";
+            // return type_as_string(type->array.element_type);
         default:
             return "unknown type";
     }
