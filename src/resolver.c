@@ -327,16 +327,17 @@ static Type* resolve_assignment_expression(Resolver* resolver, AST_Expression* e
 }
 
 
+/*
+ *  Returns the type of the element of the array that is being subscripted
+ *  I think that is the correct value?
+ */
 static Type* resolve_index_expression(Resolver* resolver, AST_Expression* expression)
 {
-    // Make sure that the accessed variable is argv and nothing else
-    // TODO(timo): Are the program/command line arguments passed to scope?
     AST_Expression* variable = expression->index.variable;
-    
-    // Make sure the subscript target is an array type
     Type* variable_type = resolve_expression(resolver, variable);
     Symbol* symbol = scope_lookup(resolver->local, variable->identifier->lexeme);
 
+    // Make sure the subscript target is an array type
     if (variable_type->kind != TYPE_ARRAY)
     {
         Diagnostic* _diagnostic = diagnostic(
@@ -344,18 +345,32 @@ static Type* resolve_index_expression(Resolver* resolver, AST_Expression* expres
             ":RESOLVER - TypeError: '%s' is not subscriptable.",
             variable->identifier->lexeme);
         array_push(resolver->diagnostics, _diagnostic);
+
+        // TODO(timo): Return none type?
     }
-    /*
-    // TODO(timo): We should also make sure that the current context is the main functions context
+
+    // TODO(timo): These checks for the argv and main are only for this stage of the 
+    // compiler/language where we have arrays only for the argv of the main program
     if (strcmp(symbol->identifier, "argv") != 0)
     {
-        // TODO(timo): Error
-        printf("You cannot use index expressions with other values than argv of the main function\n");
-        exit(1);
-    }
-    */
+        Diagnostic* _diagnostic = diagnostic(
+            DIAGNOSTIC_ERROR, expression->position,
+            ":RESOLVER - Error: You cannot use index expressions with other values than argv of the main function");
+        array_push(resolver->diagnostics, _diagnostic);
 
-    // we should make sure that the type of the expression is integer
+        // TODO(timo): Return none type?
+    }
+    if (strcmp(resolver->local->name, "main") == 0)
+    {
+        Diagnostic* _diagnostic = diagnostic(
+            DIAGNOSTIC_ERROR, expression->position,
+            ":RESOLVER - Error: You cannot use index expressions with other values than argv of the main function");
+        array_push(resolver->diagnostics, _diagnostic);
+
+        // TODO(timo): Return none type?
+    }
+
+    // Make sure that the type of the expression is integer
     Type* index_type = resolve_expression(resolver, expression->index.value);
     
     if (index_type->kind != TYPE_INTEGER)
@@ -365,9 +380,13 @@ static Type* resolve_index_expression(Resolver* resolver, AST_Expression* expres
             ":RESOLVER - TypeError: Array subscripts must be integers.",
             variable->identifier->lexeme);
         array_push(resolver->diagnostics, _diagnostic);
+
+        // TODO(timo): Return none type?
     }
     
     // TODO(timo): Boundary checks => the index cannot be < 0 and not > array length - 1
+    // NOTE(timo): We cannot check the upper boundary at compile time since the arguments
+    // for the argv is being passed at start of the compiled program
     Value index_value = expression->index.value->value;
 
     if (index_value.integer < 0)
@@ -377,14 +396,16 @@ static Type* resolve_index_expression(Resolver* resolver, AST_Expression* expres
             ":RESOLVER - IndexError: Array subscript less than zero.",
             variable->identifier->lexeme);
         array_push(resolver->diagnostics, _diagnostic);
+
+        // TODO(timo): Return none type?
     }
     
 
     // TODO(timo): The array size should be gotten from initializing the array but since
-    // we have the arrays only for the argv, they are resolved elsewhere
+    // we have the arrays only for the argv, they are resolved at runtime
     // TODO(timo): We don't have a way to get the value of the argc for now
     /*
-    if (index_value.integer > argc->value.integer)
+    if (index_value.integer > "array capacity - 1")
     {
         // TODO(timo): Error
         printf("Array subscript greater than array length\n");
@@ -397,10 +418,10 @@ static Type* resolve_index_expression(Resolver* resolver, AST_Expression* expres
 
     // TODO(timo): We also have the element_type member in the array type, can/should we use it for something?
 
-    // TODO(timo): Should we return the type of the index or the element type?
-    expression->type = variable_type;
+    // Return the type of the element in the array which the subscript accesses
+    expression->type = variable_type->array.element_type;
 
-    return variable_type;
+    return variable_type->array.element_type;
 }
 
 
@@ -768,6 +789,12 @@ void resolve_function_declaration(Resolver* resolver, AST_Declaration* declarati
     }
 
     // Check if the expected type and the actual type match
+    // TODO(timo): Not sure if this is the best solution, but 
+    /*
+    if (actual_type->kind == TYPE_ARRAY)
+    {
+    }
+    */
     if (expected_type->kind != actual_type->function.return_type->kind)
     {
         // TODO(timo): Error
