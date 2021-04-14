@@ -5,8 +5,7 @@ void assert_base(Test_Runner* runner, bool assertion, const char* message, ...)
 {
     if (! assertion)
     {
-        char* buffer;
-        size_t buffer_length;
+        char* buffer; size_t buffer_length;
         FILE* out = open_memstream(&buffer, &buffer_length);
 
         va_list args;
@@ -48,12 +47,8 @@ void assert_token(Test_Runner* runner, Token* token, Token_Kind kind, const char
 
 void assert_expression_str(Test_Runner* runner, char* result, const char* expected)
 {
-    if (strcmp(result, expected) == 0) return;
-    else
-    {
-        printf("Invalid expression '%s', expected '%s'", result, expected);
-        // not_error = false;
-    }
+    assert_base(runner, strcmp(result, expected) == 0,
+        "Invalid expression parse tree '%s', expected '%s'", result, expected);
 }
 
 
@@ -82,5 +77,12 @@ void assert_statement(Test_Runner* runner, Statement_Kind actual, Statement_Kind
 void assert_declaration(Test_Runner* runner, Declaration_Kind actual, Declaration_Kind expected)
 {
     assert_base(runner, actual == expected,
-        "Invalid statement kind '%s', expected '%s'", declaration_str(actual), declaration_str(expected));
+        "Invalid declaration kind '%s', expected '%s'", declaration_str(actual), declaration_str(expected));
+}
+
+
+void assert_type_specifier(Test_Runner* runner, Type_Specifier actual, Type_Specifier expected)
+{
+    assert_base(runner, actual == expected,
+        "Invalid type specifier '%s', expected '%s'", type_specifier_str(actual), type_specifier_str(expected));
 }

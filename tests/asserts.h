@@ -19,6 +19,7 @@ void assert_expression(Test_Runner* runner, Expression_Kind actual, Expression_K
 void assert_parameter(Test_Runner* runner, Parameter* parameter, const char* identifier, Type_Specifier specifier);
 void assert_statement(Test_Runner* runner, Statement_Kind actual, Statement_Kind expected);
 void assert_declaration(Test_Runner* runner, Declaration_Kind actual, Declaration_Kind expected);
+void assert_type_specifier(Test_Runner* runner, Type_Specifier actual, Type_Specifier expected);
 
 
 #endif

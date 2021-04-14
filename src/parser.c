@@ -104,8 +104,8 @@ static inline Token* peek(Parser* parser)
 
 static inline void advance(Parser* parser)
 {
-    // NOTE(timo): This check is needed that there actually is a current token
-    // all the time, at least the EoF token
+    // NOTE(timo): This check is needed to make sure there actually is a 
+    // current token all the time, at least the EoF token
     if (parser->index < parser->tokens->length)
         parser->current_token = (Token*)parser->tokens->items[parser->index++];
 }
@@ -136,9 +136,7 @@ Type_Specifier parse_type_specifier(Parser* parser)
             // of time, we will force it here at the parsing stage already
             // TODO(timo): This needs more descriptive error message though
             expect_token(parser, TOKEN_INT, "int", true);
-            // advance(parser);
             expect_token(parser, TOKEN_RIGHT_BRACKET, "]", true);
-            // advance(parser);
 
             specifier = TYPE_SPECIFIER_ARRAY_INT;
             break;
@@ -535,8 +533,7 @@ static AST_Expression* assignment(Parser* parser)
                     ":PARSER - SyntaxError: Invalid assignment target, expected a variable.\n");
             array_push(parser->diagnostics, _diagnostic); 
             // NOTE(timo): In case of invalid assignment target there is really no need
-            // for error recovery.
-            // parser->panic = true;
+            // for error recovery since we are already at the end of the expression.
         }
 
         return assignment_expression(expression, value);

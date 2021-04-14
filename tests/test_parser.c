@@ -686,12 +686,8 @@ static void test_call_expression(Test_Runner* runner)
 }
 
 
-/*
 static void test_order_of_arithmetic_operations(Test_Runner* runner)
 {
-    printf("\tOrder of arithmetic operations...");
-    not_error = true;
-    
     Lexer lexer;
     Parser parser;
     stringbuilder* sb;
@@ -699,6 +695,7 @@ static void test_order_of_arithmetic_operations(Test_Runner* runner)
 
     sb = sb_init();
 
+    // Base case
     lexer_init(&lexer, "1 + 2 * 3");
     lex(&lexer);
 
@@ -706,7 +703,7 @@ static void test_order_of_arithmetic_operations(Test_Runner* runner)
     expression = parse_expression(&parser);
     expression_to_string(expression, sb);
 
-    assert_expression_str(sb_to_string(sb), "(1+(2*3))");
+    assert_expression_str(runner, sb_to_string(sb), "(1+(2*3))");
 
     sb_free(sb);
     expression_free(expression);
@@ -723,7 +720,7 @@ static void test_order_of_arithmetic_operations(Test_Runner* runner)
     expression = parse_expression(&parser);
     expression_to_string(expression, sb);
 
-    assert_expression_str(sb_to_string(sb), "((1+2)*3)");
+    assert_expression_str(runner, sb_to_string(sb), "((1+2)*3)");
 
     sb_free(sb);
     expression_free(expression);
@@ -740,7 +737,7 @@ static void test_order_of_arithmetic_operations(Test_Runner* runner)
     expression = parse_expression(&parser);
     expression_to_string(expression, sb);
 
-    assert_expression_str(sb_to_string(sb), "(-(-(-(-7))))");
+    assert_expression_str(runner, sb_to_string(sb), "(-(-(-(-7))))");
 
     sb_free(sb);
     expression_free(expression);
@@ -757,17 +754,16 @@ static void test_order_of_arithmetic_operations(Test_Runner* runner)
     expression = parse_expression(&parser);
     expression_to_string(expression, sb);
 
-    assert_expression_str(sb_to_string(sb), "(10-(-7))");
+    assert_expression_str(runner, sb_to_string(sb), "(10-(-7))");
 
     sb_free(sb);
     expression_free(expression);
     parser_free(&parser);
     lexer_free(&lexer);
 
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
+    if (runner->error) runner->failed++;
+    else runner->passed++;
 }
-*/
 
 
 static void test_expression_statement(Test_Runner* runner)
@@ -784,7 +780,7 @@ static void test_expression_statement(Test_Runner* runner)
     statement = parse_statement(&parser);
 
     assert_statement(runner, statement->kind, STATEMENT_EXPRESSION);
-    // assert_binary_expression_integer(statement->expression, TOKEN_PLUS, "1", "1");
+    assert_expression(runner, statement->expression->kind, EXPRESSION_BINARY);
 
     statement_free(statement);
     parser_free(&parser);
@@ -795,12 +791,8 @@ static void test_expression_statement(Test_Runner* runner)
 }
 
 
-/*
 static void test_block_statement(Test_Runner* runner)
 {
-    printf("\tBlock statement...");
-    not_error = true;
-
     Lexer lexer;
     Parser parser;
     AST_Statement* statement;
@@ -811,23 +803,21 @@ static void test_block_statement(Test_Runner* runner)
     parser_init(&parser, lexer.tokens);
     statement = parse_statement(&parser);
 
-    assert(statement->kind == STATEMENT_BLOCK);
-    assert(statement->block.statements_length == 3);
+    assert_statement(runner, statement->kind, STATEMENT_BLOCK);
+    assert_base(runner, statement->block.statements_length == 3,
+        "Invalid number of statements in block %d, expected 3", statement->block.statements_length);
 
     statement_free(statement);
     parser_free(&parser);
     lexer_free(&lexer);
 
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
+    if (runner->error) runner->failed++;
+    else runner->passed++;
 }
 
 
 static void test_if_statement(Test_Runner* runner)
 {
-    printf("\tIf statement...");
-    not_error = true;
-
     Lexer lexer;
     Parser parser;
     AST_Statement* statement;
@@ -838,25 +828,22 @@ static void test_if_statement(Test_Runner* runner)
     parser_init(&parser, lexer.tokens);
     statement = parse_statement(&parser);
 
-    assert(statement->kind == STATEMENT_IF);
-    assert(statement->_if.condition->kind == EXPRESSION_BINARY);
-    assert(statement->_if.then->kind = STATEMENT_BLOCK);
-    assert(statement->_if._else->kind = STATEMENT_BLOCK);
+    assert_statement(runner, statement->kind, STATEMENT_IF);
+    assert_expression(runner, statement->_if.condition->kind, EXPRESSION_BINARY);
+    assert_statement(runner, statement->_if.then->kind, STATEMENT_BLOCK);
+    assert_statement(runner, statement->_if._else->kind, STATEMENT_BLOCK);
 
     statement_free(statement);
     parser_free(&parser);
     lexer_free(&lexer);
 
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
+    if (runner->error) runner->failed++;
+    else runner->passed++;
 }
 
 
 static void test_while_statement(Test_Runner* runner)
 {
-    printf("\tWhile statement...");
-    not_error = true;
-
     Lexer lexer;
     Parser parser;
     AST_Statement* statement;
@@ -867,24 +854,21 @@ static void test_while_statement(Test_Runner* runner)
     parser_init(&parser, lexer.tokens);
     statement = parse_statement(&parser);
 
-    assert(statement->kind == STATEMENT_WHILE);
-    assert(statement->_while.condition->kind == EXPRESSION_BINARY);
-    assert(statement->_while.body->kind = STATEMENT_BLOCK);
+    assert_statement(runner, statement->kind, STATEMENT_WHILE);
+    assert_expression(runner, statement->_while.condition->kind, EXPRESSION_BINARY);
+    assert_statement(runner, statement->_while.body->kind, STATEMENT_BLOCK);
     
     statement_free(statement);
     parser_free(&parser);
     lexer_free(&lexer);
 
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
+    if (runner->error) runner->failed++;
+    else runner->passed++;
 }
 
 
 static void test_break_statement(Test_Runner* runner)
 {
-    printf("\tBreak statement...");
-    not_error = true;
-
     Lexer lexer;
     Parser parser;
     AST_Statement* statement;
@@ -895,22 +879,19 @@ static void test_break_statement(Test_Runner* runner)
     parser_init(&parser, lexer.tokens);
     statement = parse_statement(&parser);
 
-    assert(statement->kind == STATEMENT_BREAK);
+    assert_statement(runner, statement->kind, STATEMENT_BREAK);
 
     statement_free(statement);
     parser_free(&parser);
     lexer_free(&lexer);
 
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
+    if (runner->error) runner->failed++;
+    else runner->passed++;
 }
 
 
 static void test_return_statement(Test_Runner* runner)
 {
-    printf("\tReturn statement...");
-    not_error = true;
-
     Lexer lexer;
     Parser parser;
     AST_Statement* statement;
@@ -921,50 +902,47 @@ static void test_return_statement(Test_Runner* runner)
     parser_init(&parser, lexer.tokens);
     statement = parse_statement(&parser);
 
-    assert(statement->kind == STATEMENT_RETURN);
-    assert_literal_expression_integer(statement->_return.value, "0");
+    assert_statement(runner, statement->kind, STATEMENT_RETURN);
+    assert_expression(runner, statement->_return.value->kind, EXPRESSION_LITERAL);
 
     statement_free(statement);
     parser_free(&parser);
     lexer_free(&lexer);
 
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
+    if (runner->error) runner->failed++;
+    else runner->passed++;
 }
 
 
 static void test_declaration_statement(Test_Runner* runner)
 {
-    printf("\tDeclaration statement...");
-    not_error = true;
-
     Lexer lexer;
     Parser parser;
     AST_Statement* statement;
-
+    
+    // Variable declaration
     lexer_init(&lexer, "BAR: int = 0;");
     lex(&lexer);
 
     parser_init(&parser, lexer.tokens);
     statement = parse_statement(&parser);
 
-    assert(statement->kind == STATEMENT_DECLARATION);
-    assert_declaration_variable_integer(statement->declaration, "BAR", TYPE_SPECIFIER_INT, "0");
+    assert_statement(runner, statement->kind, STATEMENT_DECLARATION);
+    assert_declaration(runner, statement->declaration->kind, DECLARATION_VARIABLE);
 
     statement_free(statement);
     parser_free(&parser);
     lexer_free(&lexer);
 
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
+    // TODO(timo): Function declaration
+
+    if (runner->error) runner->failed++;
+    else runner->passed++;
 }
 
 
 static void test_type_specifier(Test_Runner* runner)
 {
-    printf("\tType specifier...");
-    not_error = true;
-
     Lexer lexer;
     Parser parser;
     Type_Specifier specifier;
@@ -976,7 +954,7 @@ static void test_type_specifier(Test_Runner* runner)
     parser_init(&parser, lexer.tokens);
     specifier = parse_type_specifier(&parser);
 
-    assert(specifier == TYPE_SPECIFIER_INT);
+    assert_type_specifier(runner, specifier, TYPE_SPECIFIER_INT);
 
     parser_free(&parser);
     lexer_free(&lexer);
@@ -988,7 +966,7 @@ static void test_type_specifier(Test_Runner* runner)
     parser_init(&parser, lexer.tokens);
     specifier = parse_type_specifier(&parser);
 
-    assert(specifier == TYPE_SPECIFIER_BOOL);
+    assert_type_specifier(runner, specifier, TYPE_SPECIFIER_BOOL);
 
     parser_free(&parser);
     lexer_free(&lexer);
@@ -1000,21 +978,18 @@ static void test_type_specifier(Test_Runner* runner)
     parser_init(&parser, lexer.tokens);
     specifier = parse_type_specifier(&parser);
 
-    assert(specifier == TYPE_SPECIFIER_ARRAY_INT);
+    assert_type_specifier(runner, specifier, TYPE_SPECIFIER_ARRAY_INT);
 
     parser_free(&parser);
     lexer_free(&lexer);
 
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
+    if (runner->error) runner->failed++;
+    else runner->passed++;
 }
 
 
 static void test_variable_declaration(Test_Runner* runner)
 {
-    printf("\tVariable declaration...");
-    not_error = true;
-
     Lexer lexer;
     Parser parser;
     AST_Declaration* declaration;
@@ -1025,22 +1000,19 @@ static void test_variable_declaration(Test_Runner* runner)
     parser_init(&parser, lexer.tokens);
     declaration = parse_declaration(&parser);
 
-    assert_declaration_variable_integer(declaration, "foo", TYPE_SPECIFIER_INT, "42");
+    assert_declaration(runner, declaration->kind, DECLARATION_VARIABLE);
 
     declaration_free(declaration);
     parser_free(&parser);
     lexer_free(&lexer);
 
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
+    if (runner->error) runner->failed++;
+    else runner->passed++;
 }
 
 
 static void test_function_declaration(Test_Runner* runner)
 {
-    printf("\tFunction declartion...");
-    not_error = true;
-
     Lexer lexer;
     Parser parser;
     AST_Declaration* declaration;
@@ -1054,416 +1026,19 @@ static void test_function_declaration(Test_Runner* runner)
     parser_init(&parser, lexer.tokens);
     declaration = parse_declaration(&parser);
 
-    assert_declaration_function(declaration, "main", TYPE_SPECIFIER_INT, 2);
+    assert_declaration(runner, declaration->kind, DECLARATION_FUNCTION);
 
     declaration_free(declaration);
     parser_free(&parser);
     lexer_free(&lexer);
 
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
-}
-
-
-static void test_small_program(Test_Runner* runner)
-{
-    printf("\tSmall program...");
-    not_error = true;
-
-    Lexer lexer;
-    Parser parser;
-    AST_Statement* statement;
-    AST_Declaration* declaration;
-    const char* source = "main: int = (argc: int, argv: [int]) => {\n"
-                         "    foo: int = 0;\n"
-                         "    foo := 453;\n"
-                         "\n"
-                         "    return foo;\n"
-                         "};";
-
-    lexer_init(&lexer, source); 
-    lex(&lexer);
-
-    parser_init(&parser, lexer.tokens);
-    declaration = parse_declaration(&parser);
-
-    assert_declaration_function(declaration, "main", TYPE_SPECIFIER_INT, 2);
-    array* statements = declaration->initializer->function.body->block.statements;
-    assert(statements->length == 3);
-
-    statement = (AST_Statement*)*statements->items++;
-    assert(statement->kind == STATEMENT_DECLARATION);
-    assert_declaration_variable_integer(statement->declaration, "foo", TYPE_SPECIFIER_INT, "0");
-
-    statement = (AST_Statement*)*statements->items++;
-    assert(statement->kind == STATEMENT_EXPRESSION);
-    assert_assignment_expression_integer(statement->expression, "foo", "453");
-
-    statement = (AST_Statement*)*statements->items;
-    assert(statement->kind == STATEMENT_RETURN);
-    statements->items -= 2; // rewind the array
-    
-    declaration_free(declaration);
-    parser_free(&parser);
-    lexer_free(&lexer);
-
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
-}
-
-
-static void test_diagnose_invalid_type_specifier(Test_Runner* runner)
-{
-    printf("\tDiagnose invalid type specifier...");
-    not_error = true;
-
-    Lexer lexer;
-    Parser parser;
-    Type_Specifier specifier;
-    AST_Statement* statement;
-    AST_Declaration* declaration;
-    Diagnostic* diagnostic;
-    char* message;
-    
-    lexer_init(&lexer, "type");
-    lex(&lexer);
-
-    parser_init(&parser, lexer.tokens);
-    specifier = parse_type_specifier(&parser);
-    message = ":PARSER - SyntaxError: Expected type specifier, got 'type'\n";
-
-    assert(specifier == TYPE_SPECIFIER_NONE);
-    assert(parser.diagnostics->length == 1);
-    diagnostic = parser.diagnostics->items[0];
-    
-    assert(strcmp(diagnostic->message, message) == 0);
-
-    parser_free(&parser);
-    lexer_free(&lexer);
-
-    // in top level declaration
-    lexer_init(&lexer, "foo: type = 32;");
-    lex(&lexer);
-
-    parser_init(&parser, lexer.tokens);
-    declaration = parse_declaration(&parser);
-    message = ":PARSER - SyntaxError: Expected type specifier, got 'type'\n";
-
-    // assert(specifier == TYPE_SPECIFIER_NONE);
-    assert(parser.diagnostics->length == 1);
-    diagnostic = parser.diagnostics->items[0];
-    
-    assert(strcmp(diagnostic->message, message) == 0);
-    
-    declaration_free(declaration);
-    parser_free(&parser);
-    lexer_free(&lexer);
-
-    // in declaration statement
-    lexer_init(&lexer, "foo: type = 32;");
-    lex(&lexer);
-
-    parser_init(&parser, lexer.tokens);
-    statement = parse_statement(&parser);
-    message = ":PARSER - SyntaxError: Expected type specifier, got 'type'\n";
-
-    // assert(specifier == TYPE_SPECIFIER_NONE);
-    assert(parser.diagnostics->length == 1);
-    diagnostic = parser.diagnostics->items[0];
-    
-    assert(strcmp(diagnostic->message, message) == 0);
-    
-    statement_free(statement);
-    parser_free(&parser);
-    lexer_free(&lexer);
-
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
-}
-
-
-static void test_diagnose_invalid_primary_expression_starter(Test_Runner* runner)
-{
-    printf("\tDiagnose invalid primay expression starter...");
-    not_error = true;
-
-    Lexer lexer;
-    Parser parser;
-    AST_Expression* expression;
-    Diagnostic* diagnostic;
-    char* message;
-
-    lexer_init(&lexer, "1 + while");
-    lex(&lexer);
-
-    parser_init(&parser, lexer.tokens);
-    expression = parse_expression(&parser);
-    message = ":PARSER - SyntaxError: Invalid token 'while' in primary expression\n";
-
-    assert(expression->kind == EXPRESSION_BINARY);
-
-    assert(parser.diagnostics->length == 1);
-    diagnostic = parser.diagnostics->items[0];
-
-    assert(strcmp(diagnostic->message, message) == 0);
-    
-    expression_free(expression);
-    parser_free(&parser);
-    lexer_free(&lexer);
-
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
-}
-
-
-static void test_diagnose_invalid_assignment_target(Test_Runner* runner)
-{
-    printf("\tDiagnose invalid assignment target...");
-    not_error = true;
-
-    Lexer lexer;
-    Parser parser;
-    AST_Expression* expression;
-    Diagnostic* diagnostic;
-    char* message;
-    
-    lexer_init(&lexer, "1 := 42");
-    lex(&lexer);
-
-    parser_init(&parser, lexer.tokens);
-    expression = parse_expression(&parser);
-    message = ":PARSER - SyntaxError: Invalid assignment target, expected a variable.\n";
-
-    assert(parser.diagnostics->length == 1);
-    diagnostic = parser.diagnostics->items[0];
-    assert(strcmp(diagnostic->message, message) == 0);
-
-    expression_free(expression);
-    parser_free(&parser);
-    lexer_free(&lexer);
-
-    // ---
-
-    lexer_init(&lexer, "true := false");
-    lex(&lexer);
-
-    parser_init(&parser, lexer.tokens);
-    expression = parse_expression(&parser);
-    message = ":PARSER - SyntaxError: Invalid assignment target, expected a variable.\n";
-
-    assert(parser.diagnostics->length == 1);
-    diagnostic = parser.diagnostics->items[0];
-    assert(strcmp(diagnostic->message, message) == 0);
-
-    expression_free(expression);
-    parser_free(&parser);
-    lexer_free(&lexer);
-
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
-}
-
-
-static void test_diagnose_missing_semicolon(Test_Runner* runner)
-{
-    printf("\tDiagnose missing semicolon...");
-    not_error = true;
-
-    Lexer lexer;
-    Parser parser;
-    AST_Statement* statement;
-    Diagnostic* diagnostic;
-    char* message;
-    
-    // ---
-    lexer_init(&lexer, "1 + 1");
-    lex(&lexer);
-
-    parser_init(&parser, lexer.tokens);
-    statement = parse_statement(&parser);
-    message = ":PARSER - SyntaxError: Invalid token '<EoF>', expected ';'\n";
-
-    assert(parser.diagnostics->length == 1);
-    diagnostic = parser.diagnostics->items[0];
-    assert(strcmp(diagnostic->message, message) == 0);
-
-    statement_free(statement);
-    parser_free(&parser);
-    lexer_free(&lexer);
-
-    // ---
-    lexer_init(&lexer, "return 0");
-    lex(&lexer);
-
-    parser_init(&parser, lexer.tokens);
-    statement = parse_statement(&parser);
-    message = ":PARSER - SyntaxError: Invalid token '<EoF>', expected ';'\n";
-
-    assert(parser.diagnostics->length == 1);
-    diagnostic = parser.diagnostics->items[0];
-    assert(strcmp(diagnostic->message, message) == 0);
-
-    statement_free(statement);
-    parser_free(&parser);
-    lexer_free(&lexer);
-
-    // ---
-    lexer_init(&lexer, "return 0 foo");
-    lex(&lexer);
-
-    parser_init(&parser, lexer.tokens);
-    statement = parse_statement(&parser);
-    message = ":PARSER - SyntaxError: Invalid token 'foo', expected ';'\n";
-
-    assert(parser.diagnostics->length == 1);
-    diagnostic = parser.diagnostics->items[0];
-    assert(strcmp(diagnostic->message, message) == 0);
-
-    statement_free(statement);
-    parser_free(&parser);
-    lexer_free(&lexer);
-
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
-}
-
-
-static void test_diagnose_missing_closing_curlybrace(Test_Runner* runner)
-{
-    printf("\tDiagnose missing closing curlybrace...");
-    not_error = true;
-
-    Lexer lexer;
-    Parser parser;
-    AST_Statement* statement;
-    Diagnostic* diagnostic;
-    char* message;
-
-    lexer_init(&lexer, "{\n    foo: int = 42;\n    foo := 7;\n");
-    lex(&lexer);
-
-    parser_init(&parser, lexer.tokens);
-    statement = parse_statement(&parser);
-    message = ":PARSER - SyntaxError: Invalid token '<EoF>', expected '}'\n";
-
-    assert(parser.diagnostics->length == 1);
-    diagnostic = parser.diagnostics->items[0];
-    assert(strcmp(diagnostic->message, message) == 0);
-
-    statement_free(statement);
-    parser_free(&parser);
-    lexer_free(&lexer);
-
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
-}
-
-
-static void test_diagnose_missing_closing_parenthesis(Test_Runner* runner)
-{
-    printf("\tDiagnose missing closing parenthesis...");
-    not_error = true;
-
-    Lexer lexer;
-    Parser parser;
-    AST_Statement* statement;
-    Diagnostic* diagnostic;
-    char* message;
-
-    // TODO(timo): parenthesized expressions
-
-    // call expression statement
-    lexer_init(&lexer, "foo(3, true;");
-    lex(&lexer);
-
-    parser_init(&parser, lexer.tokens);
-    statement = parse_statement(&parser);
-    message = ":PARSER - SyntaxError: Invalid token ';', expected ')'\n";
-
-    assert(parser.diagnostics->length == 1);
-    diagnostic = parser.diagnostics->items[0];
-    assert(strcmp(diagnostic->message, message) == 0);
-
-    statement_free(statement);
-    parser_free(&parser);
-    lexer_free(&lexer);
-
-    // TODO(timo): function parameters
-
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
-}
-
-
-static void test_diagnose_invalid_while_statement(Test_Runner* runner)
-{
-    printf("\tDiagnose invalid while statement...");
-    not_error = true;
-
-    Lexer lexer;
-    Parser parser;
-    AST_Statement* statement;
-    Diagnostic* diagnostic;
-    char* message;
-
-    // missing 'do' keyword
-    lexer_init(&lexer, "while a < b {\n    a := a + b;\n}");
-    lex(&lexer);
-
-    parser_init(&parser, lexer.tokens);
-    statement = parse_statement(&parser);
-    message = ":PARSER - SyntaxError: Invalid token '{', expected 'do'\n";
-
-    assert(parser.diagnostics->length == 1);
-    diagnostic = parser.diagnostics->items[0];
-    assert(strcmp(diagnostic->message, message) == 0);
-
-    statement_free(statement);
-    parser_free(&parser);
-    lexer_free(&lexer);
-
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
-}
-
-
-static void test_diagnose_invalid_if_statement(Test_Runner* runner)
-{
-    printf("\tDiagnose invalid if statement...");
-    not_error = true;
-
-    Lexer lexer;
-    Parser parser;
-    AST_Statement* statement;
-    Diagnostic* diagnostic;
-    char* message;
-
-    // missing 'then' keyword
-    lexer_init(&lexer, "if a < b {\n    a := a + b;\n}");
-    lex(&lexer);
-
-    parser_init(&parser, lexer.tokens);
-    statement = parse_statement(&parser);
-    message = ":PARSER - SyntaxError: Invalid token '{', expected 'then'\n";
-
-    assert(parser.diagnostics->length == 1);
-    diagnostic = parser.diagnostics->items[0];
-    assert(strcmp(diagnostic->message, message) == 0);
-
-    statement_free(statement);
-    parser_free(&parser);
-    lexer_free(&lexer);
-
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
+    if (runner->error) runner->failed++;
+    else runner->passed++;
 }
 
 
 static void test_panic_mode_statement(Test_Runner* runner)
 {
-    printf("\tPanic mode at statement level...");
-    not_error = true;
-
     Lexer lexer;
     Parser parser;
     AST_Statement* statement;
@@ -1483,13 +1058,16 @@ static void test_panic_mode_statement(Test_Runner* runner)
     parser_init(&parser, lexer.tokens);
     statement = parse_statement(&parser);
     
-    assert(statement->block.statements->length == 2);
-    assert(parser.diagnostics->length == 1);
+    assert_base(runner, statement->block.statements->length == 2,
+        "Invalid number of statements in block: %d, expected 2", statement->block.statements->length);
+    assert_base(runner, parser.diagnostics->length == 1,
+        "Invalid number of parser diagnostics: %d, expected 1", parser.diagnostics->length);
 
     message = ":PARSER - SyntaxError: Invalid token 'bar', expected ';'\n";
     diagnostic = parser.diagnostics->items[0];
 
-    assert(strcmp(diagnostic->message, message) == 0);
+    assert_base(runner, strcmp(diagnostic->message, message) == 0,
+        "Invalid diagnostic '%s', expected '%s'", diagnostic->message, message);
 
     statement_free(statement);
     parser_free(&parser);
@@ -1507,13 +1085,16 @@ static void test_panic_mode_statement(Test_Runner* runner)
     parser_init(&parser, lexer.tokens);
     statement = parse_statement(&parser);
     
-    assert(statement->block.statements->length == 2);
-    assert(parser.diagnostics->length == 2);
+    assert_base(runner, statement->block.statements->length == 2,
+        "Invalid number of statements in block: %d, expected 2", statement->block.statements->length);
+    assert_base(runner, parser.diagnostics->length == 2,
+        "Invalid number of parser diagnostics: %d, expected 2", parser.diagnostics->length);
 
     message = ":PARSER - SyntaxError: Invalid token ':' in primary expression\n";
     diagnostic = parser.diagnostics->items[0];
 
-    assert(strcmp(diagnostic->message, message) == 0);
+    assert_base(runner, strcmp(diagnostic->message, message) == 0,
+        "Invalid diagnostic '%s', expected '%s'", diagnostic->message, message);
     
     // NOTE(timo): This is not the correct behaviour
     // message = ":PARSER - SyntaxError: Invalid token 'int', expected ';'\n";
@@ -1525,16 +1106,13 @@ static void test_panic_mode_statement(Test_Runner* runner)
     parser_free(&parser);
     lexer_free(&lexer);
 
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
+    if (runner->error) runner->failed++;
+    else runner->passed++;
 }
 
 
 static void test_panic_mode_declaration(Test_Runner* runner)
 {
-    printf("\tPanic mode at declaration level...");
-    not_error = true;
-
     Lexer lexer;
     Parser parser;
     AST_Declaration* declaration;
@@ -1552,13 +1130,16 @@ static void test_panic_mode_declaration(Test_Runner* runner)
     parser_init(&parser, lexer.tokens);
     parse(&parser);
 
-    assert(parser.declarations->length == 2);
+    assert_base(runner, parser.declarations->length == 2,
+        "Invalid number of declarations: %d, expected 2", parser.declarations->length);
+    assert_base(runner, parser.diagnostics->length == 1,
+        "Invalid number of parser diagnostics: %d, expected 1", parser.diagnostics->length);
 
     message = ":PARSER - SyntaxError: Invalid token 'bar', expected ';'\n";
-
-    assert(parser.diagnostics->length == 1);
     diagnostic = parser.diagnostics->items[0];
-    assert(strcmp(diagnostic->message, message) == 0);
+
+    assert_base(runner, strcmp(diagnostic->message, message) == 0,
+        "Invalid diagnostic '%s', expected '%s'", diagnostic->message, message);
 
     parser_free(&parser);
     lexer_free(&lexer);
@@ -1573,18 +1154,22 @@ static void test_panic_mode_declaration(Test_Runner* runner)
     parser_init(&parser, lexer.tokens);
     parse(&parser);
 
-    assert(parser.declarations->length == 2);
-    assert(parser.diagnostics->length == 2);
+    assert_base(runner, parser.declarations->length == 2,
+        "Invalid number of declarations: %d, expected 2", parser.declarations->length);
+    assert_base(runner, parser.diagnostics->length == 2,
+        "Invalid number of parser diagnostics: %d, expected 2", parser.diagnostics->length);
 
     message = ":PARSER - SyntaxError: Invalid token '42', expected '='\n";
-
     diagnostic = parser.diagnostics->items[0];
-    assert(strcmp(diagnostic->message, message) == 0);
+
+    assert_base(runner, strcmp(diagnostic->message, message) == 0,
+        "Invalid diagnostic '%s', expected '%s'", diagnostic->message, message);
 
     message = ":PARSER - SyntaxError: Invalid token 'bar', expected ';'\n";
-
     diagnostic = parser.diagnostics->items[1];
-    assert(strcmp(diagnostic->message, message) == 0);
+
+    assert_base(runner, strcmp(diagnostic->message, message) == 0,
+        "Invalid diagnostic '%s', expected '%s'", diagnostic->message, message);
 
     parser_free(&parser);
     lexer_free(&lexer);
@@ -1599,37 +1184,467 @@ static void test_panic_mode_declaration(Test_Runner* runner)
     parser_init(&parser, lexer.tokens);
     parse(&parser);
 
-    assert(parser.declarations->length == 2);
-    assert(parser.diagnostics->length == 3);
+    assert_base(runner, parser.declarations->length == 2,
+        "Invalid number of declarations: %d, expected 2", parser.declarations->length);
+    assert_base(runner, parser.diagnostics->length == 3,
+        "Invalid number of parser diagnostics: %d, expected 3", parser.diagnostics->length);
 
     message = ":PARSER - SyntaxError: Invalid token ':', expected 'identifier'\n";
-
     diagnostic = parser.diagnostics->items[0];
-    assert(strcmp(diagnostic->message, message) == 0);
+
+    assert_base(runner, strcmp(diagnostic->message, message) == 0,
+        "Invalid diagnostic '%s', expected '%s'", diagnostic->message, message);
 
     message = ":PARSER - SyntaxError: Invalid token '42', expected '='\n";
-
     diagnostic = parser.diagnostics->items[1];
-    assert(strcmp(diagnostic->message, message) == 0);
+
+    assert_base(runner, strcmp(diagnostic->message, message) == 0,
+        "Invalid diagnostic '%s', expected '%s'", diagnostic->message, message);
 
     message = ":PARSER - SyntaxError: Invalid token 'bar', expected ';'\n";
-
     diagnostic = parser.diagnostics->items[2];
-    assert(strcmp(diagnostic->message, message) == 0);
+
+    assert_base(runner, strcmp(diagnostic->message, message) == 0,
+        "Invalid diagnostic '%s', expected '%s'", diagnostic->message, message);
 
     parser_free(&parser);
     lexer_free(&lexer);
 
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
+    if (runner->error) runner->failed++;
+    else runner->passed++;
 }
-*/
+
+
+static void test_diagnose_invalid_type_specifier(Test_Runner* runner)
+{
+    Lexer lexer;
+    Parser parser;
+    Type_Specifier specifier;
+    AST_Statement* statement;
+    AST_Declaration* declaration;
+    Diagnostic* diagnostic;
+    char* message;
+    
+    // base case
+    lexer_init(&lexer, "type");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    specifier = parse_type_specifier(&parser);
+
+    assert_type_specifier(runner, specifier, TYPE_SPECIFIER_NONE);
+    assert_base(runner, parser.diagnostics->length == 1,
+        "Invalid number of parser diagnostics: %d, expected 1", parser.diagnostics->length);
+
+    message = ":PARSER - SyntaxError: Expected type specifier, got 'type'\n";
+    diagnostic = parser.diagnostics->items[0];
+    
+    assert_base(runner, strcmp(diagnostic->message, message) == 0,
+        "Invalid diagnostic '%s', expected '%s'", diagnostic->message, message);
+
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    // in top level declaration
+    lexer_init(&lexer, "foo: type = 32;");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    declaration = parse_declaration(&parser);
+
+    assert_type_specifier(runner, specifier, TYPE_SPECIFIER_NONE);
+    assert_base(runner, parser.diagnostics->length == 1,
+        "Invalid number of parser diagnostics: %d, expected 1", parser.diagnostics->length);
+
+    message = ":PARSER - SyntaxError: Expected type specifier, got 'type'\n";
+    diagnostic = parser.diagnostics->items[0];
+    
+    assert_base(runner, strcmp(diagnostic->message, message) == 0,
+        "Invalid diagnostic '%s', expected '%s'", diagnostic->message, message);
+    
+    declaration_free(declaration);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    // in declaration statement
+    lexer_init(&lexer, "foo: type = 32;");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    statement = parse_statement(&parser);
+
+    assert_type_specifier(runner, specifier, TYPE_SPECIFIER_NONE);
+    assert_base(runner, parser.diagnostics->length == 1,
+        "Invalid number of parser diagnostics: %d, expected 1", parser.diagnostics->length);
+
+    message = ":PARSER - SyntaxError: Expected type specifier, got 'type'\n";
+    diagnostic = parser.diagnostics->items[0];
+    
+    assert_base(runner, strcmp(diagnostic->message, message) == 0,
+        "Invalid diagnostic '%s', expected '%s'", diagnostic->message, message);
+    
+    statement_free(statement);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    if (runner->error) runner->failed++;
+    else runner->passed++;
+}
+
+
+static void test_diagnose_invalid_primary_expression_starter(Test_Runner* runner)
+{
+    Lexer lexer;
+    Parser parser;
+    AST_Expression* expression;
+    Diagnostic* diagnostic;
+    char* message;
+
+    lexer_init(&lexer, "1 + while");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    expression = parse_expression(&parser);
+
+    assert_expression(runner, expression->kind, EXPRESSION_BINARY);
+    assert_base(runner, parser.diagnostics->length == 1,
+        "Invalid number of parser diagnostics: %d, expected 1", parser.diagnostics->length);
+
+    message = ":PARSER - SyntaxError: Invalid token 'while' in primary expression\n";
+    diagnostic = parser.diagnostics->items[0];
+
+    assert_base(runner, strcmp(diagnostic->message, message) == 0,
+        "Invalid diagnostic '%s', expected '%s'", diagnostic->message, message);
+    
+    expression_free(expression);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    if (runner->error) runner->failed++;
+    else runner->passed++;
+}
+
+
+static void test_diagnose_invalid_assignment_target(Test_Runner* runner)
+{
+    Lexer lexer;
+    Parser parser;
+    AST_Expression* expression;
+    Diagnostic* diagnostic;
+    char* message;
+    
+    lexer_init(&lexer, "1 := 42");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    expression = parse_expression(&parser);
+
+    assert_base(runner, parser.diagnostics->length == 1,
+        "Invalid number of parser diagnostics: %d, expected 1", parser.diagnostics->length);
+
+    message = ":PARSER - SyntaxError: Invalid assignment target, expected a variable.\n";
+    diagnostic = parser.diagnostics->items[0];
+
+    assert_base(runner, strcmp(diagnostic->message, message) == 0,
+        "Invalid diagnostic '%s', expected '%s'", diagnostic->message, message);
+
+    expression_free(expression);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    // ---
+
+    lexer_init(&lexer, "true := false");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    expression = parse_expression(&parser);
+
+    assert_base(runner, parser.diagnostics->length == 1,
+        "Invalid number of parser diagnostics: %d, expected 1", parser.diagnostics->length);
+
+    message = ":PARSER - SyntaxError: Invalid assignment target, expected a variable.\n";
+    diagnostic = parser.diagnostics->items[0];
+
+    assert_base(runner, strcmp(diagnostic->message, message) == 0,
+        "Invalid diagnostic '%s', expected '%s'", diagnostic->message, message);
+
+    expression_free(expression);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    if (runner->error) runner->failed++;
+    else runner->passed++;
+}
+
+
+static void test_diagnose_missing_semicolon(Test_Runner* runner)
+{
+    Lexer lexer;
+    Parser parser;
+    AST_Statement* statement;
+    Diagnostic* diagnostic;
+    char* message;
+    
+    // ---
+    lexer_init(&lexer, "1 + 1");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    statement = parse_statement(&parser);
+
+    assert_base(runner, parser.diagnostics->length == 1,
+        "Invalid number of parser diagnostics: %d, expected 1", parser.diagnostics->length);
+
+    message = ":PARSER - SyntaxError: Invalid token '<EoF>', expected ';'\n";
+    diagnostic = parser.diagnostics->items[0];
+
+    assert_base(runner, strcmp(diagnostic->message, message) == 0,
+        "Invalid diagnostic '%s', expected '%s'", diagnostic->message, message);
+
+    statement_free(statement);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    // ---
+    lexer_init(&lexer, "return 0");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    statement = parse_statement(&parser);
+
+    assert_base(runner, parser.diagnostics->length == 1,
+        "Invalid number of parser diagnostics: %d, expected 1", parser.diagnostics->length);
+
+    message = ":PARSER - SyntaxError: Invalid token '<EoF>', expected ';'\n";
+    diagnostic = parser.diagnostics->items[0];
+
+    assert_base(runner, strcmp(diagnostic->message, message) == 0,
+        "Invalid diagnostic '%s', expected '%s'", diagnostic->message, message);
+
+    statement_free(statement);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    // ---
+    lexer_init(&lexer, "return 0 foo");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    statement = parse_statement(&parser);
+
+    assert_base(runner, parser.diagnostics->length == 1,
+        "Invalid number of parser diagnostics: %d, expected 1", parser.diagnostics->length);
+
+    message = ":PARSER - SyntaxError: Invalid token 'foo', expected ';'\n";
+    diagnostic = parser.diagnostics->items[0];
+
+    assert_base(runner, strcmp(diagnostic->message, message) == 0,
+        "Invalid diagnostic '%s', expected '%s'", diagnostic->message, message);
+
+    statement_free(statement);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    if (runner->error) runner->failed++;
+    else runner->passed++;
+}
+
+
+static void test_diagnose_missing_closing_curlybrace(Test_Runner* runner)
+{
+    Lexer lexer;
+    Parser parser;
+    AST_Statement* statement;
+    Diagnostic* diagnostic;
+    char* message;
+
+    // base case
+    lexer_init(&lexer, "{\n    foo: int = 42;\n    foo := 7;\n");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    statement = parse_statement(&parser);
+
+    assert_base(runner, parser.diagnostics->length == 1,
+        "Invalid number of parser diagnostics: %d, expected 1", parser.diagnostics->length);
+
+    message = ":PARSER - SyntaxError: Invalid token '<EoF>', expected '}'\n";
+    diagnostic = parser.diagnostics->items[0];
+
+    assert_base(runner, strcmp(diagnostic->message, message) == 0,
+        "Invalid diagnostic '%s', expected '%s'", diagnostic->message, message);
+
+    statement_free(statement);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    if (runner->error) runner->failed++;
+    else runner->passed++;
+}
+
+
+static void test_diagnose_missing_closing_parenthesis(Test_Runner* runner)
+{
+    Lexer lexer;
+    Parser parser;
+    AST_Statement* statement;
+    Diagnostic* diagnostic;
+    char* message;
+
+    // TODO(timo): parenthesized expressions
+
+    // TODO(timo): call expression
+
+    // call expression statement
+    lexer_init(&lexer, "foo(3, true;");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    statement = parse_statement(&parser);
+
+    assert_base(runner, parser.diagnostics->length == 1,
+        "Invalid number of parser diagnostics: %d, expected 1", parser.diagnostics->length);
+
+    message = ":PARSER - SyntaxError: Invalid token ';', expected ')'\n";
+    diagnostic = parser.diagnostics->items[0];
+
+    assert_base(runner, strcmp(diagnostic->message, message) == 0,
+        "Invalid diagnostic '%s', expected '%s'", diagnostic->message, message);
+
+    statement_free(statement);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    // TODO(timo): function parameters
+
+    if (runner->error) runner->failed++;
+    else runner->passed++;
+}
+
+
+static void test_diagnose_invalid_while_statement(Test_Runner* runner)
+{
+    Lexer lexer;
+    Parser parser;
+    AST_Statement* statement;
+    Diagnostic* diagnostic;
+    char* message;
+
+    // missing 'do' keyword
+    lexer_init(&lexer, "while a < b {\n    a := a + b;\n}");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    statement = parse_statement(&parser);
+
+    assert_base(runner, parser.diagnostics->length == 1,
+        "Invalid number of parser diagnostics: %d, expected 1", parser.diagnostics->length);
+
+    message = ":PARSER - SyntaxError: Invalid token '{', expected 'do'\n";
+    diagnostic = parser.diagnostics->items[0];
+
+    assert_base(runner, strcmp(diagnostic->message, message) == 0,
+        "Invalid diagnostic '%s', expected '%s'", diagnostic->message, message);
+
+    statement_free(statement);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    if (runner->error) runner->failed++;
+    else runner->passed++;
+}
+
+
+static void test_diagnose_invalid_if_statement(Test_Runner* runner)
+{
+    Lexer lexer;
+    Parser parser;
+    AST_Statement* statement;
+    Diagnostic* diagnostic;
+    char* message;
+
+    // missing 'then' keyword
+    lexer_init(&lexer, "if a < b {\n    a := a + b;\n}");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    statement = parse_statement(&parser);
+
+    assert_base(runner, parser.diagnostics->length == 1,
+        "Invalid number of parser diagnostics: %d, expected 1", parser.diagnostics->length);
+
+    message = ":PARSER - SyntaxError: Invalid token '{', expected 'then'\n";
+    diagnostic = parser.diagnostics->items[0];
+
+    assert_base(runner, strcmp(diagnostic->message, message) == 0,
+        "Invalid diagnostic '%s', expected '%s'", diagnostic->message, message);
+
+    statement_free(statement);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    if (runner->error) runner->failed++;
+    else runner->passed++;
+}
+
+
+static void test_small_program(Test_Runner* runner)
+{
+    Lexer lexer;
+    Parser parser;
+    AST_Statement* statement;
+    AST_Declaration* declaration;
+    const char* source = "main: int = (argc: int, argv: [int]) => {\n"
+                         "    foo: int = 0;\n"
+                         "    foo := 453;\n"
+                         "\n"
+                         "    return foo;\n"
+                         "};";
+
+    lexer_init(&lexer, source); 
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    declaration = parse_declaration(&parser);
+
+    assert_declaration(runner, declaration->kind, DECLARATION_FUNCTION);
+
+    array* statements = declaration->initializer->function.body->block.statements;
+
+    assert_base(runner, statements->length == 3,
+        "Invalid number of statements in block %d, expected 3", statements->length);
+
+    statement = (AST_Statement*)*statements->items++;
+
+    assert_statement(runner, statement->kind, STATEMENT_DECLARATION);
+    assert_declaration(runner, statement->declaration->kind, DECLARATION_VARIABLE);
+
+    statement = (AST_Statement*)*statements->items++;
+
+    assert_expression(runner, statement->kind, STATEMENT_EXPRESSION);
+    assert_expression(runner, statement->expression->kind, EXPRESSION_ASSIGNMENT);
+
+    statement = (AST_Statement*)*statements->items;
+
+    assert_statement(runner, statement->kind, STATEMENT_RETURN);
+
+    statements->items -= 2; // rewind the array
+    
+    declaration_free(declaration);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    if (runner->error) runner->failed++;
+    else runner->passed++;
+}
 
 
 Test_Set* parser_test_set()
 {
     Test_Set* set = test_set("Parser");
 
+    // Expressions
     array_push(set->tests, test_case("Literal expression integer", test_literal_expression_integer));
     array_push(set->tests, test_case("Literal expression boolean", test_literal_expression_boolean));
     array_push(set->tests, test_case("Unary expression plus", test_unary_expression_plus));
@@ -1653,34 +1668,11 @@ Test_Set* parser_test_set()
     array_push(set->tests, test_case("Function expression", test_function_expression));
     array_push(set->tests, test_case("Call expression", test_call_expression));
 
+    // Expression parse trees as string
+    array_push(set->tests, test_case("Order of arithmetic operations", test_order_of_arithmetic_operations));
+
+    // Statements
     array_push(set->tests, test_case("Expression statement", test_expression_statement));
-
-    set->length = set->tests->length;
-
-    return set;
-}
-
-
-/*
-void test_parser()
-{
-    printf("Running parser tests...\n");
-    
-    test_literal_expression();
-    test_unary_expression();
-    test_binary_expression_arithmetic();
-    test_binary_expression_comparison();
-    test_logical_expression();
-    test_variable_expression();
-    test_assignment_expression();
-    test_index_expression();
-    test_function_expression();
-    test_call_expression();
-
-    test_order_of_arithmetic_operations();
-    // TODO(timo): correctly parsed expressions as string
-
-    test_expression_statement();
     // TODO(timo): Variable statement expression 'foo;', for now it expects a colon
     // and type. So we should make sure that also this case is handled so we can
     // assign variables etc.
@@ -1694,32 +1686,41 @@ void test_parser()
     // handled correctly as a variable expression.
     // The 3rd check is needed to distinguish declaration and call expression
     // Falls down to the expression statement if the condition is not met.
-    test_block_statement();
-    test_if_statement();
-    test_while_statement();
-    test_break_statement();
-    test_return_statement();
-    test_declaration_statement();
+    array_push(set->tests, test_case("Declaration statement", test_declaration_statement));
+    array_push(set->tests, test_case("Block statement", test_block_statement));
+    array_push(set->tests, test_case("If statement", test_if_statement));
+    array_push(set->tests, test_case("While statement", test_while_statement));
+    array_push(set->tests, test_case("Break statement", test_break_statement));
+
     // TODO(timo): correctly parsed statements as string
 
-    test_type_specifier();
+    // Declarations
+    array_push(set->tests, test_case("Variable declaration", test_variable_declaration));
+    array_push(set->tests, test_case("Function declaration", test_function_declaration));
 
-    test_variable_declaration();
-    test_function_declaration();
     // TODO(timo): correctly parsed declarations as string
 
-    test_small_program();
+    // Type specifiers
+    array_push(set->tests, test_case("Type specifier", test_type_specifier));
 
-    test_diagnose_invalid_type_specifier();
-    test_diagnose_invalid_primary_expression_starter();
-    test_diagnose_invalid_assignment_target();
-    test_diagnose_missing_semicolon();
-    test_diagnose_missing_closing_curlybrace();
-    test_diagnose_missing_closing_parenthesis();
-    test_diagnose_invalid_while_statement();
-    test_diagnose_invalid_if_statement();
-     
-    test_panic_mode_statement();
-    test_panic_mode_declaration();
+    // Error recovery
+    array_push(set->tests, test_case("Panic mode from statement", test_panic_mode_statement));
+    array_push(set->tests, test_case("Panic mode from declaration", test_panic_mode_declaration));
+
+    // Diagnostics
+    array_push(set->tests, test_case("Diagnose invalid type specifier", test_diagnose_invalid_type_specifier));
+    array_push(set->tests, test_case("Diagnose invalid primary expression", test_diagnose_invalid_primary_expression_starter));
+    array_push(set->tests, test_case("Diagnose invalid assignment target", test_diagnose_invalid_assignment_target));
+    array_push(set->tests, test_case("Diagnose missing semicolon", test_diagnose_missing_semicolon));
+    array_push(set->tests, test_case("Diagnose missing closing curlybrace", test_diagnose_missing_closing_curlybrace));
+    array_push(set->tests, test_case("Diagnose missing closing parenthesis", test_diagnose_missing_closing_parenthesis));
+    array_push(set->tests, test_case("Diagnose invalid while statement", test_diagnose_invalid_while_statement));
+    array_push(set->tests, test_case("Diagnose invalid if statement", test_diagnose_invalid_if_statement));
+
+    // Other
+    array_push(set->tests, test_case("Parse small main program", test_small_program));
+
+    set->length = set->tests->length;
+
+    return set;
 }
-*/
