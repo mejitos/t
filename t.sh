@@ -62,6 +62,7 @@ case $COMMAND in
                                                                                    src/type.c 
                                                                                    src/token.c 
                                                                                    src/memory.c 
+                                                                                   src/common.c 
                                                                                    src/diagnostics.c"
         $TEST_BUILD_DIR/$TEST_EXECUTABLE
         exit 0;;
@@ -95,6 +96,7 @@ case $COMMAND in
                                                                                    src/type.c 
                                                                                    src/token.c 
                                                                                    src/memory.c 
+                                                                                   src/common.c
                                                                                    src/diagnostics.c"
         valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --log-file="vglog" --verbose $TEST_BUILD_DIR/$TEST_EXECUTABLE
         exit 0;;
