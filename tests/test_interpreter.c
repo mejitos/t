@@ -1,3 +1,4 @@
+#include "asserts.h"
 #include "tests.h"
 #include "../src/t.h"
 #include "../src/common.h"
@@ -373,29 +374,80 @@ void test_evaluate_assignment_expression()
 */
 
 
-static void test_example_files(Test_Runner* runner)
+const char* value_str(Value_Type type)
 {
-    const char* files[] =
+    switch (type)
     {
-        "./examples/first.t",
-        "./examples/trivial_add.t",
-        "./examples/trivial_subtract.t",
-        "./examples/trivial_multiply.t",
-        "./examples/trivial_divide.t",
-        "./examples/trivial_arithmetics.t"
-    };
-
-    int results[] =
-    {
-        0, 2, 0, 6, 5, 7
-    };
-    
-    for (int i = 0; i < sizeof (files) / sizeof (*files); i++)
-    {
-        Value return_value = interpret(read_file(files[i]));
-
-        assert(return_value.integer == results[i]);
+        case VALUE_INTEGER: return "integer";
+        case VALUE_BOOLEAN: return "boolean";
+        default:            return "invalid value type";
     }
+}
+
+
+void assert_value(Test_Runner* runner, Value actual, Value_Type expected_type, int expected_value)
+{
+    assert_base(runner, actual.type == expected_type,
+        "Invalid value type '%s', expected '%s'", value_str(actual.type), value_str(expected_type));
+    assert_base(runner, actual.integer == expected_value,
+        "Invalid value '%d', expected '%d'", actual.integer, expected_value);
+}
+
+
+static void test_example_first(Test_Runner* runner)
+{
+    Value return_value = interpret_from_file("./examples/first.t");
+    assert_value(runner, return_value, VALUE_INTEGER, 0);
+
+    if (runner->error) runner->failed++;
+    else runner->passed++;
+}
+
+
+static void test_example_trivial_add(Test_Runner* runner)
+{
+    Value return_value = interpret_from_file("./examples/trivial_add.t");
+    assert_value(runner, return_value, VALUE_INTEGER, 2);
+
+    if (runner->error) runner->failed++;
+    else runner->passed++;
+}
+
+
+static void test_example_trivial_subtract(Test_Runner* runner)
+{
+    Value return_value = interpret_from_file("./examples/trivial_subtract.t");
+    assert_value(runner, return_value, VALUE_INTEGER, 0);
+
+    if (runner->error) runner->failed++;
+    else runner->passed++;
+}
+
+
+static void test_example_trivial_multiply(Test_Runner* runner)
+{
+    Value return_value = interpret_from_file("./examples/trivial_multiply.t");
+    assert_value(runner, return_value, VALUE_INTEGER, 6);
+
+    if (runner->error) runner->failed++;
+    else runner->passed++;
+}
+
+
+static void test_example_trivial_divide(Test_Runner* runner)
+{
+    Value return_value = interpret_from_file("./examples/trivial_divide.t");
+    assert_value(runner, return_value, VALUE_INTEGER, 5);
+
+    if (runner->error) runner->failed++;
+    else runner->passed++;
+}
+
+
+static void test_example_trivial_arithmetics(Test_Runner* runner)
+{
+    Value return_value = interpret_from_file("./examples/trivial_arithmetics.t");
+    assert_value(runner, return_value, VALUE_INTEGER, 7);
 
     if (runner->error) runner->failed++;
     else runner->passed++;
@@ -406,7 +458,13 @@ Test_Set* interpreter_test_set()
 {
     Test_Set* set = test_set("Interpreter");
 
-    array_push(set->tests, test_case("Example files", test_example_files));
+    // Example files
+    array_push(set->tests, test_case("Example file: first.t", test_example_first));
+    array_push(set->tests, test_case("Example file: trivial_add.t", test_example_trivial_add));
+    array_push(set->tests, test_case("Example file: trivial_subtract.t", test_example_trivial_subtract));
+    array_push(set->tests, test_case("Example file: trivial_multiply.t", test_example_trivial_multiply));
+    array_push(set->tests, test_case("Example file: trivial_divide.t", test_example_trivial_divide));
+    array_push(set->tests, test_case("Example file: trivial_arithmetics.t", test_example_trivial_arithmetics));
 
     set->length = set->tests->length;
 
