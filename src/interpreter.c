@@ -1,9 +1,13 @@
 #include "t.h"
 
 
-void interpreter_init(Interpreter* interpreter)
+// void interpreter_init(Interpreter* interpreter)
+void interpreter_init(Interpreter* interpreter, Scope* global)
 {
-    *interpreter = (Interpreter) { .global = scope_init(NULL, "global") };
+    // *interpreter = (Interpreter) { .global = scope_init(NULL, "global") };
+    *interpreter = (Interpreter) { .global = global };
+
+    interpreter->local = interpreter->global;
 }
 
 
@@ -168,7 +172,7 @@ static void evaluate_while_statement(Interpreter* interpreter, AST_Statement* st
 
 static void evaluate_return_statement(Interpreter* interpreter, AST_Statement* statement)
 {
-    //
+    interpreter->return_value = evaluate_expression(interpreter, statement->_return.value);
 }
 
 
@@ -225,20 +229,23 @@ static void evaluate_function_declaration(Interpreter* interpreter, AST_Declarat
 
     // Declare the identifier in the current scope
     // Name collisions should've been handled by the resolver
+    // NOTE(timo): The function is already defined
 
     // Begin a new scope for the function
+    // NOTE(timo): Switch scope
 
     // Add the variables into the scope
+    // NOTE(timo): Parameters and variables are already in the scope
 
     // Evaluate the body
-
-    // Can this function actually be void, since we should be
-    // able to return something?
-    // No since this is a declaration and not a function call,
-    // here we just gather the information of the declared function
+    AST_Statement* body = declaration->initializer->function.body;
+    for (int i = 0; i < body->block.statements->length; i++)
+        evaluate_statement(interpreter, body->block.statements->items[i]);
 }
 
 
+// TODO(timo): Since we have already gone through the declarations
+// there might not even be a need for evaluating declarations
 void evaluate_declaration(Interpreter* interpreter, AST_Declaration* declaration)
 {
     switch (declaration->kind)
@@ -256,14 +263,114 @@ void evaluate_declaration(Interpreter* interpreter, AST_Declaration* declaration
 }
 
 
-void interpret(Interpreter* interpreter)
+// TODO(timo): Take arguments and options
+void interpret(const char* source)
 {
-    // TODO(timo): We should also pass the finished symbol table at least for the
-    // global symbols to be used by the interpreter. That way we only need the
-    // entry point of the program and we just just interpret that.
-    // TODO(timo): Therefore we really can't have this loop in here but instead
-    // normal routine that handles the program parameters etc. stuff and then 
-    // just starts interpreting the body of the program
-    for (int i = 0; i < interpreter->declarations->length; i++)
-        evaluate_declaration(interpreter, interpreter->declarations->items[i]);
+    // Setup
+    Lexer lexer;
+    Parser parser;
+    hashtable* type_table;
+    Resolver resolver;
+    Interpreter interpreter;
+    
+    // Lexing
+    lexer_init(&lexer, source);
+    lex(&lexer);
+
+    if (lexer.diagnostics->length > 0)
+    {
+        print_diagnostics(lexer.diagnostics);
+        goto teardown_lexer;
+    }
+
+    // Parsing
+    parser_init(&parser, lexer.tokens);
+    parse(&parser);
+
+    if (parser.diagnostics->length > 0)
+    {
+        print_diagnostics(parser.diagnostics);
+        goto teardown_parser;
+    }
+
+    // Resolving
+    type_table = type_table_init();
+    resolver_init(&resolver, type_table);
+    resolve(&resolver, parser.declarations);
+
+    if (resolver.diagnostics->length > 0)
+    {
+        print_diagnostics(resolver.diagnostics);
+        goto teardown;
+    }
+    
+    // Evaluate
+    interpreter_init(&interpreter, resolver.global);
+    // TODO(timo): Create a program struct and evaluate it?
+    // NOTE(timo): At this point we should handle the arguments and options
+    // Then we should just evaluate the body of the program
+    // evaluate_declaration(&interpreter, program);
+    Symbol* main = scope_lookup(resolver.global, "main");
+    interpreter.local = main->type->function.scope;
+
+    AST_Declaration* program = parser.declarations->items[parser.declarations->length - 1];
+    AST_Statement* body = program->initializer->function.body;
+
+    for (int i = 0; i < body->block.statements->length; i++)
+        evaluate_statement(&interpreter, body);
+
+    // TODO(timo): Get and print the return value of the program
+    Value return_value = interpreter.return_value;
+
+    if (return_value.type == VALUE_INTEGER)
+        printf("Program exited with the value %d\n", return_value.integer);
+    if (return_value.type == VALUE_BOOLEAN)
+        printf("Program exited with the value %s\n", return_value.boolean ? "true" : "false");
+   
+    // Teardown
+teardown:
+    resolver_free(&resolver);
+    type_table_free(type_table);
+teardown_parser:
+    parser_free(&parser);
+teardown_lexer:
+    lexer_free(&lexer);
+}
+
+
+// TODO(timo): Take arguments and options
+void interpret_from_file(const char* path)
+{
+    FILE* file = fopen(path, "r");
+
+    if (file == NULL)
+    {
+        printf("Could not open file '%s'\n", path);
+    }
+
+    fseek(file, 0L, SEEK_END);
+    size_t file_size = ftell(file);
+    rewind(file);
+    char* buffer = malloc(file_size * sizeof (char) + 1);
+    
+    if (buffer == NULL)
+    {
+        printf("Malloc failed. Not enough memory to read file '%s'\n", path);
+        exit(1);
+    }
+
+    size_t bytes_read = fread(buffer, sizeof (char), file_size, file);
+
+    if (bytes_read < file_size)
+    {
+        printf("Could not read file '%s'\n", path);
+        exit(1);
+    }
+
+    buffer[bytes_read] = 0;
+    fclose(file);
+    
+    interpret(buffer);
+
+    free(buffer);
 }

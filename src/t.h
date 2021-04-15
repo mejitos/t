@@ -568,10 +568,8 @@ void resolve(Resolver* resolver, array* declarations);
  */
 typedef struct Interpreter
 {
-    array* declarations;
+    // array* declarations;
     // params for the program?
-    // symbol table
-    // NOTE(timo): Only global scope used for now to get things going
     Scope* global;
     Scope* local;
     // activation records / stack frames?
@@ -579,12 +577,14 @@ typedef struct Interpreter
     Value return_value;
 } Interpreter;
 
-void interpreter_init(Interpreter* interpreter);
+// void interpreter_init(Interpreter* interpreter);
+void interpreter_init(Interpreter* interpreter, Scope* global);
 void interpreter_free(Interpreter* interpreter);
 Value evaluate_expression(Interpreter* interpreter, AST_Expression* expression);
 void evaluate_statement(Interpreter* interpreter, AST_Statement* statement);
 void evaluate_declaration(Interpreter* interpreter, AST_Declaration* declaration);
-void interpret(Interpreter* interpreter);
+void interpret(const char* source);
+void interpret_from_file(const char* path);
 
 
 /*

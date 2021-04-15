@@ -31,9 +31,13 @@ int main(int argc, char** argv)
     else if (argc >= 3)
         options.program = argv[2];
     
-    // TODO(timo): This probably should return somekind of code indicating the success
-    // or non-success of the compiling process
-    compile_from_file(file_path, options);
+    
+    if (argc >= 3 && strcmp(argv[2], "-i") == 0)
+        interpret_from_file(file_path);
+    else
+        // TODO(timo): This probably should return somekind of code indicating the success
+        // or non-success of the compiling process
+        compile_from_file(file_path, options);
 
     return 0;
 }
