@@ -22,14 +22,32 @@ void compile(const char* source, Options options)
     lexer_init(&lexer, source);
     lex(&lexer);
 
+    if (lexer.diagnostics->length > 0)
+    {
+        print_diagnostics(lexer.diagnostics);
+        goto teardown_lexer;
+    }
+
     // Parsing
     parser_init(&parser, lexer.tokens);
     parse(&parser);
+
+    if (parser.diagnostics->length > 0)
+    {
+        print_diagnostics(parser.diagnostics);
+        goto teardown_parser;
+    }
 
     // Resolving
     type_table = type_table_init();
     resolver_init(&resolver, type_table);
     resolve(&resolver, parser.declarations);
+
+    if (resolver.diagnostics->length > 0)
+    {
+        print_diagnostics(resolver.diagnostics);
+        goto teardown_resolver;
+    }
 
     // IR generation
     ir_generator_init(&ir_generator, resolver.global);
@@ -71,9 +89,12 @@ void compile(const char* source, Options options)
     
     // Teardown
     ir_generator_free(&ir_generator);
+teardown_resolver:
     resolver_free(&resolver);
     type_table_free(type_table);
+teardown_parser:
     parser_free(&parser);
+teardown_lexer:
     lexer_free(&lexer);
     
     // Remove created files
