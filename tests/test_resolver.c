@@ -896,12 +896,8 @@ static void test_diagnose_array_subscript_not_main(Test_Runner* runner)
 }
 
 
-/*
 static void test_resolve_function_expression(Test_Runner* runner)
 {
-    printf("\tFunction expression...");
-    not_error = true;
-
     Lexer lexer;
     Parser parser;
     hashtable* type_table;
@@ -910,7 +906,7 @@ static void test_resolve_function_expression(Test_Runner* runner)
     Type* type;
     char* source;
 
-    // with parameters and return
+    // with parameters
     source = "(argc: int, argv: [int]) => {\n"
              "    return 0;\n"
              "};";
@@ -921,18 +917,23 @@ static void test_resolve_function_expression(Test_Runner* runner)
     parser_init(&parser, lexer.tokens);
     expression = parse_expression(&parser);
 
-    assert(expression->kind == EXPRESSION_FUNCTION);
-    assert(expression->function.arity == 2);
+    assert_expression(runner, expression->kind, EXPRESSION_FUNCTION);
+    assert_base(runner, expression->function.arity == 2,
+        "Function has %d parameters, expected 2", expression->function.arity);
     
     type_table = type_table_init();
     resolver_init(&resolver, type_table);
     type = resolve_expression(&resolver, expression);
     
-    assert(resolver.diagnostics->length == 0);
-    assert(resolver.context.return_type->kind == TYPE_INTEGER);
-    assert(type->kind == TYPE_FUNCTION);
-    assert(type->function.scope->symbols->count == 2);
-    assert(type->function.return_type->kind == TYPE_INTEGER);
+    assert_base(runner, resolver.diagnostics->length == 0,
+        "Invalid number of resolver diagnostics: %d, expected 0", resolver.diagnostics->length);
+    assert_type(runner, type->kind, TYPE_FUNCTION);
+    assert_base(runner, resolver.context.return_type->kind == TYPE_INTEGER,
+        "Unexpected return type in resolver context'%s', expected 'int'", type_as_string(resolver.context.return_type->kind));
+    assert_base(runner, type->function.return_type->kind == TYPE_INTEGER,
+        "Unexpected function return type '%s', expected 'int'", type_as_string(type->function.return_type->kind));
+    assert_base(runner, type->function.scope->symbols->count == 2,
+        "Invalid number of symbols in functions scope: %d, expected 2", type->function.scope->symbols->count);
     
     type_free(type);
     expression_free(expression);
@@ -953,18 +954,23 @@ static void test_resolve_function_expression(Test_Runner* runner)
     parser_init(&parser, lexer.tokens);
     expression = parse_expression(&parser);
 
-    assert(expression->kind == EXPRESSION_FUNCTION);
-    assert(expression->function.arity == 0);
+    assert_expression(runner, expression->kind, EXPRESSION_FUNCTION);
+    assert_base(runner, expression->function.arity == 0,
+        "Function has %d parameters, expected 0", expression->function.arity);
     
     type_table = type_table_init();
     resolver_init(&resolver, type_table);
     type = resolve_expression(&resolver, expression);
 
-    assert(resolver.diagnostics->length == 0);
-    assert(resolver.context.return_type->kind == TYPE_INTEGER);
-    assert(type->kind == TYPE_FUNCTION);
-    assert(type->function.scope->symbols->count == 1);
-    assert(type->function.return_type->kind == TYPE_INTEGER);
+    assert_base(runner, resolver.diagnostics->length == 0,
+        "Invalid number of resolver diagnostics: %d, expected 0", resolver.diagnostics->length);
+    assert_type(runner, type->kind, TYPE_FUNCTION);
+    assert_base(runner, resolver.context.return_type->kind == TYPE_INTEGER,
+        "Unexpected return type in resolver context'%s', expected 'int'", type_as_string(resolver.context.return_type->kind));
+    assert_base(runner, type->function.return_type->kind == TYPE_INTEGER,
+        "Unexpected function return type '%s', expected 'int'", type_as_string(type->function.return_type->kind));
+    assert_base(runner, type->function.scope->symbols->count == 1,
+        "Invalid number of symbols in functions scope: %d, expected 1", type->function.scope->symbols->count);
     
     type_free(type);
     expression_free(expression);
@@ -973,16 +979,13 @@ static void test_resolve_function_expression(Test_Runner* runner)
     parser_free(&parser);
     lexer_free(&lexer);
 
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
+    if (runner->error) runner->failed++;
+    else runner->passed++;
 }
 
 
 static void test_resolve_call_expression(Test_Runner* runner)
 {
-    printf("\tCall expression...");
-    not_error = true;
-
     Lexer lexer;
     Parser parser;
     hashtable* type_table;
@@ -1009,7 +1012,8 @@ static void test_resolve_call_expression(Test_Runner* runner)
     resolver_init(&resolver, type_table);
     resolve(&resolver, parser.declarations);
 
-    assert(resolver.diagnostics->length == 0);
+    assert_base(runner, resolver.diagnostics->length == 0,
+        "Invalid number of resolver diagnostics: %d, expected 0", resolver.diagnostics->length);
     
     resolver_free(&resolver);
     type_table_free(type_table);
@@ -1018,25 +1022,23 @@ static void test_resolve_call_expression(Test_Runner* runner)
 
     // TODO(timo): no arguments 
 
-    // TODO(timo): assigning a value from call expression
+    // TODO(timo): assigning a value to variable from call expression
 
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
+    if (runner->error) runner->failed++;
+    else runner->passed++;
 }
 
 
 static void test_diagnose_callee_is_not_callable(Test_Runner* runner)
 {
-    printf("\tDiagnose callee is not callable...");
-    not_error = true;
-
     Lexer lexer;
     Parser parser;
     hashtable* type_table;
     Resolver resolver;
     Diagnostic* diagnostic;
     char* message;
-
+    
+    // Global variable
     const char* source = "greater: bool = true;\n"
                          "main: int = (argc: int, argv: [int]) => {\n"
                          "   greater(1, 0);\n"
@@ -1053,28 +1055,33 @@ static void test_diagnose_callee_is_not_callable(Test_Runner* runner)
     resolver_init(&resolver, type_table);
     resolve(&resolver, parser.declarations);
 
-    assert(resolver.diagnostics->length == 1);
+    assert_base(runner, resolver.diagnostics->length == 1,
+        "Invalid number of resolver diagnostics: %d, expected 1", resolver.diagnostics->length);
 
-    diagnostic = resolver.diagnostics->items[0];
     message = ":RESOLVER - TypeError: 'greater' is not callable.";
+    diagnostic = resolver.diagnostics->items[0];
 
-    assert(strcmp(diagnostic->message, message) == 0);
+    assert_base(runner, strcmp(diagnostic->message, message) == 0,
+        "Invalid diagnostic '%s', expected '%s'", diagnostic->message, message);
     
     resolver_free(&resolver);
     type_table_free(type_table);
     parser_free(&parser);
     lexer_free(&lexer);
 
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
+    // TODO(timo): local variable
+
+    // TODO(timo): literals
+
+    // TODO(timo): array
+
+    if (runner->error) runner->failed++;
+    else runner->passed++;
 }
 
 
 static void test_diagnose_invalid_number_of_arguments(Test_Runner* runner)
 {
-    printf("\tDiagnose invalid number of function arguments...");
-    not_error = true;
-
     Lexer lexer;
     Parser parser;
     hashtable* type_table;
@@ -1101,28 +1108,27 @@ static void test_diagnose_invalid_number_of_arguments(Test_Runner* runner)
     resolver_init(&resolver, type_table);
     resolve(&resolver, parser.declarations);
 
-    assert(resolver.diagnostics->length == 1);
+    assert_base(runner, resolver.diagnostics->length == 1,
+        "Invalid number of resolver diagnostics: %d, expected 1", resolver.diagnostics->length);
 
-    diagnostic = resolver.diagnostics->items[0];
     message = ":RESOLVER - TypeError: Function 'greater' expected 2 arguments, but 1 was given\n", 
+    diagnostic = resolver.diagnostics->items[0];
 
-    assert(strcmp(diagnostic->message, message) == 0);
+    assert_base(runner, strcmp(diagnostic->message, message) == 0,
+        "Invalid diagnostic '%s', expected '%s'", diagnostic->message, message);
     
     resolver_free(&resolver);
     type_table_free(type_table);
     parser_free(&parser);
     lexer_free(&lexer);
 
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
+    if (runner->error) runner->failed++;
+    else runner->passed++;
 }
 
 
 static void test_diagnose_invalid_type_of_argument(Test_Runner* runner)
 {
-    printf("\tDiagnose invalid type(s) of argument(s)...");
-    not_error = true;
-
     Lexer lexer;
     Parser parser;
     hashtable* type_table;
@@ -1149,28 +1155,27 @@ static void test_diagnose_invalid_type_of_argument(Test_Runner* runner)
     resolver_init(&resolver, type_table);
     resolve(&resolver, parser.declarations);
 
-    assert(resolver.diagnostics->length == 1);
+    assert_base(runner, resolver.diagnostics->length == 1,
+        "Invalid number of resolver diagnostics: %d, expected 1", resolver.diagnostics->length);
 
-    diagnostic = resolver.diagnostics->items[0];
     message = ":RESOLVER - TypeError: Parameter 'y' is of type 'int', but argument of type 'bool' was given.", 
+    diagnostic = resolver.diagnostics->items[0];
 
-    assert(strcmp(diagnostic->message, message) == 0);
+    assert_base(runner, strcmp(diagnostic->message, message) == 0,
+        "Invalid diagnostic '%s', expected '%s'", diagnostic->message, message);
     
     resolver_free(&resolver);
     type_table_free(type_table);
     parser_free(&parser);
     lexer_free(&lexer);
 
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
+    if (runner->error) runner->failed++;
+    else runner->passed++;
 }
 
 
-void test_resolve_declaration_statement_variable(Test_Runner* runner)
+static void test_resolve_declaration_statement_variable(Test_Runner* runner)
 {
-    printf("\tVariable declaration statement...");
-    not_error = true;
-    
     Lexer lexer;
     Parser parser;
     hashtable* type_table;
@@ -1186,29 +1191,33 @@ void test_resolve_declaration_statement_variable(Test_Runner* runner)
     parser_init(&parser, lexer.tokens);
     statement = parse_statement(&parser);
     declaration = statement->declaration;
-    assert(declaration->kind == DECLARATION_VARIABLE);
-    assert(declaration->specifier == TYPE_SPECIFIER_INT);
-    assert(declaration->initializer->literal->kind == TOKEN_INTEGER_LITERAL);
+
+    assert_declaration(runner, declaration->kind, DECLARATION_VARIABLE);
+    assert_type_specifier(runner, declaration->specifier, TYPE_SPECIFIER_INT);
+    assert_type(runner, declaration->initializer->literal->kind, TOKEN_INTEGER_LITERAL);
 
     type_table = type_table_init();
     resolver_init(&resolver, type_table);
     resolve_statement(&resolver, statement);
 
-    assert(declaration->initializer->value.integer == 42);
-    assert(resolver.global->symbols->count == 1);
+    assert_base(runner, declaration->initializer->value.integer == 42,
+        "Invalid value '%d', expected 42", declaration->initializer->value.integer);
+    assert_base(runner, resolver.global->symbols->count == 1,
+        "Invalid number of symbols in the symbol table: %d, expected 1", resolver.global->symbols->count);
 
     symbol = scope_lookup(resolver.global, "foo");
 
-    assert(symbol->kind == SYMBOL_VARIABLE);
-    assert(strcmp(symbol->identifier, "foo") == 0);
-    assert(symbol->type->kind == TYPE_INTEGER);
+    assert_base(runner, symbol->kind == SYMBOL_VARIABLE,
+        "Invalid symbol kind");
+    assert_base(runner, strcmp(symbol->identifier, "foo") == 0,
+        "Invalid symbol identifier '%s', expected 'foo'", symbol->identifier);
+    assert_type(runner, symbol->type->kind, TYPE_INTEGER);
 
     statement_free(statement);
     resolver_free(&resolver);
     type_table_free(type_table);
     parser_free(&parser);
     lexer_free(&lexer);
-
 
     // ---- bool
     lexer_init(&lexer, "_bar: bool = false;");
@@ -1217,24 +1226,27 @@ void test_resolve_declaration_statement_variable(Test_Runner* runner)
     parser_init(&parser, lexer.tokens);
     statement = parse_statement(&parser);
     declaration = statement->declaration;
-    assert(declaration->kind == DECLARATION_VARIABLE);
-    assert(declaration->specifier == TYPE_SPECIFIER_BOOL);
-    assert(declaration->initializer->literal->kind == TOKEN_BOOLEAN_LITERAL);
+
+    assert_declaration(runner, declaration->kind, DECLARATION_VARIABLE);
+    assert_type_specifier(runner, declaration->specifier, TYPE_SPECIFIER_BOOL);
+    assert_type(runner, declaration->initializer->literal->kind, TOKEN_BOOLEAN_LITERAL);
     
     type_table = type_table_init();
     resolver_init(&resolver, type_table);
     resolve_statement(&resolver, statement);
     
-    // TODO(timo): assert that the value is null before resolving
-    // Even though for now it didn't seem to be possible
-    assert(declaration->initializer->value.boolean == false);
-    assert(resolver.global->symbols->count == 1);
+    assert_base(runner, declaration->initializer->value.boolean == false,
+        "Invalid value '%s', expected false", declaration->initializer->value.boolean ? "true" : "false");
+    assert_base(runner, resolver.global->symbols->count == 1,
+        "Invalid number of symbols in the symbol table: %d, expected 1", resolver.global->symbols->count);
 
     symbol = scope_lookup(resolver.global, "_bar");
 
-    assert(symbol->kind == SYMBOL_VARIABLE);
-    assert(strcmp(symbol->identifier, "_bar") == 0);
-    assert(symbol->type->kind == TYPE_BOOLEAN);
+    assert_base(runner, symbol->kind == SYMBOL_VARIABLE,
+        "Invalid symbol kind");
+    assert_base(runner, strcmp(symbol->identifier, "_bar") == 0,
+        "Invalid symbol identifier '%s', expected '_bar'", symbol->identifier);
+    assert_type(runner, symbol->type->kind, TYPE_BOOLEAN);
 
     statement_free(statement);
     resolver_free(&resolver);
@@ -1242,16 +1254,13 @@ void test_resolve_declaration_statement_variable(Test_Runner* runner)
     parser_free(&parser);
     lexer_free(&lexer);
 
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
+    if (runner->error) runner->failed++;
+    else runner->passed++;
 }
 
     
 static void test_resolve_if_statement(Test_Runner* runner)
 {
-    printf("\tIf statement...");
-    not_error = true;
-
     Lexer lexer;
     Parser parser;
     hashtable* type_table;
@@ -1265,13 +1274,16 @@ static void test_resolve_if_statement(Test_Runner* runner)
     parser_init(&parser, lexer.tokens);
     statement = parse_statement(&parser);
 
-    assert(statement->kind == STATEMENT_IF);
+    assert_statement(runner, statement->kind, STATEMENT_IF);
+    assert_expression(runner, statement->_if.condition->kind, EXPRESSION_BINARY);
+    assert_statement(runner, statement->_if.then->kind, STATEMENT_BLOCK);
     
     type_table = type_table_init();
     resolver_init(&resolver, type_table);
 
     Type* condition_type = resolve_expression(&resolver, statement->_if.condition);
-    assert(condition_type->kind == TYPE_BOOLEAN);
+
+    assert_type(runner, condition_type->kind, TYPE_BOOLEAN);
 
     resolve_statement(&resolver, statement);
     
@@ -1285,16 +1297,13 @@ static void test_resolve_if_statement(Test_Runner* runner)
     // TODO(timo): If with else ifs
     // TODO(timo): multiple ifs with one else at end
 
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
+    if (runner->error) runner->failed++;
+    else runner->passed++;
 }
 
 
 static void test_resolve_while_statement(Test_Runner* runner)
 {
-    printf("\tWhile statement...");
-    not_error = true;
-
     Lexer lexer;
     Parser parser;
     hashtable* type_table;
@@ -1307,13 +1316,16 @@ static void test_resolve_while_statement(Test_Runner* runner)
     parser_init(&parser, lexer.tokens);
     statement = parse_statement(&parser);
 
-    assert(statement->kind == STATEMENT_WHILE);
+    assert_statement(runner, statement->kind, STATEMENT_WHILE);
+    assert_expression(runner, statement->_while.condition->kind, EXPRESSION_BINARY);
+    assert_statement(runner, statement->_while.body->kind, STATEMENT_BLOCK);
     
     type_table = type_table_init();
     resolver_init(&resolver, type_table);
 
     Type* condition_type = resolve_expression(&resolver, statement->_while.condition);
-    assert(condition_type->kind == TYPE_BOOLEAN);
+
+    assert_type(runner, condition_type->kind, TYPE_BOOLEAN);
 
     resolve_statement(&resolver, statement);
     
@@ -1323,16 +1335,13 @@ static void test_resolve_while_statement(Test_Runner* runner)
     parser_free(&parser);
     lexer_free(&lexer);
 
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
+    if (runner->error) runner->failed++;
+    else runner->passed++;
 }
 
 
 static void test_resolve_return_statement(Test_Runner* runner)
 {
-    printf("\tReturn statement...");
-    not_error = true;
-
     Lexer lexer;
     Parser parser;
     hashtable* type_table;
@@ -1341,6 +1350,7 @@ static void test_resolve_return_statement(Test_Runner* runner)
 
     const char* source = "return 0;";
 
+    // integer literal
     lexer_init(&lexer, source);
     lex(&lexer);
     
@@ -1352,39 +1362,61 @@ static void test_resolve_return_statement(Test_Runner* runner)
 
     Type* return_type = resolve_expression(&resolver, statement->_return.value);
 
-    assert(return_type->kind == TYPE_INTEGER);
+    assert_type(runner, return_type->kind, TYPE_INTEGER);
     
     statement_free(statement);
     resolver_free(&resolver);
     type_table_free(type_table);
     parser_free(&parser);
     lexer_free(&lexer);
+    
+    // TODO(timo): variable
 
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
+    // TODO(timo): value from array subscript
+
+    // TODO(timo): value from function call
+
+    if (runner->error) runner->failed++;
+    else runner->passed++;
 }
 
 
 static void test_resolve_break_statement(Test_Runner* runner)
 {
-    printf("\tResolve break statement...");
-    not_error = true;
+    Lexer lexer;
+    Parser parser;
+    hashtable* type_table;
+    Resolver resolver;
+    AST_Statement* statement;
 
-    // assert(resolver.context.not_in_loop == true)
-    // or just no diagnostics collected if we cannot get into the context
-    printf("\n\t\tNOT IMPLEMENTD");
-    not_error = false;
+    const char* source = "while 1 > 0 do { break; }";
 
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
+    lexer_init(&lexer, source);
+    lex(&lexer);
+    
+    parser_init(&parser, lexer.tokens);
+    statement = parse_statement(&parser);
+    
+    type_table = type_table_init();
+    resolver_init(&resolver, type_table);
+    resolve_statement(&resolver, statement);
+
+    assert_base(runner, resolver.diagnostics->length == 0,
+        "Invalid number of resolver diagnostics: %d, expected 0", resolver.diagnostics->length);
+
+    statement_free(statement);
+    resolver_free(&resolver);
+    type_table_free(type_table);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    if (runner->error) runner->failed++;
+    else runner->passed++;
 }
 
 
 static void test_diagnose_no_break_statement_outside_loops(Test_Runner* runner)
 {
-    printf("\tDiagnose no break statement outside loops...");
-    not_error = true;
-
     Lexer lexer;
     Parser parser;
     hashtable* type_table;
@@ -1412,11 +1444,13 @@ static void test_diagnose_no_break_statement_outside_loops(Test_Runner* runner)
         resolver_init(&resolver, type_table);
         resolve_statement(&resolver, statement);
 
-        assert(resolver.diagnostics->length == 1);
+        assert_base(runner, resolver.diagnostics->length == 1,
+            "Invalid number of resolver diagnostics: %d, expected 1", resolver.diagnostics->length);
 
         diagnostic = resolver.diagnostics->items[0];
 
-        assert(strcmp(diagnostic->message, result) == 0);
+        assert_base(runner, strcmp(diagnostic->message, result) == 0,
+            "Invalid diagnostic '%s', expected '%s'", diagnostic->message, result);
         
         statement_free(statement);
         resolver_free(&resolver);
@@ -1425,16 +1459,13 @@ static void test_diagnose_no_break_statement_outside_loops(Test_Runner* runner)
         lexer_free(&lexer);
     }
 
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
+    if (runner->error) runner->failed++;
+    else runner->passed++;
 }
 
 
 static void test_resolve_variable_declaration(Test_Runner* runner)
 {
-    printf("\tVariable declaration...");
-    not_error = true;
-    
     Lexer lexer;
     Parser parser;
     hashtable* type_table;
@@ -1448,24 +1479,29 @@ static void test_resolve_variable_declaration(Test_Runner* runner)
 
     parser_init(&parser, lexer.tokens);
     declaration = parse_declaration(&parser);
-    assert(declaration->kind == DECLARATION_VARIABLE);
-    assert(declaration->specifier == TYPE_SPECIFIER_INT);
+
+    assert_declaration(runner, declaration->kind, DECLARATION_VARIABLE);
+    assert_type_specifier(runner, declaration->specifier, TYPE_SPECIFIER_INT);
     
     type_table = type_table_init();
     resolver_init(&resolver, type_table);
     resolve_declaration(&resolver, declaration);
     
-    assert(resolver.diagnostics->length == 0);
-    assert(resolver.global->symbols->count == 1);
-    assert(declaration->initializer->literal->kind == TOKEN_INTEGER_LITERAL);
-    assert(declaration->initializer->value.integer == 42);
+    assert_base(runner, resolver.diagnostics->length == 0,
+        "Invalid number of resolver diagnostics: %d, expected 0", resolver.diagnostics->length);
+    assert_type(runner, declaration->initializer->literal->kind, TOKEN_INTEGER_LITERAL);
+    assert_base(runner, declaration->initializer->value.integer == 42,
+        "Invalid value '%d', expected 42", declaration->initializer->value.integer);
+    assert_base(runner, resolver.global->symbols->count == 1,
+        "Invalid number of symbols in the symbol table: %d, expected 1", resolver.global->symbols->count);
 
     symbol = scope_lookup(resolver.global, "foo");
 
-    assert(symbol->kind == SYMBOL_VARIABLE);
-    assert(strcmp(symbol->identifier, "foo") == 0);
-    assert(symbol->type->kind == TYPE_INTEGER);
-    // assert(symbol->value.integer == 42);
+    assert_base(runner, symbol->kind == SYMBOL_VARIABLE,
+        "Invalid symbol kind");
+    assert_base(runner, strcmp(symbol->identifier, "foo") == 0,
+        "Invalid symbol identifier '%s', expected 'foo'", symbol->identifier);
+    assert_type(runner, symbol->type->kind, TYPE_INTEGER);
 
     declaration_free(declaration);
     resolver_free(&resolver);
@@ -1479,24 +1515,29 @@ static void test_resolve_variable_declaration(Test_Runner* runner)
 
     parser_init(&parser, lexer.tokens);
     declaration = parse_declaration(&parser);
-    assert(declaration->kind == DECLARATION_VARIABLE);
-    assert(declaration->specifier == TYPE_SPECIFIER_BOOL);
+
+    assert_declaration(runner, declaration->kind, DECLARATION_VARIABLE);
+    assert_type_specifier(runner, declaration->specifier, TYPE_SPECIFIER_BOOL);
     
     type_table = type_table_init();
     resolver_init(&resolver, type_table);
     resolve_declaration(&resolver, declaration);
-    
-    assert(resolver.diagnostics->length == 0);
-    assert(resolver.global->symbols->count == 1);
-    assert(declaration->initializer->literal->kind == TOKEN_BOOLEAN_LITERAL);
-    assert(declaration->initializer->value.boolean == false);
+
+    assert_base(runner, resolver.diagnostics->length == 0,
+        "Invalid number of resolver diagnostics: %d, expected 0", resolver.diagnostics->length);
+    assert_type(runner, declaration->initializer->literal->kind, TOKEN_BOOLEAN_LITERAL);
+    assert_base(runner, declaration->initializer->value.boolean == false,
+        "Invalid value '%s', expected 'false'", declaration->initializer->value.boolean ? "true" : "false");
+    assert_base(runner, resolver.global->symbols->count == 1,
+        "Invalid number of symbols in the symbol table: %d, expected 1", resolver.global->symbols->count);
 
     symbol = scope_lookup(resolver.global, "_bar");
 
-    assert(symbol->kind == SYMBOL_VARIABLE);
-    assert(strcmp(symbol->identifier, "_bar") == 0);
-    assert(symbol->type->kind == TYPE_BOOLEAN);
-    // assert(symbol->value.boolean == false);
+    assert_base(runner, symbol->kind == SYMBOL_VARIABLE,
+        "Invalid symbol kind");
+    assert_base(runner, strcmp(symbol->identifier, "_bar") == 0,
+        "Invalid symbol identifier '%s', expected '_bar'", symbol->identifier);
+    assert_type(runner, symbol->type->kind, TYPE_BOOLEAN);
 
     declaration_free(declaration);
     resolver_free(&resolver);
@@ -1504,16 +1545,13 @@ static void test_resolve_variable_declaration(Test_Runner* runner)
     parser_free(&parser);
     lexer_free(&lexer);
 
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
+    if (runner->error) runner->failed++;
+    else runner->passed++;
 }
 
 
 static void test_resolve_multiple_global_variable_declarations(Test_Runner* runner)
 {
-    printf("\tMultiple global variable declarations...");
-    not_error = true;
-
     Lexer lexer;
     Parser parser;
     hashtable* type_table;
@@ -1533,47 +1571,59 @@ static void test_resolve_multiple_global_variable_declarations(Test_Runner* runn
 
     array* declarations = parser.declarations;
 
-    assert(declarations->length == 3);
+    assert_base(runner, declarations->length == 3,
+        "Invalid number of declarations: %d, expected 3", declarations->length);
     
     type_table = type_table_init();
     resolver_init(&resolver, type_table);
     resolve(&resolver, declarations);
     
-    assert(resolver.diagnostics->length == 0);
-    assert(resolver.global->symbols->count == 3);
+    assert_base(runner, resolver.diagnostics->length == 0,
+        "Invalid number of resolver diagnostics: %d, expected 0", resolver.diagnostics->length);
+    assert_base(runner, resolver.global->symbols->count == 3,
+        "Invalid number of symbols in the symbol table: %d, expected 3", resolver.global->symbols->count);
 
     // ---- symbol 1
     declaration = declarations->items[0];
     symbol = scope_lookup(resolver.global, "foo");
 
-    assert(declaration->initializer->literal->kind == TOKEN_INTEGER_LITERAL);
-    assert(declaration->initializer->value.integer == 42);
+    assert_type(runner, declaration->initializer->literal->kind, TOKEN_INTEGER_LITERAL);
+    assert_base(runner, declaration->initializer->value.integer == 42,
+        "Invalid value '%d', expected '42'", declaration->initializer->value.integer);
 
-    assert(symbol->kind == SYMBOL_VARIABLE);
-    assert(strcmp(symbol->identifier, "foo") == 0);
-    assert(symbol->type->kind == TYPE_INTEGER);
+    assert_base(runner, symbol->kind == SYMBOL_VARIABLE,
+        "Invalid symbol kind");
+    assert_base(runner, strcmp(symbol->identifier, "foo") == 0,
+        "Invalid symbol identifier '%s', expected 'foo'", symbol->identifier);
+    assert_type(runner, symbol->type->kind, TYPE_INTEGER);
 
     // ---- symbol 2
     declaration = declarations->items[1];
     symbol = scope_lookup(resolver.global, "_bar");
 
-    assert(declaration->initializer->literal->kind == TOKEN_BOOLEAN_LITERAL);
-    assert(declaration->initializer->value.boolean == false);
+    assert_type(runner, declaration->initializer->literal->kind, TOKEN_BOOLEAN_LITERAL);
+    assert_base(runner, declaration->initializer->value.boolean == false,
+        "Invalid value '%s', expected 'false'", declaration->initializer->value.boolean ? "true" : "false");
 
-    assert(symbol->kind == SYMBOL_VARIABLE);
-    assert(strcmp(symbol->identifier, "_bar") == 0);
-    assert(symbol->type->kind == TYPE_BOOLEAN);
+    assert_base(runner, symbol->kind == SYMBOL_VARIABLE,
+        "Invalid symbol kind");
+    assert_base(runner, strcmp(symbol->identifier, "_bar") == 0,
+        "Invalid symbol identifier '%s', expected '_bar'", symbol->identifier);
+    assert_type(runner, symbol->type->kind, TYPE_BOOLEAN);
 
     // ---- symbol 3
     declaration = declarations->items[2];
     symbol = scope_lookup(resolver.global, "FOOBAR");
 
-    assert(declaration->initializer->literal->kind == TOKEN_INTEGER_LITERAL);
-    assert(declaration->initializer->value.integer == 0);
+    assert_type(runner, declaration->initializer->literal->kind, TOKEN_INTEGER_LITERAL);
+    assert_base(runner, declaration->initializer->value.integer == 0,
+        "Invalid value '%d', expected '0'", declaration->initializer->value.integer);
 
-    assert(symbol->kind == SYMBOL_VARIABLE);
-    assert(strcmp(symbol->identifier, "FOOBAR") == 0);
-    assert(symbol->type->kind == TYPE_INTEGER);
+    assert_base(runner, symbol->kind == SYMBOL_VARIABLE,
+        "Invalid symbol kind");
+    assert_base(runner, strcmp(symbol->identifier, "FOOBAR") == 0,
+        "Invalid symbol identifier '%s', expected 'FOOBAR'", symbol->identifier);
+    assert_type(runner, symbol->type->kind, TYPE_INTEGER);
     
     // ---- teardown
     resolver_free(&resolver);
@@ -1581,16 +1631,13 @@ static void test_resolve_multiple_global_variable_declarations(Test_Runner* runn
     parser_free(&parser);
     lexer_free(&lexer);
 
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
+    if (runner->error) runner->failed++;
+    else runner->passed++;
 }
 
 
 static void test_resolve_function_declaration(Test_Runner* runner)
 {
-    printf("\tFunction declaration...");
-    not_error = true;
-
     Lexer lexer;
     Parser parser;
     hashtable* type_table;
@@ -1607,118 +1654,27 @@ static void test_resolve_function_declaration(Test_Runner* runner)
     parser_init(&parser, lexer.tokens);
     parse(&parser);
 
-    assert(parser.declarations->length == 1);
+    assert_base(runner, parser.declarations->length == 1,
+        "Invalid number of declarations: %d, expected 1", parser.declarations->length);
     
     type_table = type_table_init();
     resolver_init(&resolver, type_table);
     resolve(&resolver, parser.declarations);
     
-    assert(resolver.diagnostics->length == 0);
-    assert(resolver.context.return_type->kind == TYPE_INTEGER);
+    assert_base(runner, resolver.diagnostics->length == 0,
+        "Invalid number of resolver diagnostics: %d, expected 0", resolver.diagnostics->length);
+    assert_base(runner, resolver.global->symbols->count == 1,
+        "Invalid number of symbols in the symbol table: %d, expected 1", resolver.global->symbols->count);
+    assert_type(runner, resolver.context.return_type->kind, TYPE_INTEGER);
 
     resolver_free(&resolver);
     type_table_free(type_table);
     parser_free(&parser);
     lexer_free(&lexer);
 
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
+    if (runner->error) runner->failed++;
+    else runner->passed++;
 }
-*/
-
-
-/*
-void test_resolve_order_independent_global_variable_declarations(Lexer* lexer, Parser* parser, Resolver* resolver)
-{
-    // TODO(timo): Now there is the problem that we dont know the value of the
-    // assigned declaration e.g. in this case even though the declaration and
-    // assignments are correct, we don't have the value 42 in the foo.
-    // In simple case like this, this might be fine
-    const char* source = "foo: int = bar;\n"
-                         "bar: int = 42;\n"
-                         "main: int = (argc: int, argv: int) => {\n"
-                         "    foo;\n"
-                         "\n"
-                         "    return 0;\n"
-                         "};";
-
-    lexer_init(lexer, source);
-    lex(lexer);
-
-    parser_init(parser, lexer->tokens);
-    parse(parser);
-
-    array* declarations = parser->declarations;
-
-    assert(declarations->length == 3);
-
-    resolver_init(resolver);
-
-    resolve(resolver, declarations);
-
-    resolver_free(resolver);
-    parser_free(parser);
-    lexer_free(lexer);
-}
-*/
-
-
-/*
-static void test_resolve_local_scopes(Test_Runner* runner)
-{
-    printf("\tLocal scopes...");
-    not_error = true;
-
-    Lexer lexer;
-    Parser parser;
-    hashtable* type_table;
-    Resolver resolver;
-
-    const char* source = "greater: bool = (x: int, y: int) => {\n"
-                         "    return x > y;\n"
-                         "};\n"
-                         "\n"
-                         "main: int = (argc: int, argv: [int]) => {\n"
-                         "    foo: bool = true;\n"
-                         "    bar: bool = false;\n"
-                         "    greater(1, 0);\n"
-                         "\n"
-                         "   return 0;\n"
-                         "};";
-
-    lexer_init(&lexer, source);
-    lex(&lexer);
-
-    parser_init(&parser, lexer.tokens);
-    parse(&parser);
-
-    type_table = type_table_init();
-    resolver_init(&resolver, type_table);
-    resolve(&resolver, parser.declarations);
-
-    assert(resolver.global->symbols->count == 2);
-    
-    // Local scope for the function 'greater'
-    Symbol* symbol_greater = scope_lookup(resolver.global, "greater");
-    assert(strcmp(symbol_greater->identifier, "greater") == 0);
-    Scope* scope_greater = symbol_greater->type->function.scope;
-    assert(scope_greater->symbols->count == 2);
-
-    // Local scope for the function 'main'
-    Symbol* symbol_main = scope_lookup(resolver.global, "main");
-    assert(strcmp(symbol_main->identifier, "main") == 0);
-    Scope* scope_main = symbol_main->type->function.scope;
-    assert(scope_main->symbols->count == 4);
-
-    resolver_free(&resolver);
-    type_table_free(type_table);
-    parser_free(&parser);
-    lexer_free(&lexer);
-
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
-}
-*/
 
 
 Test_Set* resolver_test_set()
@@ -1755,40 +1711,49 @@ Test_Set* resolver_test_set()
     // TODO(timo): These two can be removed after the language has arrays
     array_push(set->tests, test_case("Diagnose subcript target is not argv", test_diagnose_array_subscript_not_argv));
     array_push(set->tests, test_case("Diagnose subscript context is not main program", test_diagnose_array_subscript_not_main));
+
+    // Function expression
+    array_push(set->tests, test_case("Function expression", test_resolve_function_expression));
+
+    // Call expression
+    array_push(set->tests, test_case("Call expression", test_resolve_call_expression));
+    array_push(set->tests, test_case("Diagnose callee is not callable", test_diagnose_callee_is_not_callable));
+    array_push(set->tests, test_case("Diagnose invalid number of arguments", test_diagnose_invalid_number_of_arguments));
+    array_push(set->tests, test_case("Diagnose invalid type of argument", test_diagnose_invalid_type_of_argument));
+
+    // Statements
+    array_push(set->tests, test_case("Declaration statement (variable)", test_resolve_declaration_statement_variable));
+    array_push(set->tests, test_case("If statement", test_resolve_if_statement));
+    array_push(set->tests, test_case("While statement", test_resolve_while_statement));
+    array_push(set->tests, test_case("Return statement", test_resolve_return_statement));
+    array_push(set->tests, test_case("If statement", test_resolve_if_statement));
+
+    // Break statement
+    array_push(set->tests, test_case("Break statement", test_resolve_break_statement));
+    array_push(set->tests, test_case("Diagnose no break outside loops", test_diagnose_no_break_statement_outside_loops));
+
+    // Variable declarations
+    array_push(set->tests, test_case("Global variable declaration", test_resolve_variable_declaration));
+    array_push(set->tests, test_case("Multiple global variable declarations", test_resolve_multiple_global_variable_declarations));
     
-    set->length = set->tests->length;
+    // Function declarations
+    array_push(set->tests, test_case("Function declaration", test_resolve_function_declaration));
 
-    return set;
-}
-
-
-/*
-void test_resolver()
-{
+    // Type specifiers
+    // TODO(timo): test_resolve_type_specifier();
+    
+    // MISC / TODO
     // TODO(timo): Integer overflow checks in unary (positive and negative)
 
     // TODO(timo): Integer overflow checks in binary (positive and negative)
 
-    test_resolve_function_expression();
     // TODO(timo): Function cannot be declared inside a function
+
     // TODO(timo): Diagnose invalid type of the return value
-
-    test_resolve_call_expression();
-    test_diagnose_callee_is_not_callable();
-    test_diagnose_invalid_number_of_arguments();
-    test_diagnose_invalid_type_of_argument();
-
 
     // ---
     
     // TODO(timo): test_resolve_expression_statement();
-    test_resolve_declaration_statement_variable();
-    test_resolve_if_statement();
-    test_resolve_while_statement();
-    test_resolve_return_statement();
-    test_resolve_break_statement();
-
-    test_diagnose_no_break_statement_outside_loops();
 
     // TODO(timo): Diganose error while resolving return statement (return value is missing)
     // TODO(timo): Diagnose no continue statement outside loops
@@ -1800,28 +1765,9 @@ void test_resolver()
 
     // ----
 
-    // test_resolve_type_specifier();
+    // TODO(timo): test_resolve_local_scopes();
+    
+    set->length = set->tests->length;
 
-    // ----
-
-    test_resolve_variable_declaration();
-
-    test_resolve_multiple_global_variable_declarations();
-
-    // TODO(timo): Diagnose errors while resolving variable declarations
-
-    test_resolve_function_declaration();
-
-
-    // TODO(timo): Resolve order independent global variable declarations
-    // TODO(timo): Lets just forget this functionality for now and maybe add it later.
-    // It is more important to get forward at this point
-    // test_resolve_order_independent_global_variable_declarations(&lexer, &parser, &resolver);
-
-    // TODO(timo); Diagnose errors while resolving order independent global variable declarations
-
-    // ----
-
-    test_resolve_local_scopes();
+    return set;
 }
-*/
