@@ -1,5 +1,6 @@
 #include "tests.h"
 #include "../src/t.h"
+#include "../src/common.h"
 
 
 static bool not_error = true;
@@ -372,11 +373,49 @@ void test_evaluate_assignment_expression()
 */
 
 
+static void test_example_files(Test_Runner* runner)
+{
+    const char* files[] =
+    {
+        "./examples/first.t",
+        "./examples/trivial_add.t",
+        "./examples/trivial_subtract.t",
+        "./examples/trivial_multiply.t",
+        "./examples/trivial_divide.t",
+        "./examples/trivial_arithmetics.t"
+    };
+
+    int results[] =
+    {
+        0, 2, 0, 6, 5, 7
+    };
+    
+    for (int i = 0; i < sizeof (files) / sizeof (*files); i++)
+    {
+        Value return_value = interpret(read_file(files[i]));
+
+        assert(return_value.integer == results[i]);
+    }
+
+    if (runner->error) runner->failed++;
+    else runner->passed++;
+}
+
+
+Test_Set* interpreter_test_set()
+{
+    Test_Set* set = test_set("Interpreter");
+
+    array_push(set->tests, test_case("Example files", test_example_files));
+
+    set->length = set->tests->length;
+
+    return set;
+}
+
+
 void test_interpreter()
 {
-    printf("Running interpreter tests...\n");
-
-    printf("\t\tNot run\n");
 
     /*
     test_evaluate_literal_expression();

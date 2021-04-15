@@ -583,8 +583,10 @@ void interpreter_free(Interpreter* interpreter);
 Value evaluate_expression(Interpreter* interpreter, AST_Expression* expression);
 void evaluate_statement(Interpreter* interpreter, AST_Statement* statement);
 void evaluate_declaration(Interpreter* interpreter, AST_Declaration* declaration);
-void interpret(const char* source);
-void interpret_from_file(const char* path);
+// void interpret(const char* source);
+Value interpret(const char* source);
+// void interpret_from_file(const char* path);
+Value interpret_from_file(const char* path);
 
 
 /*

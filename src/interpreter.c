@@ -264,7 +264,8 @@ void evaluate_declaration(Interpreter* interpreter, AST_Declaration* declaration
 
 
 // TODO(timo): Take arguments and options
-void interpret(const char* source)
+// void interpret(const char* source)
+Value interpret(const char* source)
 {
     // Setup
     Lexer lexer;
@@ -322,10 +323,12 @@ void interpret(const char* source)
     // TODO(timo): Get and print the return value of the program
     Value return_value = interpreter.return_value;
 
+    /*
     if (return_value.type == VALUE_INTEGER)
         printf("Program exited with the value %d\n", return_value.integer);
     if (return_value.type == VALUE_BOOLEAN)
         printf("Program exited with the value %s\n", return_value.boolean ? "true" : "false");
+    */
    
     // Teardown
 teardown:
@@ -335,11 +338,14 @@ teardown_parser:
     parser_free(&parser);
 teardown_lexer:
     lexer_free(&lexer);
+
+    return return_value;
 }
 
 
 // TODO(timo): Take arguments and options
-void interpret_from_file(const char* path)
+// void interpret_from_file(const char* path)
+Value interpret_from_file(const char* path)
 {
     FILE* file = fopen(path, "r");
 
@@ -370,7 +376,9 @@ void interpret_from_file(const char* path)
     buffer[bytes_read] = 0;
     fclose(file);
     
-    interpret(buffer);
+    Value return_value = interpret(buffer);
 
     free(buffer);
+
+    return return_value;
 }

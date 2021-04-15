@@ -61,5 +61,6 @@ Test_Error* test_error(const char* test_set, const char* test_case, const char* 
 Test_Set* lexer_test_set();
 Test_Set* parser_test_set();
 Test_Set* resolver_test_set();
+Test_Set* interpreter_test_set();
 
 #endif
