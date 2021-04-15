@@ -184,7 +184,7 @@ struct Value
 {
     Value_Type type;
     union {
-        uint64_t integer;
+        int64_t integer;
         bool boolean;
     };
 };
@@ -428,9 +428,7 @@ struct Type
 Type* type_none();
 Type* type_integer();
 Type* type_boolean();
-// Type* type_function(Type* return_type, array* parameters);
 Type* type_function();
-// Type* type_array(Type* element_type, int length);
 Type* type_array(Type* element_type);
 void type_free(Type* type);
 hashtable* type_table_init();
@@ -549,6 +547,7 @@ typedef struct Resolver
         bool not_in_loop;
         bool not_in_function;
         bool returned;
+        char* current_function;
         Type* return_type;
     } context;
 } Resolver;

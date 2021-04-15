@@ -6,6 +6,7 @@ Type* type_none()
     Type* type = xmalloc(sizeof (Type));
     type->kind = TYPE_NONE;
     type->size = 0;
+    type->alignment = 0;
     // type->offset = 0;
 
     return type;
@@ -30,7 +31,7 @@ Type* type_boolean()
     type->kind = TYPE_BOOLEAN;
     type->size = 1;
     // type->offset = 0;
-    type->alignment = 4;
+    type->alignment = 8;
 
     return type;
 }
@@ -46,7 +47,8 @@ Type* type_function()
     type->function.arity = 0;
 
     // TODO(timo): These
-    type->size = 0;
+    type->size = 8;
+    type->alignment = 8;
     // type->offset = 0;
 
     return type;

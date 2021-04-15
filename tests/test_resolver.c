@@ -547,7 +547,6 @@ static void test_resolve_index_expression(Test_Runner* runner)
     AST_Expression* expression;
     AST_Declaration* declaration;
 
-    /*
     // TODO(timo): In our case the array subscription needs more context to
     // be used, so therefore the testing needs all that context. We need to
     // handle the resolving of the function expression first
@@ -565,42 +564,152 @@ static void test_resolve_index_expression(Test_Runner* runner)
     resolver_init(&resolver, type_table);
     resolve_declaration(&resolver, declaration);
     
-    // TODO(timo): For some reason the argv is not resolved
-    // lexer_free(&lexer);
-    // parser_free(&parser);
-    
-    // lexer_init(&lexer, "argv[0]"); 
-    // lex(&lexer);
-
-    // parser_init(&parser, lexer.tokens);
-    // expression = parse_expression(&parser);
-
-    // Type* type = resolve_expression(&resolver, expression);
-
-    // assert(type->kind == TYPE_INTEGER);
+    assert_base(runner, resolver.diagnostics->length == 0,
+        "Invalid number of resolver diagnostics: %d, expected 0", resolver.diagnostics->length);
+    assert_type(runner, resolver.context.return_type->kind, TYPE_INTEGER);
     
     declaration_free(declaration);
-    // expression_free(expression);
     resolver_free(&resolver);
     type_table_free(type_table);
     parser_free(&parser);
     lexer_free(&lexer);
-    */
 
     if (runner->error) runner->failed++;
     else runner->passed++;
 }
 
 
-static void test_diagnose_variable_is_not_subscriptable(Test_Runner* runner)
+static void test_diagnose_type_is_not_subscriptable_literal(Test_Runner* runner)
 {
     Lexer lexer;
     Parser parser;
     hashtable* type_table;
     Resolver resolver;
-    AST_Statement* statement;
+    AST_Declaration* declaration;
+    Diagnostic* diagnostic;
+    char* message;
+    char* source;
 
-    // ":RESOLVER - TypeError: '%s' is not subscriptable.",
+    // literal
+    source = "main: int = (argc: int, argv: [int]) => {\n"
+             "    return 42[2];\n"
+             "};";
+
+    lexer_init(&lexer, source);
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    declaration = parse_declaration(&parser);
+
+    type_table = type_table_init();
+    resolver_init(&resolver, type_table);
+    resolve_declaration(&resolver, declaration);
+    
+    assert_base(runner, resolver.diagnostics->length == 1,
+        "Invalid number of resolver diagnostics: %d, expected 1", resolver.diagnostics->length);
+
+    message = ":RESOLVER - TypeError: 'int' is not subscriptable.";
+    diagnostic = resolver.diagnostics->items[0];
+
+    assert_base(runner, strcmp(diagnostic->message, message) == 0,
+        "Invalid diagnostic '%s', expected '%s'", diagnostic->message, message);
+
+    declaration_free(declaration);
+    resolver_free(&resolver);
+    type_table_free(type_table);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    if (runner->error) runner->failed++;
+    else runner->passed++;
+}
+
+
+static void test_diagnose_type_is_not_subscriptable_variable(Test_Runner* runner)
+{
+    Lexer lexer;
+    Parser parser;
+    hashtable* type_table;
+    Resolver resolver;
+    AST_Declaration* declaration;
+    Diagnostic* diagnostic;
+    char* message;
+    char* source;
+
+    source = "main: int = (argc: int, argv: [int]) => {\n"
+             "    foo: bool = true;\n"
+             "    return foo[2];\n"
+             "};";
+
+    lexer_init(&lexer, source);
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    declaration = parse_declaration(&parser);
+
+    type_table = type_table_init();
+    resolver_init(&resolver, type_table);
+    resolve_declaration(&resolver, declaration);
+    
+    assert_base(runner, resolver.diagnostics->length == 1,
+        "Invalid number of resolver diagnostics: %d, expected 1", resolver.diagnostics->length);
+
+    message = ":RESOLVER - TypeError: 'bool' is not subscriptable.";
+    diagnostic = resolver.diagnostics->items[0];
+
+    assert_base(runner, strcmp(diagnostic->message, message) == 0,
+        "Invalid diagnostic '%s', expected '%s'", diagnostic->message, message);
+
+    declaration_free(declaration);
+    resolver_free(&resolver);
+    type_table_free(type_table);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    if (runner->error) runner->failed++;
+    else runner->passed++;
+}
+
+
+static void test_diagnose_type_is_not_subscriptable_function(Test_Runner* runner)
+{
+    Lexer lexer;
+    Parser parser;
+    hashtable* type_table;
+    Resolver resolver;
+    AST_Declaration* declaration;
+    Diagnostic* diagnostic;
+    char* message;
+    char* source;
+
+    source = "func: bool = () => { return true; };\n\n"
+             "main: int = (argc: int, argv: [int]) => {\n"
+             "    return func[2];\n"
+             "};";
+    
+    lexer_init(&lexer, source);
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    parse(&parser);
+
+    type_table = type_table_init();
+    resolver_init(&resolver, type_table);
+    resolve(&resolver, parser.declarations);
+
+    assert_base(runner, resolver.diagnostics->length == 1,
+        "Invalid number of resolver diagnostics: %d, expected 1", resolver.diagnostics->length);
+
+    message = ":RESOLVER - TypeError: 'function' is not subscriptable.";
+    diagnostic = resolver.diagnostics->items[0];
+
+    assert_base(runner, strcmp(diagnostic->message, message) == 0,
+        "Invalid diagnostic '%s', expected '%s'", diagnostic->message, message);
+
+    resolver_free(&resolver);
+    type_table_free(type_table);
+    parser_free(&parser);
+    lexer_free(&lexer);
 
     if (runner->error) runner->failed++;
     else runner->passed++;
@@ -613,9 +722,39 @@ static void test_diagnose_invalid_array_subscript(Test_Runner* runner)
     Parser parser;
     hashtable* type_table;
     Resolver resolver;
-    AST_Statement* statement;
+    AST_Declaration* declaration;
+    Diagnostic* diagnostic;
+    char* message;
+    char* source;
 
-    // ":RESOLVER - TypeError: Array subscripts must be integers.",
+    source = "main: int = (argc: int, argv: [int]) => {\n"
+             "    return argv[false];\n"
+             "};";
+
+    lexer_init(&lexer, source);
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    declaration = parse_declaration(&parser);
+
+    type_table = type_table_init();
+    resolver_init(&resolver, type_table);
+    resolve_declaration(&resolver, declaration);
+    
+    assert_base(runner, resolver.diagnostics->length == 1,
+        "Invalid number of resolver diagnostics: %d, expected 1", resolver.diagnostics->length);
+
+    message = ":RESOLVER - TypeError: Array subscripts must be integers.";
+    diagnostic = resolver.diagnostics->items[0];
+
+    assert_base(runner, strcmp(diagnostic->message, message) == 0,
+        "Invalid diagnostic '%s', expected '%s'", diagnostic->message, message);
+
+    declaration_free(declaration);
+    resolver_free(&resolver);
+    type_table_free(type_table);
+    parser_free(&parser);
+    lexer_free(&lexer);
 
     if (runner->error) runner->failed++;
     else runner->passed++;
@@ -624,8 +763,133 @@ static void test_diagnose_invalid_array_subscript(Test_Runner* runner)
 
 static void test_diagnose_invalid_array_subscript_boundaries(Test_Runner* runner)
 {
+    Lexer lexer;
+    Parser parser;
+    hashtable* type_table;
+    Resolver resolver;
+    AST_Declaration* declaration;
+    Diagnostic* diagnostic;
+    char* message;
+    char* source;
 
-    // ":RESOLVER - IndexError: Array subscript less than zero.",
+    source = "main: int = (argc: int, argv: [int]) => {\n"
+             "    return argv[-1];\n"
+             "};";
+
+    lexer_init(&lexer, source);
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    declaration = parse_declaration(&parser);
+
+    type_table = type_table_init();
+    resolver_init(&resolver, type_table);
+    resolve_declaration(&resolver, declaration);
+    
+    assert_base(runner, resolver.diagnostics->length == 1,
+        "Invalid number of resolver diagnostics: %d, expected 1", resolver.diagnostics->length);
+
+    message = ":RESOLVER - IndexError: Array subscript less than zero.";
+    diagnostic = resolver.diagnostics->items[0];
+
+    assert_base(runner, strcmp(diagnostic->message, message) == 0,
+        "Invalid diagnostic '%s', expected '%s'", diagnostic->message, message);
+
+    declaration_free(declaration);
+    resolver_free(&resolver);
+    type_table_free(type_table);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    if (runner->error) runner->failed++;
+    else runner->passed++;
+}
+
+
+static void test_diagnose_array_subscript_not_argv(Test_Runner* runner)
+{
+    Lexer lexer;
+    Parser parser;
+    hashtable* type_table;
+    Resolver resolver;
+    AST_Declaration* declaration;
+    Diagnostic* diagnostic;
+    char* message;
+    char* source;
+
+    source = "main: int = (argc: int, foo: [int]) => {\n"
+             "    return foo[2];\n"
+             "};";
+
+    lexer_init(&lexer, source);
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    declaration = parse_declaration(&parser);
+
+    type_table = type_table_init();
+    resolver_init(&resolver, type_table);
+    resolve_declaration(&resolver, declaration);
+    
+    assert_base(runner, resolver.diagnostics->length == 1,
+        "Invalid number of resolver diagnostics: %d, expected 1", resolver.diagnostics->length);
+
+    message = ":RESOLVER - Error: You cannot use index expressions with other values than argv of the main function";
+    diagnostic = resolver.diagnostics->items[0];
+
+    assert_base(runner, strcmp(diagnostic->message, message) == 0,
+        "Invalid diagnostic '%s', expected '%s'", diagnostic->message, message);
+
+    declaration_free(declaration);
+    resolver_free(&resolver);
+    type_table_free(type_table);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    if (runner->error) runner->failed++;
+    else runner->passed++;
+}
+
+
+static void test_diagnose_array_subscript_not_main(Test_Runner* runner)
+{
+    Lexer lexer;
+    Parser parser;
+    hashtable* type_table;
+    Resolver resolver;
+    AST_Declaration* declaration;
+    Diagnostic* diagnostic;
+    char* message;
+    char* source;
+
+    source = "func: int = (argc: int, argv: [int]) => {\n"
+             "    return argv[2];\n"
+             "};";
+
+    lexer_init(&lexer, source);
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    declaration = parse_declaration(&parser);
+
+    type_table = type_table_init();
+    resolver_init(&resolver, type_table);
+    resolve_declaration(&resolver, declaration);
+    
+    assert_base(runner, resolver.diagnostics->length == 1,
+        "Invalid number of resolver diagnostics: %d, expected 1", resolver.diagnostics->length);
+
+    message = ":RESOLVER - Error: You cannot use index expressions with other values than argv of the main function";
+    diagnostic = resolver.diagnostics->items[0];
+
+    assert_base(runner, strcmp(diagnostic->message, message) == 0,
+        "Invalid diagnostic '%s', expected '%s'", diagnostic->message, message);
+
+    declaration_free(declaration);
+    resolver_free(&resolver);
+    type_table_free(type_table);
+    parser_free(&parser);
+    lexer_free(&lexer);
 
     if (runner->error) runner->failed++;
     else runner->passed++;
@@ -1483,9 +1747,14 @@ Test_Set* resolver_test_set()
 
     // Index expression / subscript
     array_push(set->tests, test_case("Index expression", test_resolve_index_expression));
-    array_push(set->tests, test_case("Diagnose variable is not subscriptable", test_diagnose_variable_is_not_subscriptable));
-    array_push(set->tests, test_case("Diagnose invalid array subscript", test_diagnose_invalid_array_subscript));
+    array_push(set->tests, test_case("Diagnose type is not subscriptable (literal)", test_diagnose_type_is_not_subscriptable_literal));
+    array_push(set->tests, test_case("Diagnose type is not subscriptable (variable)", test_diagnose_type_is_not_subscriptable_variable));
+    array_push(set->tests, test_case("Diagnose type is not subscriptable (function)", test_diagnose_type_is_not_subscriptable_function));
+    array_push(set->tests, test_case("Diagnose invalid array subscript type", test_diagnose_invalid_array_subscript));
     array_push(set->tests, test_case("Diagnose invalid array subscript boundaries", test_diagnose_invalid_array_subscript_boundaries));
+    // TODO(timo): These two can be removed after the language has arrays
+    array_push(set->tests, test_case("Diagnose subcript target is not argv", test_diagnose_array_subscript_not_argv));
+    array_push(set->tests, test_case("Diagnose subscript context is not main program", test_diagnose_array_subscript_not_main));
     
     set->length = set->tests->length;
 
@@ -1500,13 +1769,8 @@ void test_resolver()
 
     // TODO(timo): Integer overflow checks in binary (positive and negative)
 
-    test_resolve_index_expression();
-    test_diagnose_variable_is_not_subsriptable();
-    test_diagnose_invalid_array_subscript();
-    test_diagnose_invalid_array_subscript_boundaries();
-    // TODO(timo): accessed variable is not argv
-    
     test_resolve_function_expression();
+    // TODO(timo): Function cannot be declared inside a function
     // TODO(timo): Diagnose invalid type of the return value
 
     test_resolve_call_expression();
@@ -1528,7 +1792,9 @@ void test_resolver()
 
     // TODO(timo): Diganose error while resolving return statement (return value is missing)
     // TODO(timo): Diagnose no continue statement outside loops
+    // TODO(timo): Function HAS to have a return statement e.g. it has to return value
     // TODO(timo): Diagnose no return statement outside functions
+    // TODO(timo): YORO - you only return once
     // TODO(timo): You can only use declarations at the top level so no
     // statements or expressions are allowed at top level.
 
@@ -1546,9 +1812,6 @@ void test_resolver()
 
     test_resolve_function_declaration();
 
-    // TODO(timo): Functions are allowed only at top level
-    // TODO(timo): Function HAS to have a return statement e.g. it has to return value
-    // TODO(timo): YORO - you only return once
 
     // TODO(timo): Resolve order independent global variable declarations
     // TODO(timo): Lets just forget this functionality for now and maybe add it later.
