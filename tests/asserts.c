@@ -101,3 +101,10 @@ void assert_value(Test_Runner* runner, Value actual, Value_Type expected_type, i
     assert_base(runner, actual.integer == expected_value,
         "Invalid value '%d', expected '%d'", actual.integer, expected_value);
 }
+
+
+void assert_instruction(Test_Runner* runner, Instruction* instruction, Operation expected_operation)
+{
+    assert_base(runner, instruction->operation == expected_operation,
+        "Invalid instruction '%s', expected '%s'", operation_str(instruction->operation), operation_str(expected_operation));
+}

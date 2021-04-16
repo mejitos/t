@@ -1,15 +1,10 @@
-#include "../src/t.h"
+#include "asserts.h"
 #include "tests.h"
+#include "../src/t.h"
 
 
-static bool not_error = true;
-
-
-static void test_generate_literal_expression()
+static void test_generate_literal_expression(Test_Runner* runner)
 {
-    printf("\tLiteral expression...");
-    not_error = true;
-
     Lexer lexer;
     Parser parser;
     hashtable* type_table;
@@ -30,8 +25,16 @@ static void test_generate_literal_expression()
     ir_generator_init(&generator, resolver.global);
     char* result = ir_generate_expression(&generator, expression);
     
-    // assert(strcmp(result, "42") == 0);
-    //dump_instructions(generator.instructions);
+    assert_base(runner, generator.instructions->length == 1,
+        "Invalid number of instructions: %d, expected 1", generator.instructions->length);
+    assert_base(runner, strcmp(result, "_t0") == 0,
+        "Invalid result '%s', expected '_t0'", result);
+
+    Instruction* instruction = generator.instructions->items[0];
+
+    assert_instruction(runner, instruction, OP_COPY);
+
+    // dump_instructions(generator.instructions);
 
     // TODO(timo): boolean literals
 
@@ -41,17 +44,11 @@ static void test_generate_literal_expression()
     type_table_free(type_table);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
 }
 
 
-static void test_generate_unary_expression()
+static void test_generate_unary_expression(Test_Runner* runner)
 {
-    printf("\tUnary expression...");
-    not_error = true;
-
     Lexer lexer;
     Parser parser;
     hashtable* type_table;
@@ -59,6 +56,7 @@ static void test_generate_unary_expression()
     IR_Generator generator;
     AST_Expression* expression;
 
+    // minus
     lexer_init(&lexer, "-42");
     lex(&lexer);
 
@@ -72,7 +70,12 @@ static void test_generate_unary_expression()
     ir_generator_init(&generator, resolver.global);
     ir_generate_expression(&generator, expression);
 
-    //dump_instructions(generator.instructions);
+    assert_base(runner, generator.instructions->length == 2,
+        "Invalid number of instructions: %d, expected 2", generator.instructions->length);
+    assert_instruction(runner, generator.instructions->items[0], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[1], OP_MINUS);
+
+    // dump_instructions(generator.instructions);
 
     expression_free(expression);
     ir_generator_free(&generator);
@@ -81,9 +84,8 @@ static void test_generate_unary_expression()
     parser_free(&parser);
     lexer_free(&lexer);
 
-    printf("--------\n");
-
-    // ----
+    // not
+    /*
     lexer_init(&lexer, "not false");
     lex(&lexer);
 
@@ -105,15 +107,27 @@ static void test_generate_unary_expression()
     type_table_free(type_table);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
+    */
 }
 
-static void test_generate_binary_expression()
+
+static void test_generate_binary_expression_arithmetic(Test_Runner* runner)
 {
-    printf("\tBinary expression...");
-    not_error = true;
+    const char* tests[] =
+    {
+        "1 + 2",
+        "3 - 4",
+        "5 * 6",
+        "7 / 8"
+    };
+
+    Operation results[][3] = 
+    {
+        {OP_COPY, OP_COPY, OP_ADD},
+        {OP_COPY, OP_COPY, OP_SUB},
+        {OP_COPY, OP_COPY, OP_MUL},
+        {OP_COPY, OP_COPY, OP_DIV}
+    };
 
     Lexer lexer;
     Parser parser;
@@ -122,113 +136,103 @@ static void test_generate_binary_expression()
     IR_Generator generator;
     AST_Expression* expression;
 
-    // binary arithmetic +
-    lexer_init(&lexer, "1 + 2");
-    lex(&lexer);
+    for (int i = 0; i < sizeof (tests) / sizeof (*tests); i++)
+    {
+        lexer_init(&lexer, tests[i]);
+        lex(&lexer);
 
-    parser_init(&parser, lexer.tokens);
-    expression = parse_expression(&parser);
-    
-    type_table = type_table_init();
-    resolver_init(&resolver, type_table);
-    resolve_expression(&resolver, expression);
-    
-    ir_generator_init(&generator, resolver.global);
-    ir_generate_expression(&generator, expression);
+        parser_init(&parser, lexer.tokens);
+        expression = parse_expression(&parser);
+        
+        type_table = type_table_init();
+        resolver_init(&resolver, type_table);
+        resolve_expression(&resolver, expression);
+        
+        ir_generator_init(&generator, resolver.global);
+        ir_generate_expression(&generator, expression);
 
-    //dump_instructions(generator.instructions);
-    
-    expression_free(expression);
-    ir_generator_free(&generator);
-    resolver_free(&resolver);
-    type_table_free(type_table);
-    parser_free(&parser);
-    lexer_free(&lexer);
+        assert_base(runner, generator.instructions->length == 3,
+            "Invalid number of instructions: %d, expected 3", generator.instructions->length);
 
-    printf("--------\n");
+        for (int j = 0; j < generator.instructions->length; j++)
+            assert_instruction(runner, generator.instructions->items[j], results[i][j]);
 
-    // binary arithmetic -
-    lexer_init(&lexer, "3 - 4");
-    lex(&lexer);
-
-    parser_init(&parser, lexer.tokens);
-    expression = parse_expression(&parser);
-    
-    type_table = type_table_init();
-    resolver_init(&resolver, type_table);
-    resolve_expression(&resolver, expression);
-
-    ir_generator_init(&generator, resolver.global);
-    ir_generate_expression(&generator, expression);
-
-    //dump_instructions(generator.instructions);
-    
-    expression_free(expression);
-    ir_generator_free(&generator);
-    resolver_free(&resolver);
-    type_table_free(type_table);
-    parser_free(&parser);
-    lexer_free(&lexer);
-
-    printf("--------\n");
-
-    // binary arithmetic *
-    lexer_init(&lexer, "5 * 6");
-    lex(&lexer);
-
-    parser_init(&parser, lexer.tokens);
-    expression = parse_expression(&parser);
-
-    type_table = type_table_init();
-    resolver_init(&resolver, type_table);
-    resolve_expression(&resolver, expression);
-
-    ir_generator_init(&generator, resolver.global);
-    ir_generate_expression(&generator, expression);
-
-    //dump_instructions(generator.instructions);
-    
-    expression_free(expression);
-    resolver_free(&resolver);
-    type_table_free(type_table);
-    parser_free(&parser);
-    lexer_free(&lexer);
-
-    printf("--------\n");
-
-    // binary arithmetic /
-    lexer_init(&lexer, "7 / 8");
-    lex(&lexer);
-
-    parser_init(&parser, lexer.tokens);
-    expression = parse_expression(&parser);
-
-    type_table = type_table_init();
-    resolver_init(&resolver, type_table);
-    resolve_expression(&resolver, expression);
-
-    ir_generator_init(&generator, resolver.global);
-    ir_generate_expression(&generator, expression);
-
-    //dump_instructions(generator.instructions);
-    
-    expression_free(expression);
-    ir_generator_free(&generator);
-    resolver_free(&resolver);
-    type_table_free(type_table);
-    parser_free(&parser);
-    lexer_free(&lexer);
-
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
+        // dump_instructions(generator.instructions);
+        
+        expression_free(expression);
+        ir_generator_free(&generator);
+        resolver_free(&resolver);
+        type_table_free(type_table);
+        parser_free(&parser);
+        lexer_free(&lexer);
+    }
 }
 
 
-static void test_generate_variable_expression()
+static void test_generate_binary_expression_comparison(Test_Runner* runner)
 {
-    printf("\tVariable expression...");
-    not_error = true;
+    const char* tests[] =
+    {
+        "1 == 0",
+        "1 != 0",
+        "1 < 0",
+        "1 <= 0",
+        "1 > 0",
+        "1 >= 0"
+    };
 
+    Operation results[][3] = 
+    {
+        {OP_COPY, OP_COPY, OP_EQ},
+        {OP_COPY, OP_COPY, OP_NEQ},
+        {OP_COPY, OP_COPY, OP_LT},
+        {OP_COPY, OP_COPY, OP_LTE},
+        {OP_COPY, OP_COPY, OP_GT},
+        {OP_COPY, OP_COPY, OP_GTE}
+    };
+
+    Lexer lexer;
+    Parser parser;
+    hashtable* type_table;
+    Resolver resolver;
+    IR_Generator generator;
+    AST_Expression* expression;
+
+    for (int i = 0; i < sizeof (tests) / sizeof (*tests); i++)
+    {
+        lexer_init(&lexer, tests[i]);
+        lex(&lexer);
+
+        parser_init(&parser, lexer.tokens);
+        expression = parse_expression(&parser);
+        
+        type_table = type_table_init();
+        resolver_init(&resolver, type_table);
+        resolve_expression(&resolver, expression);
+        
+        ir_generator_init(&generator, resolver.global);
+        ir_generate_expression(&generator, expression);
+
+        assert_base(runner, generator.instructions->length == 3,
+            "Invalid number of instructions: %d, expected 3", generator.instructions->length);
+
+        for (int j = 0; j < generator.instructions->length; j++)
+            assert_instruction(runner, generator.instructions->items[j], results[i][j]);
+
+        // dump_instructions(generator.instructions);
+        
+        expression_free(expression);
+        ir_generator_free(&generator);
+        resolver_free(&resolver);
+        type_table_free(type_table);
+        parser_free(&parser);
+        lexer_free(&lexer);
+    }
+}
+
+
+static void test_generate_variable_expression(Test_Runner* runner)
+{
     Lexer lexer;
     Parser parser;
     hashtable* type_table;
@@ -238,7 +242,10 @@ static void test_generate_variable_expression()
     AST_Statement* statement;
     char* source;
     
-    source = "{\n    foo: int = 0;\n    foo;\n}";
+    source = "{\n"
+             "    foo: int = 0;\n"
+             "    foo;\n"
+             "}";
 
     lexer_init(&lexer, source);
     lex(&lexer);
@@ -253,9 +260,13 @@ static void test_generate_variable_expression()
     ir_generator_init(&generator, resolver.global);
     
     expression = ((AST_Statement*)statement->block.statements->items[1])->expression;
-    char* result = ir_generate_expression(&generator, expression);
-    // assert(strcmp(result, "foo") == 0);
-    //dump_instructions(generator.instructions);
+    ir_generate_expression(&generator, expression);
+
+    assert_base(runner, generator.instructions->length == 1,
+        "Invalid number of instructions: %d, expected 1", generator.instructions->length);
+    assert_instruction(runner, generator.instructions->items[0], OP_COPY);
+
+    // dump_instructions(generator.instructions);
     
     statement_free(statement);
     ir_generator_free(&generator);
@@ -263,17 +274,11 @@ static void test_generate_variable_expression()
     type_table_free(type_table);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
 }
 
 
-static void test_generate_assignment_expression()
+static void test_generate_assignment_expression(Test_Runner* runner)
 {
-    printf("\tAssignment expression...");
-    not_error = true;
-
     Lexer lexer;
     Parser parser;
     hashtable* type_table;
@@ -283,7 +288,10 @@ static void test_generate_assignment_expression()
     AST_Statement* statement;
     char* source;
     
-    source = "{\n    foo: int = 0;\n    foo := 1 * -2 + 3 * -4;\n}";
+    source = "{\n    "
+             "    foo: int = 0;\n"
+             "    foo := 42;\n"
+             "}";
 
     lexer_init(&lexer, source);
     lex(&lexer);
@@ -299,7 +307,12 @@ static void test_generate_assignment_expression()
     expression = ((AST_Statement*)statement->block.statements->items[1])->expression;
     ir_generate_expression(&generator, expression);
 
-    //dump_instructions(generator.instructions);
+    assert_base(runner, generator.instructions->length == 2,
+        "Invalid number of instructions: %d, expected 2", generator.instructions->length);
+    assert_instruction(runner, generator.instructions->items[0], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[1], OP_COPY);
+
+    // dump_instructions(generator.instructions);
     
     statement_free(statement);
     ir_generator_free(&generator);
@@ -307,11 +320,68 @@ static void test_generate_assignment_expression()
     type_table_free(type_table);
     parser_free(&parser);
     lexer_free(&lexer);
+}
 
-    printf("----------\n");
+
+static void test_generate_assignment_expression_complex(Test_Runner* runner)
+{
+    Lexer lexer;
+    Parser parser;
+    hashtable* type_table;
+    Resolver resolver;
+    IR_Generator generator;
+    AST_Expression* expression;
+    AST_Statement* statement;
+    char* source;
+    
+    source = "{\n    "
+             "    foo: int = 0;\n"
+             "    foo := 1 * -2 + 3 * -4;\n"
+             "}";
+
+    lexer_init(&lexer, source);
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    statement = parse_statement(&parser);
+
+    type_table = type_table_init();
+    resolver_init(&resolver, type_table);
+    resolve_statement(&resolver, statement);
+    
+    ir_generator_init(&generator, resolver.global);
+    expression = ((AST_Statement*)statement->block.statements->items[1])->expression;
+    ir_generate_expression(&generator, expression);
+
+    assert_base(runner, generator.instructions->length == 10,
+        "Invalid number of instructions: %d, expected 10", generator.instructions->length);
+    assert_instruction(runner, generator.instructions->items[0], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[1], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[2], OP_MINUS);
+    assert_instruction(runner, generator.instructions->items[3], OP_MUL);
+    assert_instruction(runner, generator.instructions->items[4], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[5], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[6], OP_MINUS);
+    assert_instruction(runner, generator.instructions->items[7], OP_MUL);
+    assert_instruction(runner, generator.instructions->items[8], OP_ADD);
+    assert_instruction(runner, generator.instructions->items[9], OP_COPY);
+
+    // dump_instructions(generator.instructions);
+    
+    statement_free(statement);
+    ir_generator_free(&generator);
+    resolver_free(&resolver);
+    type_table_free(type_table);
+    parser_free(&parser);
+    lexer_free(&lexer);
 
     // ----
-    source = "{\n    a: int = 0;\n    b: int = 0;\n    c: int = 0;\n    a := b * -c + b * -c;\n}";
+    source = "{\n"
+             "    a: int = 0;\n"
+             "    b: int = 0;\n"
+             "    c: int = 0;\n"
+             "    a := b * -c + b * -c;\n"
+             "}";
 
     lexer_init(&lexer, source);
     lex(&lexer);
@@ -327,7 +397,20 @@ static void test_generate_assignment_expression()
     expression = ((AST_Statement*)statement->block.statements->items[3])->expression;
     ir_generate_expression(&generator, expression);
 
-    //dump_instructions(generator.instructions);
+    assert_base(runner, generator.instructions->length == 10,
+        "Invalid number of instructions: %d, expected 10", generator.instructions->length);
+    assert_instruction(runner, generator.instructions->items[0], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[1], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[2], OP_MINUS);
+    assert_instruction(runner, generator.instructions->items[3], OP_MUL);
+    assert_instruction(runner, generator.instructions->items[4], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[5], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[6], OP_MINUS);
+    assert_instruction(runner, generator.instructions->items[7], OP_MUL);
+    assert_instruction(runner, generator.instructions->items[8], OP_ADD);
+    assert_instruction(runner, generator.instructions->items[9], OP_COPY);
+
+    // dump_instructions(generator.instructions);
 
     statement_free(statement);
     ir_generator_free(&generator);
@@ -335,30 +418,17 @@ static void test_generate_assignment_expression()
     type_table_free(type_table);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
 }
 
 
-static void test_generate_index_expression()
+static void test_generate_index_expression(Test_Runner* runner)
 {
-    printf("\tIndex expression...");
-    not_error = true;
-
-    printf("\n\t\tNOT IMPLEMENTED");
-    not_error = false;
-
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
+    //
 }
 
 
-static void test_generate_function_expression()
+static void test_generate_function_expression(Test_Runner* runner)
 {
-    printf("\tFunction expression...");
-    not_error = true;
-
     Lexer lexer;
     Parser parser;
     hashtable* type_table;
@@ -374,13 +444,27 @@ static void test_generate_function_expression()
 
     type_table = type_table_init();
     resolver_init(&resolver, type_table);
-    resolve_expression(&resolver, expression);
+
+    // We need to take this type and free it, since it won't be freed otherwise
+    Type* type = resolve_expression(&resolver, expression);
     
     ir_generator_init(&generator, resolver.global);
     ir_generate_expression(&generator, expression);
 
-    //dump_instructions(generator.instructions);
+    assert_base(runner, generator.instructions->length == 8,
+        "Invalid number of instructions: %d, expected 8", generator.instructions->length);
+    assert_instruction(runner, generator.instructions->items[0], OP_FUNCTION_BEGIN);
+    assert_instruction(runner, generator.instructions->items[1], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[2], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[3], OP_ADD);
+    assert_instruction(runner, generator.instructions->items[4], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[5], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[6], OP_RETURN);
+    assert_instruction(runner, generator.instructions->items[7], OP_FUNCTION_END);
+
+    // dump_instructions(generator.instructions);
     
+    type_free(type);
     expression_free(expression);
     ir_generator_free(&generator);
     resolver_free(&resolver);
@@ -388,17 +472,12 @@ static void test_generate_function_expression()
     parser_free(&parser);
     lexer_free(&lexer);
 
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
+    // TODO(timo): Without parameters
 }
 
 
-static void test_generate_call_expression()
+static void test_generate_call_expression(Test_Runner* runner)
 {
-    printf("\tCall expression...");
-    printf("\n");
-    not_error = true;
-
     Lexer lexer;
     Parser parser;
     hashtable* type_table;
@@ -473,108 +552,11 @@ static void test_generate_call_expression()
     type_table_free(type_table);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
 }
 
 
-static void test_generate_arithmetics()
+static void test_generate_if_statement(Test_Runner* runner)
 {
-    printf("\tArithmetics...");
-    printf("\n");
-    not_error = true;
-
-    Lexer lexer;
-    Parser parser;
-    hashtable* type_table;
-    Resolver resolver;
-    IR_Generator generator;
-    AST_Expression* expression;
-
-    lexer_init(&lexer, "1 + 2 * 3");
-    lex(&lexer);
-
-    parser_init(&parser, lexer.tokens);
-    expression = parse_expression(&parser);
-
-    type_table = type_table_init();
-    resolver_init(&resolver, type_table);
-    resolve_expression(&resolver, expression);
-    
-    ir_generator_init(&generator, resolver.global);
-    ir_generate_expression(&generator, expression);
-
-    //dump_instructions(generator.instructions);
-
-    expression_free(expression);
-    ir_generator_free(&generator);
-    resolver_free(&resolver);
-    type_table_free(type_table);
-    parser_free(&parser);
-    lexer_free(&lexer);
-
-    printf("--------\n");
-
-    // ----
-    lexer_init(&lexer, "1 * 2 + 3 * 4");
-    lex(&lexer);
-
-    parser_init(&parser, lexer.tokens);
-    expression = parse_expression(&parser);
-    
-    type_table = type_table_init();
-    resolver_init(&resolver, type_table);
-    resolve_expression(&resolver, expression);
-
-    ir_generator_init(&generator, resolver.global);
-    ir_generate_expression(&generator, expression);
-
-    //dump_instructions(generator.instructions);
-
-    expression_free(expression);
-    ir_generator_free(&generator);
-    resolver_free(&resolver);
-    type_table_free(type_table);
-    parser_free(&parser);
-    lexer_free(&lexer);
-
-    printf("--------\n");
-
-    // ----
-    lexer_init(&lexer, "1 * -2 + 3 * -4");
-    lex(&lexer);
-
-    parser_init(&parser, lexer.tokens);
-    expression = parse_expression(&parser);
-    
-    type_table = type_table_init();
-    resolver_init(&resolver, type_table);
-    resolve_expression(&resolver, expression);
-
-    ir_generator_init(&generator, resolver.global);
-    ir_generate_expression(&generator, expression);
-
-    //dump_instructions(generator.instructions);
-
-    expression_free(expression);
-    ir_generator_free(&generator);
-    resolver_free(&resolver);
-    type_table_free(type_table);
-    parser_free(&parser);
-    lexer_free(&lexer);
-
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
-}
-
-
-static void test_generate_if_statement()
-{
-    printf("\tIf statement...");
-    printf("\n");
-    not_error = true;
-
     Lexer lexer;
     Parser parser;
     hashtable* type_table;
@@ -589,10 +571,10 @@ static void test_generate_if_statement()
              "    b: int = 0;\n"
              "    c: int = 0;\n"
              "\n"
-             "    if a < b + c then {\n"
-             "        a := a - c;\n"
+             "    if a < b then {\n"
+             "        a := c;\n"
              "    }\n"
-             "    c := b * c;\n"
+             "    c := b;\n"
              "}";
     lexer_init(&lexer, source); 
     lex(&lexer);
@@ -607,7 +589,25 @@ static void test_generate_if_statement()
     ir_generator_init(&generator, resolver.global);
     ir_generate_statement(&generator, statement);
 
-    //dump_instructions(generator.instructions);
+    assert_base(runner, generator.instructions->length == 15,
+        "Invalid number of instructions: %d, expected 15", generator.instructions->length);
+    assert_instruction(runner, generator.instructions->items[0], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[1], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[2], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[3], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[4], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[5], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[6], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[7], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[8], OP_LT);
+    assert_instruction(runner, generator.instructions->items[9], OP_GOTO_IF_FALSE);
+    assert_instruction(runner, generator.instructions->items[10], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[11], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[12], OP_LABEL);
+    assert_instruction(runner, generator.instructions->items[13], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[14], OP_COPY);
+
+    // dump_instructions(generator.instructions);
 
     statement_free(statement);
     ir_generator_free(&generator);
@@ -616,11 +616,9 @@ static void test_generate_if_statement()
     parser_free(&parser);
     lexer_free(&lexer);
 
-    printf("----------\n");
-
     // if-then-else
     source = "";
-    lexer_init(&lexer, "if 0 < 1 then { 1 + 2; 3 - 4; } else {5 * 6; 7 / 8; }");
+    lexer_init(&lexer, "if 0 < 1 then { 1 + 2; } else { 5 * 6; }");
     lex(&lexer);
 
     parser_init(&parser, lexer.tokens);
@@ -633,7 +631,23 @@ static void test_generate_if_statement()
     ir_generator_init(&generator, resolver.global);
     ir_generate_statement(&generator, statement);
 
-    //dump_instructions(generator.instructions);
+    assert_base(runner, generator.instructions->length == 13,
+        "Invalid number of instructions: %d, expected 13", generator.instructions->length);
+    assert_instruction(runner, generator.instructions->items[0], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[1], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[2], OP_LT);
+    assert_instruction(runner, generator.instructions->items[3], OP_GOTO_IF_FALSE);
+    assert_instruction(runner, generator.instructions->items[4], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[5], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[6], OP_ADD);
+    assert_instruction(runner, generator.instructions->items[7], OP_GOTO);
+    assert_instruction(runner, generator.instructions->items[8], OP_LABEL);
+    assert_instruction(runner, generator.instructions->items[9], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[10], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[11], OP_MUL);
+    assert_instruction(runner, generator.instructions->items[12], OP_LABEL);
+
+    // dump_instructions(generator.instructions);
 
     statement_free(statement);
     ir_generator_free(&generator);
@@ -642,19 +656,12 @@ static void test_generate_if_statement()
     parser_free(&parser);
     lexer_free(&lexer);
 
-    // if-then-else if-then-else
-
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
+    // TODO(timo): if-then-else if-then-else
 }
 
 
-static void test_generate_while_statement()
+static void test_generate_while_statement(Test_Runner* runner)
 {
-    printf("\tWhile statement...");
-    printf("\n");
-    not_error = true;
-
     Lexer lexer;
     Parser parser;
     hashtable* type_table;
@@ -675,7 +682,23 @@ static void test_generate_while_statement()
     ir_generator_init(&generator, resolver.global);
     ir_generate_statement(&generator, statement);
 
-    //dump_instructions(generator.instructions);
+    assert_base(runner, generator.instructions->length == 13,
+        "Invalid number of instructions: %d, expected 13", generator.instructions->length);
+    assert_instruction(runner, generator.instructions->items[0], OP_LABEL);
+    assert_instruction(runner, generator.instructions->items[1], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[2], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[3], OP_LT);
+    assert_instruction(runner, generator.instructions->items[4], OP_GOTO_IF_FALSE);
+    assert_instruction(runner, generator.instructions->items[5], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[6], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[7], OP_ADD);
+    assert_instruction(runner, generator.instructions->items[8], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[9], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[10], OP_SUB);
+    assert_instruction(runner, generator.instructions->items[11], OP_GOTO);
+    assert_instruction(runner, generator.instructions->items[12], OP_LABEL);
+
+    // dump_instructions(generator.instructions);
 
     statement_free(statement);
     ir_generator_free(&generator);
@@ -683,18 +706,11 @@ static void test_generate_while_statement()
     type_table_free(type_table);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
 }
 
 
-static void test_generate_return_statement()
+static void test_generate_return_statement(Test_Runner* runner)
 {
-    printf("\tReturn statement...");
-    printf("\n");
-    not_error = true;
-
     Lexer lexer;
     Parser parser;
     hashtable* type_table;
@@ -718,7 +734,12 @@ static void test_generate_return_statement()
     ir_generator_init(&generator, resolver.global);
     ir_generate_statement(&generator, statement);
 
-    //dump_instructions(generator.instructions);
+    assert_base(runner, generator.instructions->length == 2,
+        "Invalid number of instructions: %d, expected 2", generator.instructions->length);
+    assert_instruction(runner, generator.instructions->items[0], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[1], OP_RETURN);
+
+    // dump_instructions(generator.instructions);
 
     statement_free(statement);
     ir_generator_free(&generator);
@@ -726,18 +747,12 @@ static void test_generate_return_statement()
     type_table_free(type_table);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
 }
 
 
-static void test_generate_function_declaration()
+/*
+static void test_generate_function_declaration(Test_Runner* runner)
 {
-    printf("\tFunction declaration...");
-    printf("\n");
-    not_error = true;
-
     Lexer lexer;
     Parser parser;
     hashtable* type_table;
@@ -769,18 +784,122 @@ static void test_generate_function_declaration()
     type_table_free(type_table);
     parser_free(&parser);
     lexer_free(&lexer);
+}
+*/
 
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
+
+static void test_generate_arithmetics(Test_Runner* runner)
+{
+    Lexer lexer;
+    Parser parser;
+    hashtable* type_table;
+    Resolver resolver;
+    IR_Generator generator;
+    AST_Expression* expression;
+
+    lexer_init(&lexer, "1 + 2 * 3");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    expression = parse_expression(&parser);
+
+    type_table = type_table_init();
+    resolver_init(&resolver, type_table);
+    resolve_expression(&resolver, expression);
+    
+    ir_generator_init(&generator, resolver.global);
+    ir_generate_expression(&generator, expression);
+
+    assert_base(runner, generator.instructions->length == 5,
+        "Invalid number of instructions: %d, expected 5", generator.instructions->length);
+    assert_instruction(runner, generator.instructions->items[0], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[1], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[2], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[3], OP_MUL);
+    assert_instruction(runner, generator.instructions->items[4], OP_ADD);
+
+    // dump_instructions(generator.instructions);
+
+    expression_free(expression);
+    ir_generator_free(&generator);
+    resolver_free(&resolver);
+    type_table_free(type_table);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    // ----
+    lexer_init(&lexer, "1 * 2 + 3 * 4");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    expression = parse_expression(&parser);
+    
+    type_table = type_table_init();
+    resolver_init(&resolver, type_table);
+    resolve_expression(&resolver, expression);
+
+    ir_generator_init(&generator, resolver.global);
+    ir_generate_expression(&generator, expression);
+
+    assert_base(runner, generator.instructions->length == 7,
+        "Invalid number of instructions: %d, expected 7", generator.instructions->length);
+    assert_instruction(runner, generator.instructions->items[0], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[1], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[2], OP_MUL);
+    assert_instruction(runner, generator.instructions->items[3], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[4], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[5], OP_MUL);
+    assert_instruction(runner, generator.instructions->items[6], OP_ADD);
+
+    // dump_instructions(generator.instructions);
+
+    expression_free(expression);
+    ir_generator_free(&generator);
+    resolver_free(&resolver);
+    type_table_free(type_table);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    // ----
+    lexer_init(&lexer, "1 * -2 + 3 * -4");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    expression = parse_expression(&parser);
+    
+    type_table = type_table_init();
+    resolver_init(&resolver, type_table);
+    resolve_expression(&resolver, expression);
+
+    ir_generator_init(&generator, resolver.global);
+    ir_generate_expression(&generator, expression);
+
+    assert_base(runner, generator.instructions->length == 9,
+        "Invalid number of instructions: %d, expected 9", generator.instructions->length);
+    assert_instruction(runner, generator.instructions->items[0], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[1], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[2], OP_MINUS);
+    assert_instruction(runner, generator.instructions->items[3], OP_MUL);
+    assert_instruction(runner, generator.instructions->items[4], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[5], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[6], OP_MINUS);
+    assert_instruction(runner, generator.instructions->items[7], OP_MUL);
+    assert_instruction(runner, generator.instructions->items[8], OP_ADD);
+
+    // dump_instructions(generator.instructions);
+
+    expression_free(expression);
+    ir_generator_free(&generator);
+    resolver_free(&resolver);
+    type_table_free(type_table);
+    parser_free(&parser);
+    lexer_free(&lexer);
 }
 
 
-static void test_generate_small_program()
+/*
+static void test_generate_small_program(Test_Runner* runner)
 {
-    printf("\tSmall program...");
-    printf("\n");
-    not_error = true;
-
     Lexer lexer;
     Parser parser;
     hashtable* type_table;
@@ -810,21 +929,42 @@ static void test_generate_small_program()
     type_table_free(type_table);
     parser_free(&parser);
     lexer_free(&lexer);
+}
+*/
 
-    if (not_error) printf("PASSED\n");
-    else printf("\n");
+
+Test_Set* ir_generator_test_set()
+{
+    Test_Set* set = test_set("IR Generator");
+
+    // Expressions
+    array_push(set->tests, test_case("Literal expression", test_generate_literal_expression));
+    array_push(set->tests, test_case("Unary expression", test_generate_unary_expression));
+    array_push(set->tests, test_case("Binary expression (arithmetic)", test_generate_binary_expression_arithmetic));
+    array_push(set->tests, test_case("Binary expression (comparison)", test_generate_binary_expression_comparison));
+    array_push(set->tests, test_case("Variable expression", test_generate_variable_expression));
+    array_push(set->tests, test_case("Assignment expression", test_generate_assignment_expression));
+    array_push(set->tests, test_case("Assignment expression (complex)", test_generate_assignment_expression_complex));
+    array_push(set->tests, test_case("Function expression", test_generate_function_expression));
+
+    // Statements
+    array_push(set->tests, test_case("If statement", test_generate_if_statement));
+    array_push(set->tests, test_case("While statement", test_generate_while_statement));
+    array_push(set->tests, test_case("Return statement", test_generate_return_statement));
+
+    // Declarations
+
+    // MISC
+    array_push(set->tests, test_case("Generate MISC arithmetics", test_generate_arithmetics));
+
+    set->length = set->tests->length;
+
+    return set;
 }
 
-
+/*
 void test_ir_generator()
 {
-    printf("Running IR generator tests...\n");
-
-    test_generate_literal_expression();
-    test_generate_unary_expression();
-    test_generate_binary_expression();
-    test_generate_variable_expression();
-    test_generate_assignment_expression();
     test_generate_index_expression();
     test_generate_function_expression();
     test_generate_call_expression();
@@ -839,3 +979,4 @@ void test_ir_generator()
 
     test_generate_small_program();
 }
+*/

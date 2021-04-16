@@ -664,10 +664,8 @@ struct Instruction
     char* arg2;
     char* result;
 
-    union {
-        int integer; // this is used to compute sizes, alignments etc. info like that
-        const char* string; // Field for label value?
-    } value;
+    int size; // this is used to compute sizes, alignments etc. info like that
+    const char* label;
 };
 
 
@@ -696,6 +694,7 @@ Instruction* instruction_goto_if_false(char* arg, char* label);
 void instruction_free(Instruction* instruction);
 void dump_instruction(Instruction* instruction);
 void dump_instructions(array* instructions);
+const char* operation_str(Operation operation);
 
 /*
  *  Code in basic block has only one entry point and one exit point, meaning

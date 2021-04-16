@@ -19,6 +19,7 @@ int main(int argc, char** argv)
     test_runner_append_test_set(&runner, parser_test_set());
     test_runner_append_test_set(&runner, resolver_test_set());
     test_runner_append_test_set(&runner, interpreter_test_set());
+    test_runner_append_test_set(&runner, ir_generator_test_set());
 
     clock_t tests_start = clock();
     test_runner_run(&runner);

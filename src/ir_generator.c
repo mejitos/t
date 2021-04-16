@@ -1,14 +1,6 @@
 #include "t.h"
 
 
-void instruction_free(Instruction* instruction)
-{
-    // TODO(timo): I should somehow free the allocated memory for the temps and labels
-    free(instruction);
-    instruction = NULL;
-}
-
-
 void ir_generator_init(IR_Generator* generator, Scope* global)
 {
     *generator = (IR_Generator) { .temp = 0,
@@ -28,15 +20,17 @@ void ir_generator_free(IR_Generator* generator)
 
     array_free(generator->instructions);
 
+    // NOTE(timo): The global scope will be freed by the resolver
+
     // NOTE(timo): Generator itself is not being freed since it is
     // initialized in the stack in top level function
 }
 
 
-static char* temp(IR_Generator* generator)
+static char* temp_label(IR_Generator* generator)
 {
-    char* t = malloc(sizeof (char) * 12 + 1);
-    snprintf(t, 13, "_t%d", generator->temp++);
+    char* t = xmalloc(sizeof (char) * 14 + 1);
+    snprintf(t, 15, "_t%d", generator->temp++);
 
     return t;
 }
@@ -44,8 +38,8 @@ static char* temp(IR_Generator* generator)
 
 static char* label(IR_Generator* generator)
 {
-    char* l = malloc(sizeof (char) * 12 + 1);
-    snprintf(l, 13, "_l%d", generator->label++);
+    char* l = xmalloc(sizeof (char) * 14 + 1);
+    snprintf(l, 15, "_l%d", generator->label++);
 
     return l;
 }
@@ -57,42 +51,34 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
     {
         case EXPRESSION_LITERAL:
         {
-            // NOTE(timo): The situation probably calls for generating the temp variables
-            // for all the literals/constants etc. and they just get optimized away later
-            char* result = temp(generator);
             char* arg = (char*)expression->literal->lexeme;
+            char* temp = temp_label(generator);
 
-            scope_declare(generator->local, symbol_temp(result, expression->type));
+            Instruction* instruction = instruction_copy(arg, temp);
 
-            //printf("\t%s := %s\n", result, arg);
-
-            Instruction* instruction = instruction_copy(arg, result);
             array_push(generator->instructions, instruction);
-            
-            return result;
+            scope_declare(generator->local, symbol_temp(instruction->result, expression->type));
+            free(temp);
 
-            // Generate nothing, just return the literal
-            // return (char*)expression->literal->lexeme;
+            // printf("\t%s := %s\n", instruction->result, arg);
+
+            return instruction->result;
         }
         case EXPRESSION_UNARY:
         {
-            char* operand = ir_generate_expression(generator, expression->unary.operand);
             char* operator = (char*)expression->unary._operator->lexeme;
-            char* result = temp(generator);
-
-            scope_declare(generator->local, symbol_temp(result, expression->type));
-
-            //printf("\t%s := %s %s\n", result, operator, operand);
+            char* operand = ir_generate_expression(generator, expression->unary.operand);
+            char* temp = temp_label(generator);
 
             Instruction* instruction;
 
             switch (expression->unary._operator->kind)
             {
                 case TOKEN_MINUS:
-                    instruction = instruction_minus(operand, result);
+                    instruction = instruction_minus(operand, temp);
                     break;
                 case TOKEN_NOT:
-                    instruction = instruction_neg(operand, result);
+                    instruction = instruction_neg(operand, temp);
                     break;
                 default:
                     // TODO(timo): Error
@@ -100,55 +86,54 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
             }
 
             array_push(generator->instructions, instruction);
+            scope_declare(generator->local, symbol_temp(instruction->result, expression->type));
+            free(temp);
 
-            return result;
+            // printf("\t%s := %s %s\n", instruction->result, operator, operand);
+
+            return instruction->result;
         
         }
         case EXPRESSION_BINARY:
         {
+            char* operator = (char*)expression->binary._operator->lexeme;
             char* left = ir_generate_expression(generator, expression->binary.left); 
             char* right = ir_generate_expression(generator, expression->binary.right);
-            char* operator = (char*)expression->binary._operator->lexeme;
-            // NOTE(timo): When we move this result into here, we get the correct ordering of the temp labels
-            char* result = temp(generator);
+            char* temp = temp_label(generator);
 
-            scope_declare(generator->local, symbol_temp(result, expression->type));
-
-            //printf("\t%s := %s %s %s\n", result, left, operator, right);
-            
             Instruction* instruction;
 
             switch (expression->binary._operator->kind)
             {
                 case TOKEN_PLUS:
-                    instruction = instruction_add(left, right, result);
+                    instruction = instruction_add(left, right, temp);
                     break;
                 case TOKEN_MINUS:
-                    instruction = instruction_sub(left, right, result);
+                    instruction = instruction_sub(left, right, temp);
                     break;
                 case TOKEN_MULTIPLY:
-                    instruction = instruction_mul(left, right, result);
+                    instruction = instruction_mul(left, right, temp);
                     break;
                 case TOKEN_DIVIDE:
-                    instruction = instruction_div(left, right, result);
+                    instruction = instruction_div(left, right, temp);
                     break;
                 case TOKEN_IS_EQUAL:
-                    instruction = instruction_eq(left, right, result);
+                    instruction = instruction_eq(left, right, temp);
                     break;
                 case TOKEN_NOT_EQUAL:
-                    instruction = instruction_neq(left, right, result);
+                    instruction = instruction_neq(left, right, temp);
                     break;
                 case TOKEN_LESS_THAN:
-                    instruction = instruction_lt(left, right, result);
+                    instruction = instruction_lt(left, right, temp);
                     break;
                 case TOKEN_LESS_THAN_EQUAL:
-                    instruction = instruction_lte(left, right, result);
+                    instruction = instruction_lte(left, right, temp);
                     break;
                 case TOKEN_GREATER_THAN:
-                    instruction = instruction_gt(left, right, result);
+                    instruction = instruction_gt(left, right, temp);
                     break;
                 case TOKEN_GREATER_THAN_EQUAL:
-                    instruction = instruction_gte(left, right, result);
+                    instruction = instruction_gte(left, right, temp);
                     break;
                 default:
                     // TODO(timo): Error
@@ -156,42 +141,37 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
             }
             
             array_push(generator->instructions, instruction);
+            scope_declare(generator->local, symbol_temp(instruction->result, expression->type));
+            free(temp);
 
-            return result;
+            // printf("\t%s := %s %s %s\n", result, left, operator, right);
+
+            return instruction->result;
         }
         case EXPRESSION_VARIABLE:
         {
-            // TODO(timo): I think we could just return the string and we can skip the
-            // unnecessary extra assign/store/move step
-            char* result = temp(generator);
             char* arg = (char*)expression->literal->lexeme;
+            char* temp = temp_label(generator);
 
-            scope_declare(generator->local, symbol_temp(result, expression->type));
+            Instruction* instruction = instruction_copy(arg, temp);
 
-            //printf("\t%s := %s\n", result, arg);
-
-            Instruction* instruction = instruction_copy(arg, result);
             array_push(generator->instructions, instruction);
+            scope_declare(generator->local, symbol_temp(instruction->result, expression->type));
+            free(temp);
 
-            return result;
+            // printf("\t%s := %s\n", result, arg);
 
-            // Generate nothing, just return the variable
-            // return (char*)expression->identifier->lexeme;
+            return instruction->result;
         }
         case EXPRESSION_ASSIGNMENT:
         {
-            // This is pretty much same as the copy instruction since we just access
-            // the variable and save it to the target variable or send it to the target
-            //
-            // Assignment happens pretty much only to the named variable so there is no
-            // need for temp variables
-            char* result = (char*)expression->assignment.variable->identifier->lexeme;
             char* arg = ir_generate_expression(generator, expression->assignment.value);
-
-            //printf("\t%s := %s\n", result, arg);
+            char* result = (char*)expression->assignment.variable->identifier->lexeme;
 
             Instruction* instruction = instruction_copy(arg, result);
             array_push(generator->instructions, instruction);
+
+            //printf("\t%s := %s\n", result, arg);
 
             return result;
         }
@@ -226,7 +206,7 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
             // NOTE(timo): At this point, the scope has been already set to the function scope
             // so therefore we already know the size of the function via the scope
             // We could also take this info at the code generation stage from the scope
-            instruction->value.integer = generator->local->offset;
+            instruction->size = generator->local->offset;
             
             // -----===== The function epilogue =====-----
             //printf("\tfunction_end\n");
@@ -257,8 +237,8 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
             // Call instruction
             // NOTE(timo): We cannot put the name of the function into temp variable?
             // char* arg = ir_generate_expression(generator, expression->call.variable);
-            char* arg = expression->call.variable->identifier->lexeme;
-            char* result = temp(generator);
+            char* arg = (char*)expression->call.variable->identifier->lexeme;
+            char* result = temp_label(generator);
 
             scope_declare(generator->local, symbol_temp(result, expression->type));
 
@@ -270,6 +250,8 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
             array_push(generator->instructions, instruction);
             
             // Pop the params from the stack
+            // TODO(timo): Since we already know the parameters, we can just
+            // pop them straight away without using temp variables
             for (int i = 0; i < arguments->length; i++)
             {
                 AST_Expression* argument = (AST_Expression*)arguments->items[i];
@@ -348,7 +330,9 @@ void ir_generate_statement(IR_Generator* generator, AST_Statement* statement)
             // TODO(timo): Quick hacky hack solution for break statements. There might be a better way.
             generator->not_in_loop = true;
             generator->while_exit = NULL;
-            
+
+            free(label_condition);
+            free(label_exit);
             break;
         }
         case STATEMENT_IF:
@@ -390,6 +374,9 @@ void ir_generate_statement(IR_Generator* generator, AST_Statement* statement)
 
                 instruction = instruction_label(label_exit);
                 array_push(generator->instructions, instruction);
+
+                free(label_else);
+                free(label_exit);
             }
             // if-then
             else
@@ -413,6 +400,8 @@ void ir_generate_statement(IR_Generator* generator, AST_Statement* statement)
 
                 instruction = instruction_label(label_exit);
                 array_push(generator->instructions, instruction);
+
+                free(label_exit);
             }
             break;
         }
