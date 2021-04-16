@@ -1,7 +1,6 @@
 #include "asserts.h"
 #include "tests.h"
 #include "../src/t.h"
-//#include "../src/array.h"
 
 
 static void test_resolve_literal_expression(Test_Runner* runner)
@@ -58,9 +57,6 @@ static void test_resolve_literal_expression(Test_Runner* runner)
         parser_free(&parser);
         lexer_free(&lexer);
     }
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -98,9 +94,6 @@ static void test_diagnose_integer_overflow_literal(Test_Runner* runner)
     type_table_free(type_table);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -151,9 +144,6 @@ static void test_resolve_unary_expression(Test_Runner* runner)
         parser_free(&parser);
         lexer_free(&lexer);
     }
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -206,9 +196,6 @@ static void test_diagnose_invalid_operand_types_unary_expression(Test_Runner* ru
         parser_free(&parser);
         lexer_free(&lexer);
     }
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -278,9 +265,6 @@ static void test_resolve_binary_expression(Test_Runner* runner)
         parser_free(&parser);
         lexer_free(&lexer);
     }
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -347,9 +331,6 @@ static void test_diagnose_invalid_operand_types_binary_expression(Test_Runner* r
         parser_free(&parser);
         lexer_free(&lexer);
     }
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -392,9 +373,6 @@ static void test_resolve_variable_expression(Test_Runner* runner)
     type_table_free(type_table);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -432,9 +410,6 @@ static void test_diagnose_referencing_variable_before_declaring(Test_Runner* run
     type_table_free(type_table);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -486,9 +461,6 @@ static void test_resolve_assignment_expression(Test_Runner* runner)
     type_table_free(type_table);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -532,9 +504,6 @@ static void test_diagnose_conflicting_types_assignment_expression(Test_Runner* r
     type_table_free(type_table);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -573,9 +542,6 @@ static void test_resolve_index_expression(Test_Runner* runner)
     type_table_free(type_table);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -619,9 +585,6 @@ static void test_diagnose_type_is_not_subscriptable_literal(Test_Runner* runner)
     type_table_free(type_table);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -665,9 +628,6 @@ static void test_diagnose_type_is_not_subscriptable_variable(Test_Runner* runner
     type_table_free(type_table);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -710,9 +670,6 @@ static void test_diagnose_type_is_not_subscriptable_function(Test_Runner* runner
     type_table_free(type_table);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -755,9 +712,6 @@ static void test_diagnose_invalid_array_subscript(Test_Runner* runner)
     type_table_free(type_table);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -800,9 +754,6 @@ static void test_diagnose_invalid_array_subscript_boundaries(Test_Runner* runner
     type_table_free(type_table);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -845,9 +796,6 @@ static void test_diagnose_array_subscript_not_argv(Test_Runner* runner)
     type_table_free(type_table);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -890,9 +838,6 @@ static void test_diagnose_array_subscript_not_main(Test_Runner* runner)
     type_table_free(type_table);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -978,9 +923,6 @@ static void test_resolve_function_expression(Test_Runner* runner)
     type_table_free(type_table);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -1023,9 +965,6 @@ static void test_resolve_call_expression(Test_Runner* runner)
     // TODO(timo): no arguments 
 
     // TODO(timo): assigning a value to variable from call expression
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -1074,9 +1013,6 @@ static void test_diagnose_callee_is_not_callable(Test_Runner* runner)
     // TODO(timo): literals
 
     // TODO(timo): array
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -1121,9 +1057,6 @@ static void test_diagnose_invalid_number_of_arguments(Test_Runner* runner)
     type_table_free(type_table);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -1168,9 +1101,6 @@ static void test_diagnose_invalid_type_of_argument(Test_Runner* runner)
     type_table_free(type_table);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -1253,9 +1183,6 @@ static void test_resolve_declaration_statement_variable(Test_Runner* runner)
     type_table_free(type_table);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
     
@@ -1296,9 +1223,6 @@ static void test_resolve_if_statement(Test_Runner* runner)
     // TODO(timo): If with then and else
     // TODO(timo): If with else ifs
     // TODO(timo): multiple ifs with one else at end
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -1334,9 +1258,6 @@ static void test_resolve_while_statement(Test_Runner* runner)
     type_table_free(type_table);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -1375,9 +1296,6 @@ static void test_resolve_return_statement(Test_Runner* runner)
     // TODO(timo): value from array subscript
 
     // TODO(timo): value from function call
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -1409,9 +1327,6 @@ static void test_resolve_break_statement(Test_Runner* runner)
     type_table_free(type_table);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -1458,9 +1373,6 @@ static void test_diagnose_no_break_statement_outside_loops(Test_Runner* runner)
         parser_free(&parser);
         lexer_free(&lexer);
     }
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -1544,9 +1456,6 @@ static void test_resolve_variable_declaration(Test_Runner* runner)
     type_table_free(type_table);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -1630,9 +1539,6 @@ static void test_resolve_multiple_global_variable_declarations(Test_Runner* runn
     type_table_free(type_table);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -1671,9 +1577,6 @@ static void test_resolve_function_declaration(Test_Runner* runner)
     type_table_free(type_table);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 

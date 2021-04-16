@@ -239,6 +239,35 @@ AST_Expression* error_expression()
 }
 
 
+stringbuilder* expression_to_string(AST_Expression* expression, stringbuilder* sb)
+{
+    switch (expression->kind)
+    {
+        case EXPRESSION_LITERAL:
+            sb_append(sb, expression->literal->lexeme);
+            break;
+        case EXPRESSION_BINARY:
+            sb_append(sb, "(");
+            expression_to_string(expression->binary.left, sb);
+            sb_append(sb, expression->binary._operator->lexeme);
+            expression_to_string(expression->binary.right, sb);
+            sb_append(sb, ")");
+            break;
+        case EXPRESSION_UNARY:
+            sb_append(sb, "(");
+            sb_append(sb, expression->unary._operator->lexeme);
+            expression_to_string(expression->unary.operand, sb);
+            sb_append(sb, ")");
+            break;
+        default:
+            printf("Error in expression_to_string()\n");
+            exit(1);
+    }
+
+    return sb;
+}
+
+
 char* expression_str(Expression_Kind kind)
 {
     switch (kind)

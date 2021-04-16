@@ -4,38 +4,6 @@
 #include "../src/stringbuilder.h"
 
 
-static bool not_error = true;
-
-
-stringbuilder* expression_to_string(AST_Expression* expression, stringbuilder* sb)
-{
-    switch (expression->kind)
-    {
-        case EXPRESSION_LITERAL:
-            sb_append(sb, expression->literal->lexeme);
-            break;
-        case EXPRESSION_BINARY:
-            sb_append(sb, "(");
-            expression_to_string(expression->binary.left, sb);
-            sb_append(sb, expression->binary._operator->lexeme);
-            expression_to_string(expression->binary.right, sb);
-            sb_append(sb, ")");
-            break;
-        case EXPRESSION_UNARY:
-            sb_append(sb, "(");
-            sb_append(sb, expression->unary._operator->lexeme);
-            expression_to_string(expression->unary.operand, sb);
-            sb_append(sb, ")");
-            break;
-        default:
-            printf("Error in expression_to_string()\n");
-            exit(1);
-    }
-
-    return sb;
-}
-
-
 static void test_literal_expression_integer(Test_Runner* runner)
 {
     Lexer lexer;
@@ -54,9 +22,6 @@ static void test_literal_expression_integer(Test_Runner* runner)
     expression_free(expression);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
    
@@ -93,9 +58,6 @@ static void test_literal_expression_boolean(Test_Runner* runner)
     expression_free(expression);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -119,9 +81,6 @@ static void test_unary_expression_plus(Test_Runner* runner)
     expression_free(expression);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -145,9 +104,6 @@ static void test_unary_expression_minus(Test_Runner* runner)
     expression_free(expression);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -173,9 +129,6 @@ static void test_binary_expression_plus(Test_Runner* runner)
     expression_free(expression);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -201,9 +154,6 @@ static void test_binary_expression_minus(Test_Runner* runner)
     expression_free(expression);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -229,9 +179,6 @@ static void test_binary_expression_multiply(Test_Runner* runner)
     expression_free(expression);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -257,9 +204,6 @@ static void test_binary_expression_division(Test_Runner* runner)
     expression_free(expression);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -285,9 +229,6 @@ static void test_binary_expression_equal(Test_Runner* runner)
     expression_free(expression);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -313,9 +254,6 @@ static void test_binary_expression_not_equal(Test_Runner* runner)
     expression_free(expression);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -341,9 +279,6 @@ static void test_binary_expression_less_than(Test_Runner* runner)
     expression_free(expression);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -369,9 +304,6 @@ static void test_binary_expression_less_than_equal(Test_Runner* runner)
     expression_free(expression);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -397,9 +329,6 @@ static void test_binary_expression_greater_than(Test_Runner* runner)
     expression_free(expression);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -425,9 +354,6 @@ static void test_binary_expression_greater_than_equal(Test_Runner* runner)
     expression_free(expression);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -453,9 +379,6 @@ static void test_logical_expression_and(Test_Runner* runner)
     expression_free(expression);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -481,9 +404,6 @@ static void test_logical_expression_or(Test_Runner* runner)
     expression_free(expression);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -507,9 +427,6 @@ static void test_logical_expression_not(Test_Runner* runner)
     expression_free(expression);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -531,9 +448,6 @@ static void test_variable_expression(Test_Runner* runner)
     expression_free(expression);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -558,9 +472,6 @@ static void test_assignment_expression(Test_Runner* runner)
     expression_free(expression);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -585,9 +496,6 @@ static void test_index_expression(Test_Runner* runner)
     expression_free(expression);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -642,9 +550,6 @@ static void test_function_expression(Test_Runner* runner)
     expression_free(expression);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -680,9 +585,6 @@ static void test_call_expression(Test_Runner* runner)
     expression_free(expression);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -760,9 +662,6 @@ static void test_order_of_arithmetic_operations(Test_Runner* runner)
     expression_free(expression);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -785,9 +684,6 @@ static void test_expression_statement(Test_Runner* runner)
     statement_free(statement);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -810,9 +706,6 @@ static void test_block_statement(Test_Runner* runner)
     statement_free(statement);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -836,9 +729,6 @@ static void test_if_statement(Test_Runner* runner)
     statement_free(statement);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -861,9 +751,6 @@ static void test_while_statement(Test_Runner* runner)
     statement_free(statement);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -884,9 +771,6 @@ static void test_break_statement(Test_Runner* runner)
     statement_free(statement);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -908,9 +792,6 @@ static void test_return_statement(Test_Runner* runner)
     statement_free(statement);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -935,9 +816,6 @@ static void test_declaration_statement(Test_Runner* runner)
     lexer_free(&lexer);
 
     // TODO(timo): Function declaration
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -982,9 +860,6 @@ static void test_type_specifier(Test_Runner* runner)
 
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -1005,9 +880,6 @@ static void test_variable_declaration(Test_Runner* runner)
     declaration_free(declaration);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -1031,9 +903,6 @@ static void test_function_declaration(Test_Runner* runner)
     declaration_free(declaration);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -1105,9 +974,6 @@ static void test_panic_mode_statement(Test_Runner* runner)
     statement_free(statement);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -1209,9 +1075,6 @@ static void test_panic_mode_declaration(Test_Runner* runner)
 
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -1286,9 +1149,6 @@ static void test_diagnose_invalid_type_specifier(Test_Runner* runner)
     statement_free(statement);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -1319,9 +1179,6 @@ static void test_diagnose_invalid_primary_expression_starter(Test_Runner* runner
     expression_free(expression);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -1372,9 +1229,6 @@ static void test_diagnose_invalid_assignment_target(Test_Runner* runner)
     expression_free(expression);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -1445,9 +1299,6 @@ static void test_diagnose_missing_semicolon(Test_Runner* runner)
     statement_free(statement);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -1478,9 +1329,6 @@ static void test_diagnose_missing_closing_curlybrace(Test_Runner* runner)
     statement_free(statement);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -1517,9 +1365,6 @@ static void test_diagnose_missing_closing_parenthesis(Test_Runner* runner)
     lexer_free(&lexer);
 
     // TODO(timo): function parameters
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -1550,9 +1395,6 @@ static void test_diagnose_invalid_while_statement(Test_Runner* runner)
     statement_free(statement);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -1583,9 +1425,6 @@ static void test_diagnose_invalid_if_statement(Test_Runner* runner)
     statement_free(statement);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -1634,9 +1473,6 @@ static void test_small_program(Test_Runner* runner)
     declaration_free(declaration);
     parser_free(&parser);
     lexer_free(&lexer);
-
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 

@@ -10,6 +10,7 @@
 #include <stdarg.h>     // for varargs
 
 #include "array.h"      // for my dynamic arrays
+#include "stringbuilder.h"  // for my stringbuilder
 #include "hashtable.h"  // for my hashtable implementation
 #include "memory.h"     // for custom x-allocators
 
@@ -354,6 +355,7 @@ AST_Expression* function_expression(array* parameters, int arity, AST_Statement*
 AST_Expression* call_expression(AST_Expression* variable, array* arguments);
 AST_Expression* error_expression();
 char* expression_str(Expression_Kind kind);
+stringbuilder* expression_to_string(AST_Expression* expression, stringbuilder* sb);
 char* statement_str(Statement_Kind kind);
 char* declaration_str(Declaration_Kind kind);
 char* type_specifier_str(Type_Specifier specifier);
@@ -631,14 +633,6 @@ typedef enum Operation
     OP_LABEL,
 } Operation;
 
-// Label
-// Symbolic labels used to alter the flow of control
-// Represents the index of a three address instruction in the sequence of instructions
-// Actual indexes can be substituted for the labels either by making separate pass or backpatching
-//
-// Running numbers for the instructions could also be used. I think I'll use the labels
-// since they are the closest to the general assembly and in general they just make more sense
-
 typedef struct Instruction Instruction;
 
 // NOTE(timo): Address can be a name, a constant or a compiler generated temporary
@@ -661,14 +655,11 @@ typedef struct Address
 } Address;
 
 
-// When using triples, the result of the operation x op y is referred by its position
-// rather than by an explicit temporary name
-//
-// Quads are easier to handle and undestand for now, so we use quads
 struct Instruction 
 {
-    // position / line / index?
     Operation operation;
+
+    // TODO(timo): All of these could or should be pointers to the symbol table
     char* arg1;
     char* arg2;
     char* result;
@@ -677,7 +668,6 @@ struct Instruction
         int integer; // this is used to compute sizes, alignments etc. info like that
         const char* string; // Field for label value?
     } value;
-    // Instruction* next; // Linked list for this one since it is easier to modify?
 };
 
 
@@ -703,6 +693,7 @@ Instruction* instruction_return(char* arg);
 Instruction* instruction_label(char* label);
 Instruction* instruction_goto(char* label);
 Instruction* instruction_goto_if_false(char* arg, char* label);
+void instruction_free(Instruction* instruction);
 void dump_instruction(Instruction* instruction);
 void dump_instructions(array* instructions);
 
@@ -758,7 +749,8 @@ typedef struct Code_Generator
     Scope* global;
     Scope* local;
 
-    // TODO
+    // TODO(timo): this should probably just come via options or something
+    // and not be saved in here
     const char* asm_file;
 
     // Used for register allocation stuff

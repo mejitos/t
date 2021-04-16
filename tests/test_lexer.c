@@ -19,9 +19,6 @@ static void test_skip_whitespace(Test_Runner* runner)
     assert_token(runner, (Token*)*lexer.tokens->items, TOKEN_EOF, "<EoF>");
 
     lexer_free(&lexer);
-    
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -38,9 +35,6 @@ static void test_skip_comments_1(Test_Runner* runner)
     assert_token(runner, (Token*)*lexer.tokens->items, TOKEN_EOF, "<EoF>");
 
     lexer_free(&lexer);
-    
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -57,9 +51,6 @@ static void test_skip_comments_2(Test_Runner* runner)
     assert_token(runner, (Token*)*lexer.tokens->items, TOKEN_EOF, "<EoF>");
 
     lexer_free(&lexer);
-    
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -85,9 +76,6 @@ static void test_arithmetic_operators(Test_Runner* runner)
 
     lexer.tokens->items -= 4; // unwinding of the array
     lexer_free(&lexer);
-    
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -117,9 +105,6 @@ static void test_comparison_operators(Test_Runner* runner)
 
     lexer.tokens->items -= 6; // unwinding of the array
     lexer_free(&lexer);
-    
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -143,9 +128,6 @@ static void test_assignment_operators(Test_Runner* runner)
 
     lexer.tokens->items -= 3; // unwinding of the array
     lexer_free(&lexer);
-    
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -179,9 +161,6 @@ static void test_punctuations(Test_Runner* runner)
 
     lexer.tokens->items -= 8; // unwinding of the array
     lexer_free(&lexer);
-    
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -199,9 +178,6 @@ static void test_misc_operators(Test_Runner* runner)
 
     lexer.tokens->items -= 1; // unwinding of the array
     lexer_free(&lexer);
-    
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -223,9 +199,6 @@ static void test_integer_literals(Test_Runner* runner)
 
     lexer.tokens->items -= 2; // unwinding of the array
     lexer_free(&lexer);
-    
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -247,9 +220,6 @@ static void test_boolean_literals(Test_Runner* runner)
 
     lexer.tokens->items -= 2; // unwinding of the array
     lexer_free(&lexer);
-    
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -293,9 +263,6 @@ static void test_keywords(Test_Runner* runner)
 
     lexer.tokens->items -= 13; // unwinding of the array
     lexer_free(&lexer);
-    
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -319,9 +286,6 @@ static void test_identifiers(Test_Runner* runner)
 
     lexer.tokens->items -= 3; // unwinding of the array
     lexer_free(&lexer);
-    
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -350,9 +314,6 @@ static void test_identifier_edge_cases(Test_Runner* runner)
 
     lexer.tokens->items -= 5; // unwind the array
     lexer_free(&lexer);
-    
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -382,9 +343,6 @@ static void test_sequential_arithmetic_operators(Test_Runner* runner)
 
     lexer.tokens->items -= 12; // unwind the array
     lexer_free(&lexer);
-    
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -417,9 +375,6 @@ static void test_sequential_comparison_operators(Test_Runner* runner)
 
     lexer.tokens->items -= 14; // unwind the array
     lexer_free(&lexer);
-    
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -444,9 +399,6 @@ static void test_diagnose_invalid_character(Test_Runner* runner)
     assert_position(runner, diagnostic->position, 1, 4, 1, 4);
 
     lexer_free(&lexer);
-    
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -471,9 +423,6 @@ static void test_diagnose_invalid_not_equal(Test_Runner* runner)
     assert_position(runner, diagnostic->position, 1, 5, 1, 6);
 
     lexer_free(&lexer);
-    
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 
@@ -510,9 +459,6 @@ static void test_multiple_diagnostics(Test_Runner* runner)
     assert_position(runner, diagnostic->position, 1, 14, 1, 14);
 
     lexer_free(&lexer);
-    
-    if (runner->error) runner->failed++;
-    else runner->passed++;
 }
 
 

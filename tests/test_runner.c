@@ -110,8 +110,16 @@ void test_runner_run(Test_Runner* runner)
 
             (*_case->test)(runner);
 
-            if (runner->error) printf("FAILED\n");
-            else printf("PASSED\n");
+            if (runner->error) 
+            {
+                runner->failed++;
+                printf("FAILED\n");
+            }
+            else 
+            {
+                runner->passed++;
+                printf("PASSED\n");
+            }
 
             runner->error = false;
         }
