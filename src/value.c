@@ -31,3 +31,14 @@ bool value_as_integer(Value value)
 {
     return value.integer;
 }
+
+
+const char* value_str(Value_Type type)
+{
+    switch (type)
+    {
+        case VALUE_INTEGER: return "integer";
+        case VALUE_BOOLEAN: return "boolean";
+        default:            return "invalid value type";
+    }
+}

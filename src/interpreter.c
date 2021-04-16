@@ -1,4 +1,5 @@
 #include "t.h"
+#include "common.h"
 
 
 // void interpreter_init(Interpreter* interpreter)
@@ -8,6 +9,19 @@ void interpreter_init(Interpreter* interpreter, Scope* global)
     *interpreter = (Interpreter) { .global = global };
 
     interpreter->local = interpreter->global;
+}
+
+
+void interpreter_free(Interpreter* interpreter)
+{
+    // NOTE(timo): At the moment there is no need to free anything since the
+    // global scope is being freed by the resolver and thats pretty much
+    // everything there is right now to be freed
+
+    // scope_free(interpreter->global);
+
+    // NOTE(timo): No need to free interpreter since it is variable
+    // in stack at the top level
 }
 
 
@@ -95,7 +109,7 @@ static Value evaluate_binary_expression(Interpreter* interpreter, AST_Expression
 
 Value evaluate_variable_expression(Interpreter* interpreter, AST_Expression* expression)
 {
-    Symbol* symbol = scope_lookup(interpreter->global, expression->identifier->lexeme);
+    Symbol* symbol = scope_lookup(interpreter->local, expression->identifier->lexeme);
 
     // NOTE(timo): We could check for null value, but resolver should 
     // have handled this. The famous last words.
@@ -107,7 +121,7 @@ Value evaluate_variable_expression(Interpreter* interpreter, AST_Expression* exp
 Value evaluate_assignment_expression(Interpreter* interpreter, AST_Expression* expression)
 {
     AST_Expression* variable = expression->assignment.variable;
-    Symbol* symbol = scope_lookup(interpreter->global, variable->identifier->lexeme);
+    Symbol* symbol = scope_lookup(interpreter->local, variable->identifier->lexeme);
     
     // TODO(timo): Some error handling here?
     symbol->value = evaluate_expression(interpreter, expression->assignment.value);
@@ -216,10 +230,19 @@ static void evaluate_variable_declaration(Interpreter* interpreter, AST_Declarat
     // TODO(timo): Since we are interested in different things here in interpreter,
     // we can't just create the symbols in the same way as in resolver
     // Symbol* symbol = symbol_variable(declaration);
-    Symbol* symbol = symbol_variable(declaration->identifier->lexeme, NULL);
-    symbol->value = evaluate_expression(interpreter, declaration->initializer);
 
-    scope_declare(interpreter->global, symbol);
+    Symbol* symbol = scope_lookup(interpreter->local, declaration->identifier->lexeme);
+
+    if (symbol == NULL)
+    {
+        Symbol* symbol = symbol_variable(declaration->identifier->lexeme, NULL);
+        // symbol->value = evaluate_expression(interpreter, declaration->initializer);
+        scope_declare(interpreter->local, symbol);
+    }
+    // NOTE(timo): Resolver does not set values for all the symbols as default so
+    symbol->value = evaluate_expression(interpreter, declaration->initializer);
+    // we need to set them separately in the interpreter
+    // TODO(timo): Else declare? For now all the variables are resolved at compiletime
 }
 
 
@@ -347,38 +370,10 @@ teardown_lexer:
 // void interpret_from_file(const char* path)
 Value interpret_from_file(const char* path)
 {
-    FILE* file = fopen(path, "r");
+    const char* source = read_file(path);
+    Value return_value = interpret(source);
 
-    if (file == NULL)
-    {
-        printf("Could not open file '%s'\n", path);
-    }
-
-    fseek(file, 0L, SEEK_END);
-    size_t file_size = ftell(file);
-    rewind(file);
-    char* buffer = malloc(file_size * sizeof (char) + 1);
-    
-    if (buffer == NULL)
-    {
-        printf("Malloc failed. Not enough memory to read file '%s'\n", path);
-        exit(1);
-    }
-
-    size_t bytes_read = fread(buffer, sizeof (char), file_size, file);
-
-    if (bytes_read < file_size)
-    {
-        printf("Could not read file '%s'\n", path);
-        exit(1);
-    }
-
-    buffer[bytes_read] = 0;
-    fclose(file);
-    
-    Value return_value = interpret(buffer);
-
-    free(buffer);
+    free((char*)source);
 
     return return_value;
 }

@@ -196,6 +196,7 @@ bool is_bool(Value value);
 */
 bool value_as_boolean(Value value);
 bool value_as_integer(Value value);
+const char* value_str(Value_Type type);
 
 
 /*

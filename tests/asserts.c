@@ -93,3 +93,11 @@ void assert_type(Test_Runner* runner, Type_Kind actual, Type_Kind expected)
     assert_base(runner, actual == expected,
         "Invalid type '%s', expected '%s'", type_as_string(actual), type_as_string(expected));
 }
+
+
+void assert_value(Test_Runner* runner, Value actual, Value_Type expected_type, int expected_value) {
+    assert_base(runner, actual.type == expected_type,
+        "Invalid value type '%s', expected '%s'", value_str(actual.type), value_str(expected_type));
+    assert_base(runner, actual.integer == expected_value,
+        "Invalid value '%d', expected '%d'", actual.integer, expected_value);
+}

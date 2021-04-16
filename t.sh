@@ -60,6 +60,7 @@ case $COMMAND in
                                                                                    src/ast.c 
                                                                                    src/symbol.c 
                                                                                    src/type.c 
+                                                                                   src/value.c 
                                                                                    src/token.c 
                                                                                    src/memory.c 
                                                                                    src/common.c 
@@ -94,6 +95,7 @@ case $COMMAND in
                                                                                    src/ast.c 
                                                                                    src/symbol.c 
                                                                                    src/type.c 
+                                                                                   src/value.c 
                                                                                    src/token.c 
                                                                                    src/memory.c 
                                                                                    src/common.c

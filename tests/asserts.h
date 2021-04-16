@@ -21,6 +21,7 @@ void assert_statement(Test_Runner* runner, Statement_Kind actual, Statement_Kind
 void assert_declaration(Test_Runner* runner, Declaration_Kind actual, Declaration_Kind expected);
 void assert_type_specifier(Test_Runner* runner, Type_Specifier actual, Type_Specifier expected);
 void assert_type(Test_Runner* runner, Type_Kind actual, Type_Kind expected);
+void assert_value(Test_Runner* runner, Value actual, Value_Type expected_type, int expected_value);
 
 
 #endif
