@@ -264,27 +264,27 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
             {
                 case OP_EQ:
                     fprintf(generator->output,
-                        "\tjne %s\n", instruction->value.string);
+                        "\tjne %s\n", instruction->label);
                     break;
                 case OP_NEQ:
                     fprintf(generator->output,
-                        "\tje %s\n", instruction->value.string);
+                        "\tje %s\n", instruction->label);
                     break;
                 case OP_LT:
                     fprintf(generator->output,
-                        "\tjge %s\n", instruction->value.string);
+                        "\tjge %s\n", instruction->label);
                     break;
                 case OP_LTE:
                     fprintf(generator->output,
-                        "\tjg %s\n", instruction->value.string);
+                        "\tjg %s\n", instruction->label);
                     break;
                 case OP_GT:
                     fprintf(generator->output,
-                        "\tjle %s\n", instruction->value.string);
+                        "\tjle %s\n", instruction->label);
                     break;
                 case OP_GTE:
                     fprintf(generator->output,
-                        "\tjl %s\n", instruction->value.string);
+                        "\tjl %s\n", instruction->label);
                     break;
                 default:
                     // TODO(timo): Create diagnostic
@@ -335,20 +335,20 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
         case OP_LABEL:
         {
             // If the label is function symbol -> change the scope
-            Symbol* symbol = scope_lookup(generator->local, instruction->value.string);
+            Symbol* symbol = scope_lookup(generator->local, instruction->label);
 
             if (symbol != NULL && symbol->type->kind == TYPE_FUNCTION)
             {
                 generator->local = symbol->type->function.scope;
             }
 
-            fprintf(generator->output, "%s:\n", instruction->value.string);
+            fprintf(generator->output, "%s:\n", instruction->label);
             break;
         }
         case OP_GOTO:
         {
             fprintf(generator->output,
-                "\tjmp %s\t\t; --\n", instruction->value.string);
+                "\tjmp %s\t\t; --\n", instruction->label);
             break;
         }
         case OP_FUNCTION_BEGIN:
@@ -362,7 +362,7 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
                 "\tmov\trbp, rsp\t\t; started stack frame\n");
 
             fprintf(generator->output,
-                "\tsub\trsp, %d\t\t; allocate memory for local variables from stack\n", instruction->value.integer);
+                "\tsub\trsp, %d\t\t; allocate memory for local variables from stack\n", instruction->size);
 
             // TODO(timo): Save the parameters to the local variables in here
 
