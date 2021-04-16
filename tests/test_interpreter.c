@@ -206,8 +206,8 @@ static void test_evaluate_variable_expression(Test_Runner* runner)
     
     statement_free(statement_block);
     interpreter_free(&interpreter);
-    type_table_free(type_table);
     resolver_free(&resolver);
+    type_table_free(type_table);
     parser_free(&parser);
     lexer_free(&lexer);
 }
@@ -304,8 +304,8 @@ static void test_evaluate_variable_declaration(Test_Runner* runner)
         assert_value(runner, value, results[i][0], results[i][1]);
         
         declaration_free(declaration);
-        type_table_free(type_table);
         resolver_free(&resolver);
+        type_table_free(type_table);
         parser_free(&parser);
         lexer_free(&lexer);
     }
