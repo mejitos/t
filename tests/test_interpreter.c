@@ -390,6 +390,46 @@ static void test_example_trivial_arithmetics(Test_Runner* runner)
 }
 
 
+static void test_example_if_1(Test_Runner* runner)
+{
+    Value return_value = interpret_from_file("./examples/if_1.t");
+    assert_value(runner, return_value, VALUE_INTEGER, 0);
+
+    if (runner->error) runner->failed++;
+    else runner->passed++;
+}
+
+
+static void test_example_if_7(Test_Runner* runner)
+{
+    Value return_value = interpret_from_file("./examples/if_7.t");
+    assert_value(runner, return_value, VALUE_INTEGER, 1);
+
+    if (runner->error) runner->failed++;
+    else runner->passed++;
+}
+
+
+static void test_example_while_1(Test_Runner* runner)
+{
+    Value return_value = interpret_from_file("./examples/while_loop_1.t");
+    assert_value(runner, return_value, VALUE_INTEGER, 4950);
+
+    if (runner->error) runner->failed++;
+    else runner->passed++;
+}
+
+
+static void test_example_while_2(Test_Runner* runner)
+{
+    Value return_value = interpret_from_file("./examples/while_loop_2.t");
+    assert_value(runner, return_value, VALUE_INTEGER, 105);
+
+    if (runner->error) runner->failed++;
+    else runner->passed++;
+}
+
+
 Test_Set* interpreter_test_set()
 {
     Test_Set* set = test_set("Interpreter");
@@ -411,6 +451,12 @@ Test_Set* interpreter_test_set()
     array_push(set->tests, test_case("Example file: trivial_multiply.t", test_example_trivial_multiply));
     array_push(set->tests, test_case("Example file: trivial_divide.t", test_example_trivial_divide));
     array_push(set->tests, test_case("Example file: trivial_arithmetics.t", test_example_trivial_arithmetics));
+
+    array_push(set->tests, test_case("Example file: if_1.t", test_example_if_1));
+    array_push(set->tests, test_case("Example file: if_7.t", test_example_if_7));
+
+    array_push(set->tests, test_case("Example file: while_loop_1.t", test_example_while_1));
+    array_push(set->tests, test_case("Example file: while_loop_2.t", test_example_while_2));
 
     set->length = set->tests->length;
 

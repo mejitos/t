@@ -157,30 +157,46 @@ Value evaluate_expression(Interpreter* interpreter, AST_Expression* expression)
 
 static void evaluate_expression_statement(Interpreter* interpreter, AST_Statement* statement)
 {
-    //
+    assert(statement->kind == STATEMENT_EXPRESSION);
+
+    evaluate_expression(interpreter, statement->expression);
 }
 
 
 static void evaluate_block_statement(Interpreter* interpreter, AST_Statement* statement)
 {
-    // begin scope
+    assert(statement->kind == STATEMENT_BLOCK);
 
     for (int i = 0; i < statement->block.statements->length; i++)
         evaluate_statement(interpreter, statement->block.statements->items[i]);
-
-    // leave scope
 }
 
 
 static void evaluate_if_statement(Interpreter* interpreter, AST_Statement* statement)
 {
-    //
+    assert(statement->kind == STATEMENT_IF);
+
+    Value condition = evaluate_expression(interpreter, statement->_if.condition);
+    
+    if (condition.boolean)
+        evaluate_statement(interpreter, statement->_if.then);
+    else if (statement->_if._else != NULL)
+        evaluate_statement(interpreter, statement->_if._else);
 }
 
 
 static void evaluate_while_statement(Interpreter* interpreter, AST_Statement* statement)
 {
-    //
+    assert(statement->kind == STATEMENT_WHILE);
+
+    Value condition = evaluate_expression(interpreter, statement->_while.condition);
+
+    while (condition.boolean)
+    {
+        evaluate_statement(interpreter, statement->_while.body);
+        // TODO(timo): How to handle break? Add break flag into interpreter and check it here? Or use goto?
+        condition = evaluate_expression(interpreter, statement->_while.condition);
+    }
 }
 
 
@@ -198,7 +214,6 @@ void evaluate_statement(Interpreter* interpreter, AST_Statement* statement)
             evaluate_expression_statement(interpreter, statement);
             break;
         case STATEMENT_DECLARATION:
-            // TODO(timo): Is this enough?
             evaluate_declaration(interpreter, statement->declaration);
             break;
         case STATEMENT_BLOCK:
@@ -239,10 +254,10 @@ static void evaluate_variable_declaration(Interpreter* interpreter, AST_Declarat
         // symbol->value = evaluate_expression(interpreter, declaration->initializer);
         scope_declare(interpreter->local, symbol);
     }
-    // NOTE(timo): Resolver does not set values for all the symbols as default so
-    symbol->value = evaluate_expression(interpreter, declaration->initializer);
+    // NOTE(timo): Resolver does not set values for the symbols as a default, so
     // we need to set them separately in the interpreter
-    // TODO(timo): Else declare? For now all the variables are resolved at compiletime
+    symbol->value = evaluate_expression(interpreter, declaration->initializer);
+    // TODO(timo): Else declare the symbol? For now all the variables are resolved at compiletime
 }
 
 
@@ -333,7 +348,6 @@ Value interpret(const char* source)
     // TODO(timo): Create a program struct and evaluate it?
     // NOTE(timo): At this point we should handle the arguments and options
     // Then we should just evaluate the body of the program
-    // evaluate_declaration(&interpreter, program);
     Symbol* main = scope_lookup(resolver.global, "main");
     interpreter.local = main->type->function.scope;
 
