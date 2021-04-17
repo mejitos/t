@@ -217,13 +217,13 @@ static AST_Statement* parse_if_statement(Parser* parser)
     advance(parser); // skip the keyword
     AST_Expression* condition = parse_expression(parser);
     expect_token(parser, TOKEN_THEN, "then", false);
-    AST_Statement* then = parse_block_statement(parser);
+    AST_Statement* then = parse_statement(parser);
     AST_Statement* _else = NULL;
 
     if (parser->current_token->kind == TOKEN_ELSE)
     {
         advance(parser);
-        _else = parse_block_statement(parser);
+        _else = parse_statement(parser);
     }
 
     return if_statement(condition, then, _else);
@@ -235,7 +235,7 @@ static AST_Statement* parse_while_statement(Parser* parser)
     advance(parser); // skip the keyword
     AST_Expression* condition = parse_expression(parser);
     expect_token(parser, TOKEN_DO, "do", false);
-    AST_Statement* body = parse_block_statement(parser);
+    AST_Statement* body = parse_statement(parser);
 
     return while_statement(condition, body);
 }

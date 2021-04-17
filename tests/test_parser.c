@@ -709,12 +709,55 @@ static void test_block_statement(Test_Runner* runner)
 }
 
 
-static void test_if_statement(Test_Runner* runner)
+static void test_if_statement_1(Test_Runner* runner)
+{
+    Lexer lexer;
+    Parser parser;
+    AST_Statement* statement;
+    
+    // block statement
+    lexer_init(&lexer, "if a == b then { do_something; }");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    statement = parse_statement(&parser);
+
+    assert_statement(runner, statement->kind, STATEMENT_IF);
+    assert_expression(runner, statement->_if.condition->kind, EXPRESSION_BINARY);
+    assert_statement(runner, statement->_if.then->kind, STATEMENT_BLOCK);
+    assert_base(runner, statement->_if._else == NULL,
+        "Got an else-block when it was not expected");
+
+    statement_free(statement);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    // expression statement
+    lexer_init(&lexer, "if a == b then do_something;");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    statement = parse_statement(&parser);
+
+    assert_statement(runner, statement->kind, STATEMENT_IF);
+    assert_expression(runner, statement->_if.condition->kind, EXPRESSION_BINARY);
+    assert_statement(runner, statement->_if.then->kind, STATEMENT_EXPRESSION);
+    assert_base(runner, statement->_if._else == NULL,
+        "Got an else-block when it was not expected");
+
+    statement_free(statement);
+    parser_free(&parser);
+    lexer_free(&lexer);
+}
+
+
+static void test_if_statement_2(Test_Runner* runner)
 {
     Lexer lexer;
     Parser parser;
     AST_Statement* statement;
 
+    // with block statements
     lexer_init(&lexer, "if a == b then { do_something; } else { do_else; }");
     lex(&lexer);
 
@@ -729,6 +772,97 @@ static void test_if_statement(Test_Runner* runner)
     statement_free(statement);
     parser_free(&parser);
     lexer_free(&lexer);
+
+    // with expression statements
+    lexer_init(&lexer, "if a == b then do_something; else do_else;");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    statement = parse_statement(&parser);
+
+    assert_statement(runner, statement->kind, STATEMENT_IF);
+    assert_expression(runner, statement->_if.condition->kind, EXPRESSION_BINARY);
+    assert_statement(runner, statement->_if.then->kind, STATEMENT_EXPRESSION);
+    assert_statement(runner, statement->_if._else->kind, STATEMENT_EXPRESSION);
+
+    statement_free(statement);
+    parser_free(&parser);
+    lexer_free(&lexer);
+}
+
+
+static void test_if_statement_3(Test_Runner* runner)
+{
+    Lexer lexer;
+    Parser parser;
+    AST_Statement* statement;
+    char* source;
+    
+    // TODO(timo): with block statements
+
+    // with expression statements
+    source = "if a == b then do_something;\n"
+             "else if a > b then do_something_else;\n"
+             "else do_else;";
+
+    lexer_init(&lexer, source);
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    statement = parse_statement(&parser);
+
+    assert_statement(runner, statement->kind, STATEMENT_IF);
+    assert_expression(runner, statement->_if.condition->kind, EXPRESSION_BINARY);
+    assert_statement(runner, statement->_if.then->kind, STATEMENT_EXPRESSION);
+    assert_statement(runner, statement->_if._else->kind, STATEMENT_IF);
+    assert_statement(runner, statement->_if._else->_if.then->kind, STATEMENT_EXPRESSION);
+    assert_statement(runner, statement->_if._else->_if._else->kind, STATEMENT_EXPRESSION);
+
+    statement_free(statement);
+    parser_free(&parser);
+    lexer_free(&lexer);
+}
+
+
+static void test_if_statement_4(Test_Runner* runner)
+{
+    Lexer lexer;
+    Parser parser;
+    AST_Statement* statement;
+    char* source;
+    
+    // TODO(timo): with block statements
+
+    // with expression statements
+    source = "if a == b then do_something;\n"
+             "else if a > b then do_something_else;\n"
+             "else if a < b then do_something_else;\n"
+             "else if a >= b then do_something_else;\n"
+             "else do_else;";
+
+    lexer_init(&lexer, source);
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    statement = parse_statement(&parser);
+
+    assert_statement(runner, statement->kind, STATEMENT_IF);
+    assert_expression(runner, statement->_if.condition->kind, EXPRESSION_BINARY);
+    assert_statement(runner, statement->_if.then->kind, STATEMENT_EXPRESSION);
+    assert_statement(runner, statement->_if._else->kind, STATEMENT_IF);
+
+    assert_statement(runner, statement->_if._else->_if.then->kind, STATEMENT_EXPRESSION);
+    assert_statement(runner, statement->_if._else->_if._else->kind, STATEMENT_IF);
+
+    assert_statement(runner, statement->_if._else->_if._else->_if.then->kind, STATEMENT_EXPRESSION);
+    assert_statement(runner, statement->_if._else->_if._else->_if._else->kind, STATEMENT_IF);
+
+    assert_statement(runner, statement->_if._else->_if._else->_if._else->_if.then->kind, STATEMENT_EXPRESSION);
+    assert_statement(runner, statement->_if._else->_if._else->_if._else->_if._else->kind, STATEMENT_EXPRESSION);
+
+    statement_free(statement);
+    parser_free(&parser);
+    lexer_free(&lexer);
 }
 
 
@@ -738,6 +872,7 @@ static void test_while_statement(Test_Runner* runner)
     Parser parser;
     AST_Statement* statement;
 
+    // with block statement
     lexer_init(&lexer, "while a < b do { do_something; }");
     lex(&lexer);
 
@@ -747,6 +882,21 @@ static void test_while_statement(Test_Runner* runner)
     assert_statement(runner, statement->kind, STATEMENT_WHILE);
     assert_expression(runner, statement->_while.condition->kind, EXPRESSION_BINARY);
     assert_statement(runner, statement->_while.body->kind, STATEMENT_BLOCK);
+    
+    statement_free(statement);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    // with expression statement
+    lexer_init(&lexer, "while a < b do do_something;");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    statement = parse_statement(&parser);
+
+    assert_statement(runner, statement->kind, STATEMENT_WHILE);
+    assert_expression(runner, statement->_while.condition->kind, EXPRESSION_BINARY);
+    assert_statement(runner, statement->_while.body->kind, STATEMENT_EXPRESSION);
     
     statement_free(statement);
     parser_free(&parser);
@@ -1524,7 +1674,10 @@ Test_Set* parser_test_set()
     // Falls down to the expression statement if the condition is not met.
     array_push(set->tests, test_case("Declaration statement", test_declaration_statement));
     array_push(set->tests, test_case("Block statement", test_block_statement));
-    array_push(set->tests, test_case("If statement", test_if_statement));
+    array_push(set->tests, test_case("If statement (if then)", test_if_statement_1));
+    array_push(set->tests, test_case("If statement (if then - else)", test_if_statement_2));
+    array_push(set->tests, test_case("If statement (if then - else if then - else)", test_if_statement_3));
+    array_push(set->tests, test_case("If statement (arbitrary number of else if's)", test_if_statement_4));
     array_push(set->tests, test_case("While statement", test_while_statement));
     array_push(set->tests, test_case("Break statement", test_break_statement));
 
