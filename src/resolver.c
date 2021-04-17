@@ -796,6 +796,11 @@ void resolve_variable_declaration(Resolver* resolver, AST_Declaration* declarati
     // Declare the symbol into the current scope
     Symbol* symbol = symbol_variable(declaration->identifier->lexeme, actual_type);
     
+    // TODO(timo): Set value for a global variable, but this solution kinda sucks
+    // just a hacky solution to get things going for now
+    if (strcmp(resolver->local->name, "global") == 0)
+        symbol->value = declaration->initializer->value;
+    
     // TODO(timo): Should we take the responsibility of declaring errors of
     // already diagnosed variables instead of doing it in the scope
     scope_declare(resolver->local, symbol);

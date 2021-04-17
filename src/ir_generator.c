@@ -459,6 +459,9 @@ void ir_generate_declaration(IR_Generator* generator, AST_Declaration* declarati
         {
             if (strcmp(generator->local->name, "global") == 0)
             {
+                // TODO(timo): Don't do anything for global variable
+                // declarations
+                /*
                 Instruction* instruction;
 
                 char* label = (char*)declaration->identifier->lexeme;
@@ -475,6 +478,7 @@ void ir_generate_declaration(IR_Generator* generator, AST_Declaration* declarati
                 array_push(generator->instructions, instruction);
 
                 free(value);
+                */
             }
             else
             {

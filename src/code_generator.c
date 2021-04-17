@@ -332,6 +332,25 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
 
             break;
         }
+        /* TODO(timo): Not used right now. Need to think if this is even necessary
+        case OP_STORE_GLOBAL:
+        {
+            fprintf(generator->output,
+                "\t.quad %s\n", instruction->arg1);
+            break;
+        }
+        */
+        case OP_LOAD_GLOBAL:
+        {
+            Symbol* result = scope_lookup(generator->local, instruction->result);
+            Symbol* global = scope_lookup(generator->global, instruction->arg1);
+
+            fprintf(generator->output,
+                "\tmov\trax, [%s]\n", global->identifier);
+            fprintf(generator->output,
+                "\tmov\t[rbp-%d], rax\n", result->offset);
+            break;
+        }
         case OP_LABEL:
         {
             // If the label is function symbol -> change the scope
@@ -354,6 +373,7 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
         case OP_FUNCTION_BEGIN:
         {
             // TODO(timo): That scope change should probably happen in here and not in OP_LABEL
+            // but we do need the name of the function. Should we save it into the function begin instruction?
             
             // These instructions are same as instruction "enter, N" where enter sets the stackframe 
             // and if N is given, N bytes of memory will be reserved from the stack
@@ -520,18 +540,35 @@ void code_generate(Code_Generator* generator)
         return;
     }
     
-    // Template start
+    // Template start and externs
     fprintf(generator->output,
-            "; ----------------------------------------\n"
-            "; main.asm\n"
-            "; ----------------------------------------\n"
-            "\n"
-            "\tglobal main\n"
-            "\textern printf\n"
-            "\textern atoi\n"
-            "\textern itoa\n"
-            "\n"
-            "\tsection .text\n");
+        "; ----------------------------------------\n"
+        "; main.asm\n"
+        "; ----------------------------------------\n"
+        "\n"
+        "\tglobal main\n"
+        "\textern printf\n"
+        "\textern atoi\n"
+        "\textern itoa\n"
+        "\n");
+
+    // Global variables
+    fprintf(generator->output,
+        "\tsection .data\n");
+
+    for (int i = 0; i < generator->global->symbols->capacity; i++)
+    {
+        Symbol* symbol = generator->global->symbols->entries[i].value;
+
+        if (symbol && symbol->kind == SYMBOL_VARIABLE)
+            fprintf(generator->output,
+                "%s:\tdq %d\n", symbol->identifier, symbol->value.integer);
+    }
+
+    // Start the code itself
+    fprintf(generator->output,
+        "\n"
+        "\tsection .text\n");
     
     for (int i = 0; i < generator->instructions->length; i++)
     {
