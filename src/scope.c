@@ -91,6 +91,14 @@ void scope_declare(Scope* scope, Symbol* symbol)
 }
 
 
+bool scope_contains(Scope* scope, const char* identifier)
+{
+    Symbol* symbol = scope_get(scope, identifier);
+
+    return symbol != NULL;
+}
+
+
 void dump_scope(Scope* scope, int indentation)
 {
     for (int i = 0; i < indentation; i++)
