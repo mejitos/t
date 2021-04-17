@@ -37,6 +37,21 @@ void test_runner_free(Test_Runner* runner)
     }
 
     array_free(runner->test_sets);
+
+    for (int i = 0; i < runner->errors->length; i++)
+    {
+        Test_Error* error = runner->errors->items[i];
+        free((char*)error->test_set);
+        error->test_set = NULL;
+        free((char*)error->test_case);
+        error->test_case = NULL;
+        free((char*)error->message);
+        error->message = NULL;
+
+        free(error);
+        error = NULL;
+    }
+
     array_free(runner->errors);
 }
 
