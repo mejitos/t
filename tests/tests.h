@@ -63,5 +63,6 @@ Test_Set* parser_test_set();
 Test_Set* resolver_test_set();
 Test_Set* interpreter_test_set();
 Test_Set* ir_generator_test_set();
+Test_Set* compiler_test_set();
 
 #endif
