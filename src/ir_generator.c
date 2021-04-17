@@ -238,16 +238,15 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
             // NOTE(timo): We cannot put the name of the function into temp variable?
             // char* arg = ir_generate_expression(generator, expression->call.variable);
             char* arg = (char*)expression->call.variable->identifier->lexeme;
-            char* result = temp_label(generator);
-
-            scope_declare(generator->local, symbol_temp(result, expression->type));
+            char* temp = temp_label(generator);
 
             // NOTE(timo): According to the Dragon Book the number of arguments is
             // important info to pass on in case of nested function calls
             //printf("\t%s := call %s, %d\n", result, arg, arguments->length);
-
-            instruction = instruction_call(arg, result, arguments->length);
+            instruction = instruction_call(arg, temp, arguments->length);
+            scope_declare(generator->local, symbol_temp(instruction->result, expression->type));
             array_push(generator->instructions, instruction);
+            free(temp);
             
             // Pop the params from the stack
             // TODO(timo): Since we already know the parameters, we can just
@@ -259,11 +258,11 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
 
                 //printf("\tparameter_pop %s\n", arg);
 
-                instruction = instruction_param_pop(arg);
+                Instruction* instruction = instruction_param_pop(arg);
                 array_push(generator->instructions, instruction);
             }
 
-            return result;
+            return instruction->result;
         }
         default:
             // TODO(timo): Error
@@ -484,7 +483,8 @@ void ir_generate_declaration(IR_Generator* generator, AST_Declaration* declarati
             */
             
             // Set the scope to the function scope
-            generator->local = (scope_lookup(generator->local, declaration->identifier->lexeme))->type->function.scope;
+            Symbol* function = scope_lookup(generator->local, declaration->identifier->lexeme);
+            generator->local = function->type->function.scope;
             
             // Generate the body of the function (=initializer)
             ir_generate_expression(generator, declaration->initializer);

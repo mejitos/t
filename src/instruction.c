@@ -417,7 +417,20 @@ const char* operation_str(Operation operation)
 {
     switch (operation)
     {
-        case OP_COPY:       return "copy";
-        default:            return "invalid operation";
+        case OP_COPY:               return "copy";
+        case OP_ADD:                return "add";
+        case OP_SUB:                return "sub";
+        case OP_MUL:                return "mul";
+        case OP_DIV:                return "div";
+        case OP_FUNCTION_BEGIN:     return "function begin";
+        case OP_FUNCTION_END:       return "function end";
+        case OP_PARAM_PUSH:         return "param push";
+        case OP_PARAM_POP:          return "param pop";
+        case OP_CALL:               return "call";
+        case OP_RETURN:             return "return";
+        case OP_LABEL:              return "label";
+        case OP_GOTO:               return "goto";
+        case OP_GOTO_IF_FALSE:      return "goto if false";
+        default:                    return "invalid operation";
     }
 }

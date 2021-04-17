@@ -436,6 +436,7 @@ static void test_generate_function_expression(Test_Runner* runner)
     IR_Generator generator;
     AST_Expression* expression;
 
+    // With parameters
     lexer_init(&lexer, "(a: int, b: int) => { b := a + b; return b; }");
     lex(&lexer);
 
@@ -486,7 +487,10 @@ static void test_generate_call_expression(Test_Runner* runner)
     AST_Expression* expression;
     AST_Declaration* declaration;
     char* source;
+
+    // TODO(timo): zero arguments
     
+    // single argument
     source = "cube: int = (x: int) => { return x * x * x; };\n"
              "main: int = (argc: int, argv: [int]) => { cube(42); };";
 
@@ -506,12 +510,18 @@ static void test_generate_call_expression(Test_Runner* runner)
     array* statements = declaration->initializer->function.body->block.statements;
     expression = (AST_Expression*)((AST_Statement*)(statements->items[0]))->expression;
 
-    assert(strcmp(expression->call.variable->identifier->lexeme, "cube") == 0);
-    
     ir_generator_init(&generator, resolver.global);
     ir_generate_expression(&generator, expression);
 
-    //dump_instructions(generator.instructions);
+    assert_base(runner, generator.instructions->length == 5,
+        "Invalid number of instructions: %d, expected 5", generator.instructions->length);
+    assert_instruction(runner, generator.instructions->items[0], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[1], OP_PARAM_PUSH);
+    assert_instruction(runner, generator.instructions->items[2], OP_CALL);
+    assert_instruction(runner, generator.instructions->items[3], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[4], OP_PARAM_POP);
+
+    // dump_instructions(generator.instructions);
     
     ir_generator_free(&generator);
     resolver_free(&resolver);
@@ -519,8 +529,7 @@ static void test_generate_call_expression(Test_Runner* runner)
     parser_free(&parser);
     lexer_free(&lexer);
 
-    printf("----------\n");
-
+    // two arguments
     source = "max: int = (x: int, y: int) => { if x > y then { return x; } else { return y; } };\n"
              "main: int = (argc: int, argv: [int]) => { max(0, 1); };";
 
@@ -540,12 +549,22 @@ static void test_generate_call_expression(Test_Runner* runner)
     statements = declaration->initializer->function.body->block.statements;
     expression = (AST_Expression*)((AST_Statement*)(statements->items[0]))->expression;
 
-    assert(strcmp(expression->call.variable->identifier->lexeme, "max") == 0);
-    
     ir_generator_init(&generator, resolver.global);
     ir_generate_expression(&generator, expression);
 
-    //dump_instructions(generator.instructions);
+    assert_base(runner, generator.instructions->length == 9,
+        "Invalid number of instructions: %d, expected 9", generator.instructions->length);
+    assert_instruction(runner, generator.instructions->items[0], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[1], OP_PARAM_PUSH);
+    assert_instruction(runner, generator.instructions->items[2], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[3], OP_PARAM_PUSH);
+    assert_instruction(runner, generator.instructions->items[4], OP_CALL);
+    assert_instruction(runner, generator.instructions->items[5], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[6], OP_PARAM_POP);
+    assert_instruction(runner, generator.instructions->items[7], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[8], OP_PARAM_POP);
+
+    // dump_instructions(generator.instructions);
     
     ir_generator_free(&generator);
     resolver_free(&resolver);
@@ -750,7 +769,6 @@ static void test_generate_return_statement(Test_Runner* runner)
 }
 
 
-/*
 static void test_generate_function_declaration(Test_Runner* runner)
 {
     Lexer lexer;
@@ -761,7 +779,15 @@ static void test_generate_function_declaration(Test_Runner* runner)
     AST_Declaration* declaration;
     char* source;
     
-    source = "max: int = (x: int, y: int) => { if x > y then { return x; } else { return y; } };";
+    source = "max: int = (x: int, y: int) => {\n"
+             "    result: int = 0;\n"
+             "    if x > y then {\n"
+             "        result := x;\n"
+             "    } else {\n"
+             "        result := y;\n"
+             "    }\n"
+             "    return result;\n"
+             "};";
 
     lexer_init(&lexer, source);
     lex(&lexer);
@@ -771,12 +797,33 @@ static void test_generate_function_declaration(Test_Runner* runner)
 
     type_table = type_table_init();
     resolver_init(&resolver, type_table);
-    resolve(&resolver, parser.declarations);
+    resolve_declaration(&resolver, declaration);
 
     ir_generator_init(&generator, resolver.global);
     ir_generate_declaration(&generator, declaration);
+
+    assert_base(runner, generator.instructions->length == 18,
+        "Invalid number of instructions: %d, expected 18", generator.instructions->length);
+    assert_instruction(runner, generator.instructions->items[0], OP_LABEL);
+    assert_instruction(runner, generator.instructions->items[1], OP_FUNCTION_BEGIN);
+    assert_instruction(runner, generator.instructions->items[2], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[3], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[4], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[5], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[6], OP_GT);
+    assert_instruction(runner, generator.instructions->items[7], OP_GOTO_IF_FALSE);
+    assert_instruction(runner, generator.instructions->items[8], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[9], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[10], OP_GOTO);
+    assert_instruction(runner, generator.instructions->items[11], OP_LABEL);
+    assert_instruction(runner, generator.instructions->items[12], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[13], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[14], OP_LABEL);
+    assert_instruction(runner, generator.instructions->items[15], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[16], OP_RETURN);
+    assert_instruction(runner, generator.instructions->items[17], OP_FUNCTION_END);
     
-    //dump_instructions(generator.instructions);
+    // dump_instructions(generator.instructions);
 
     declaration_free(declaration);
     ir_generator_free(&generator);
@@ -785,7 +832,6 @@ static void test_generate_function_declaration(Test_Runner* runner)
     parser_free(&parser);
     lexer_free(&lexer);
 }
-*/
 
 
 static void test_generate_arithmetics(Test_Runner* runner)
@@ -897,7 +943,6 @@ static void test_generate_arithmetics(Test_Runner* runner)
 }
 
 
-/*
 static void test_generate_small_program(Test_Runner* runner)
 {
     Lexer lexer;
@@ -906,8 +951,19 @@ static void test_generate_small_program(Test_Runner* runner)
     Resolver resolver;
     IR_Generator generator;
     
-    const char* source = "max: int = (x: int, y: int) => { if x > y then { return x; } else { return y; } };\n"
-                         "main: int = (argc: int, argv: [int]) => { return max(0, 1); };";
+    const char* source = "max: int = (x: int, y: int) => {\n"
+                         "result: int = 0;\n"
+                         "    if x > y then {\n"
+                         "        result := x;\n"
+                         "    } else {\n"
+                         "        result := y;\n"
+                         "    }\n"
+                         "    return result;\n"
+                         "};\n"
+                         "\n"
+                         "main: int = (argc: int, argv: [int]) => {\n"
+                         "    return max(0, 1);\n"
+                         "};";
 
     lexer_init(&lexer, source);
     lex(&lexer);
@@ -921,8 +977,42 @@ static void test_generate_small_program(Test_Runner* runner)
 
     ir_generator_init(&generator, resolver.global);
     ir_generate(&generator, parser.declarations);
+
+    assert_base(runner, generator.instructions->length == 31,
+        "Invalid number of instructions: %d, expected 31", generator.instructions->length);
+    assert_instruction(runner, generator.instructions->items[0], OP_LABEL);
+    assert_instruction(runner, generator.instructions->items[1], OP_FUNCTION_BEGIN);
+    assert_instruction(runner, generator.instructions->items[2], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[3], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[4], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[5], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[6], OP_GT);
+    assert_instruction(runner, generator.instructions->items[7], OP_GOTO_IF_FALSE);
+    assert_instruction(runner, generator.instructions->items[8], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[9], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[10], OP_GOTO);
+    assert_instruction(runner, generator.instructions->items[11], OP_LABEL);
+    assert_instruction(runner, generator.instructions->items[12], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[13], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[14], OP_LABEL);
+    assert_instruction(runner, generator.instructions->items[15], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[16], OP_RETURN);
+    assert_instruction(runner, generator.instructions->items[17], OP_FUNCTION_END);
+    assert_instruction(runner, generator.instructions->items[18], OP_LABEL);
+    assert_instruction(runner, generator.instructions->items[19], OP_FUNCTION_BEGIN);
+    assert_instruction(runner, generator.instructions->items[20], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[21], OP_PARAM_PUSH);
+    assert_instruction(runner, generator.instructions->items[22], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[23], OP_PARAM_PUSH);
+    assert_instruction(runner, generator.instructions->items[24], OP_CALL);
+    assert_instruction(runner, generator.instructions->items[25], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[26], OP_PARAM_POP);
+    assert_instruction(runner, generator.instructions->items[27], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[28], OP_PARAM_POP);
+    assert_instruction(runner, generator.instructions->items[29], OP_RETURN);
+    assert_instruction(runner, generator.instructions->items[30], OP_FUNCTION_END);
     
-    //dump_instructions(generator.instructions);
+    // dump_instructions(generator.instructions);
 
     ir_generator_free(&generator);
     resolver_free(&resolver);
@@ -930,7 +1020,6 @@ static void test_generate_small_program(Test_Runner* runner)
     parser_free(&parser);
     lexer_free(&lexer);
 }
-*/
 
 
 Test_Set* ir_generator_test_set()
@@ -946,37 +1035,24 @@ Test_Set* ir_generator_test_set()
     array_push(set->tests, test_case("Assignment expression", test_generate_assignment_expression));
     array_push(set->tests, test_case("Assignment expression (complex)", test_generate_assignment_expression_complex));
     array_push(set->tests, test_case("Function expression", test_generate_function_expression));
+    array_push(set->tests, test_case("Call expression", test_generate_call_expression));
+    // TODO(timo): array_push(set->tests, test_case("Index expression", test_generate_index_expression));
 
     // Statements
     array_push(set->tests, test_case("If statement", test_generate_if_statement));
     array_push(set->tests, test_case("While statement", test_generate_while_statement));
+    // TODO(timo): array_push(set->tests, test_case("While statement with a break", test_generate_while_statement_with_break));
     array_push(set->tests, test_case("Return statement", test_generate_return_statement));
+    // TODO(timo): array_push(set->tests, test_case("Break statement", test_generate_break_statement));
 
     // Declarations
+    array_push(set->tests, test_case("Function declaration", test_generate_function_declaration));
 
     // MISC
     array_push(set->tests, test_case("Generate MISC arithmetics", test_generate_arithmetics));
+    array_push(set->tests, test_case("Small program", test_generate_small_program));
 
     set->length = set->tests->length;
 
     return set;
 }
-
-/*
-void test_ir_generator()
-{
-    test_generate_index_expression();
-    test_generate_function_expression();
-    test_generate_call_expression();
-
-    test_generate_arithmetics();
-
-    test_generate_if_statement();
-    test_generate_while_statement();
-    test_generate_return_statement();
-    
-    test_generate_function_declaration();
-
-    test_generate_small_program();
-}
-*/
