@@ -5,7 +5,6 @@
 
 #define NUMBER_OF_TESTS 35
 
-// 35
 const char* tests[NUMBER_OF_TESTS][3] =
 {
     { "./examples/first.t",                 "first",                "Program exited with the value 0\n" },      // first program (just return 0) 

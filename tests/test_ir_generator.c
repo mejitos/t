@@ -513,13 +513,12 @@ static void test_generate_call_expression(Test_Runner* runner)
     ir_generator_init(&generator, resolver.global);
     ir_generate_expression(&generator, expression);
 
-    assert_base(runner, generator.instructions->length == 5,
-        "Invalid number of instructions: %d, expected 5", generator.instructions->length);
+    assert_base(runner, generator.instructions->length == 4,
+        "Invalid number of instructions: %d, expected 4", generator.instructions->length);
     assert_instruction(runner, generator.instructions->items[0], OP_COPY);
     assert_instruction(runner, generator.instructions->items[1], OP_PARAM_PUSH);
     assert_instruction(runner, generator.instructions->items[2], OP_CALL);
-    assert_instruction(runner, generator.instructions->items[3], OP_COPY);
-    assert_instruction(runner, generator.instructions->items[4], OP_PARAM_POP);
+    assert_instruction(runner, generator.instructions->items[3], OP_PARAM_POP);
 
     // dump_instructions(generator.instructions);
     
@@ -552,17 +551,15 @@ static void test_generate_call_expression(Test_Runner* runner)
     ir_generator_init(&generator, resolver.global);
     ir_generate_expression(&generator, expression);
 
-    assert_base(runner, generator.instructions->length == 9,
-        "Invalid number of instructions: %d, expected 9", generator.instructions->length);
+    assert_base(runner, generator.instructions->length == 7,
+        "Invalid number of instructions: %d, expected 7", generator.instructions->length);
     assert_instruction(runner, generator.instructions->items[0], OP_COPY);
     assert_instruction(runner, generator.instructions->items[1], OP_PARAM_PUSH);
     assert_instruction(runner, generator.instructions->items[2], OP_COPY);
     assert_instruction(runner, generator.instructions->items[3], OP_PARAM_PUSH);
     assert_instruction(runner, generator.instructions->items[4], OP_CALL);
-    assert_instruction(runner, generator.instructions->items[5], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[5], OP_PARAM_POP);
     assert_instruction(runner, generator.instructions->items[6], OP_PARAM_POP);
-    assert_instruction(runner, generator.instructions->items[7], OP_COPY);
-    assert_instruction(runner, generator.instructions->items[8], OP_PARAM_POP);
 
     // dump_instructions(generator.instructions);
     
@@ -978,8 +975,8 @@ static void test_generate_small_program(Test_Runner* runner)
     ir_generator_init(&generator, resolver.global);
     ir_generate(&generator, parser.declarations);
 
-    assert_base(runner, generator.instructions->length == 31,
-        "Invalid number of instructions: %d, expected 31", generator.instructions->length);
+    assert_base(runner, generator.instructions->length == 29,
+        "Invalid number of instructions: %d, expected 29", generator.instructions->length);
     assert_instruction(runner, generator.instructions->items[0], OP_LABEL);
     assert_instruction(runner, generator.instructions->items[1], OP_FUNCTION_BEGIN);
     assert_instruction(runner, generator.instructions->items[2], OP_COPY);
@@ -1005,12 +1002,10 @@ static void test_generate_small_program(Test_Runner* runner)
     assert_instruction(runner, generator.instructions->items[22], OP_COPY);
     assert_instruction(runner, generator.instructions->items[23], OP_PARAM_PUSH);
     assert_instruction(runner, generator.instructions->items[24], OP_CALL);
-    assert_instruction(runner, generator.instructions->items[25], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[25], OP_PARAM_POP);
     assert_instruction(runner, generator.instructions->items[26], OP_PARAM_POP);
-    assert_instruction(runner, generator.instructions->items[27], OP_COPY);
-    assert_instruction(runner, generator.instructions->items[28], OP_PARAM_POP);
-    assert_instruction(runner, generator.instructions->items[29], OP_RETURN);
-    assert_instruction(runner, generator.instructions->items[30], OP_FUNCTION_END);
+    assert_instruction(runner, generator.instructions->items[27], OP_RETURN);
+    assert_instruction(runner, generator.instructions->items[28], OP_FUNCTION_END);
     
     // dump_instructions(generator.instructions);
 

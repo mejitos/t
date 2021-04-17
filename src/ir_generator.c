@@ -222,44 +222,43 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
 
             // Push the params to the stack/registers
             array* arguments = expression->call.arguments;
+            char* args[arguments->length];
 
+            // TODO(timo): Could we just straight up push the parameters to the
+            // stack without using temporary variables as middle man? Like we 
+            // can when we pop the params.
             for (int i = arguments->length - 1; i >= 0; i--)
             {
                 AST_Expression* argument = (AST_Expression*)arguments->items[i];
                 char* arg = ir_generate_expression(generator, argument);
 
-                //printf("\tparameter_push %s\n", arg);
-
                 instruction = instruction_param_push(arg);
                 array_push(generator->instructions, instruction);
+                args[i] = arg;
+
+                //printf("\tparameter_push %s\n", arg);
             }
 
-            // Call instruction
-            // NOTE(timo): We cannot put the name of the function into temp variable?
-            // char* arg = ir_generate_expression(generator, expression->call.variable);
+            // Call instruction itself
             char* arg = (char*)expression->call.variable->identifier->lexeme;
             char* temp = temp_label(generator);
-
             // NOTE(timo): According to the Dragon Book the number of arguments is
             // important info to pass on in case of nested function calls
-            //printf("\t%s := call %s, %d\n", result, arg, arguments->length);
             instruction = instruction_call(arg, temp, arguments->length);
+
             scope_declare(generator->local, symbol_temp(instruction->result, expression->type));
             array_push(generator->instructions, instruction);
             free(temp);
+
+            //printf("\t%s := call %s, %d\n", instruction->result, arg, arguments->length);
             
-            // Pop the params from the stack
-            // TODO(timo): Since we already know the parameters, we can just
-            // pop them straight away without using temp variables
+            // Pop the params from the stack after the call has returned
             for (int i = 0; i < arguments->length; i++)
             {
-                AST_Expression* argument = (AST_Expression*)arguments->items[i];
-                char* arg = ir_generate_expression(generator, argument);
-
-                //printf("\tparameter_pop %s\n", arg);
-
-                Instruction* instruction = instruction_param_pop(arg);
+                Instruction* instruction = instruction_param_pop(args[i]);
                 array_push(generator->instructions, instruction);
+
+                //printf("\tparameter_pop %s\n", args[i]);
             }
 
             return instruction->result;
@@ -415,18 +414,12 @@ void ir_generate_statement(IR_Generator* generator, AST_Statement* statement)
         }
         case STATEMENT_BREAK:
         {
-            // TODO(timo): Here we should actually know the context of the 
-            // current loop so we know where to go to
-
-            // We could just decrement the current label by 1 and create label?
-            // Nope. We have no freaking clue at this point, what the label should
-            // be where the break jumps
-            // --> This is something that should be backpatched
-            // Or just add a context into the generator
+            // TODO(timo): Is this actually needed? Since the invalid loop
+            // context should be resolved already
             if (generator->not_in_loop)
             {
                 // TODO(timo): Add diagnostic
-                //printf("[IR_GENERATOR] - Error: Trying to create break instruction when not in loop\n");
+                printf("[IR_GENERATOR] - Error: Trying to create break instruction when not in loop\n");
                 exit(1);
             }
             else
@@ -448,13 +441,6 @@ void ir_generate_declaration(IR_Generator* generator, AST_Declaration* declarati
     {
         case DECLARATION_VARIABLE:
         {
-            // TODO(timo): How should I handle the global variable declarations?
-            // Or do they just live in the symbol table and we can use them freely
-            // from the functions when necessary and therefore access them when necessary.
-            // TODO(timo): Or are these actually loaded into the stack at the 
-            // beginning of the program
-            // TODO(timo): Or are they actually loaded to the data section at the end?
-            
             char* value = ir_generate_expression(generator, declaration->initializer);
 
             Instruction* instruction;
@@ -467,20 +453,11 @@ void ir_generate_declaration(IR_Generator* generator, AST_Declaration* declarati
         {
             Instruction* instruction;
 
-            // TODO(timo): This is probably the point where we need the abstraction for routines
-
             char* label = (char*)declaration->identifier->lexeme;
             //printf("_%s:\n", label);
 
             instruction = instruction_label(label);
             array_push(generator->instructions, instruction);
-            
-            /*
-            //printf("\tfunction_begin %d\n", N);
-
-            instruction = instruction_function_begin();
-            array_push(generator->instructions, instruction);
-            */
             
             // Set the scope to the function scope
             Symbol* function = scope_lookup(generator->local, declaration->identifier->lexeme);
@@ -493,13 +470,6 @@ void ir_generate_declaration(IR_Generator* generator, AST_Declaration* declarati
             // NOTE(timo): These two are basically the same thing in our case
             // generator->local = generator->local->enclosing;
             generator->local = generator->global;
-            
-            /*
-            //printf("\tfunction_end\n");
-
-            instruction = instruction_function_end();
-            array_push(generator->instructions, instruction);
-            */
             break;
         }
         default:
