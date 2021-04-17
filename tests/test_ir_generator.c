@@ -571,7 +571,7 @@ static void test_generate_call_expression(Test_Runner* runner)
 }
 
 
-static void test_generate_if_statement(Test_Runner* runner)
+static void test_generate_if_statement_1(Test_Runner* runner)
 {
     Lexer lexer;
     Parser parser;
@@ -631,10 +631,22 @@ static void test_generate_if_statement(Test_Runner* runner)
     type_table_free(type_table);
     parser_free(&parser);
     lexer_free(&lexer);
+}
 
+
+static void test_generate_if_statement_2(Test_Runner* runner)
+{
+    Lexer lexer;
+    Parser parser;
+    hashtable* type_table;
+    Resolver resolver;
+    IR_Generator generator;
+    AST_Statement* statement;
+    char* source;
+    
     // if-then-else
-    source = "";
-    lexer_init(&lexer, "if 0 < 1 then { 1 + 2; } else { 5 * 6; }");
+    source = "if 0 < 1 then { 1 + 2; } else { 5 * 6; }";
+    lexer_init(&lexer, source);
     lex(&lexer);
 
     parser_init(&parser, lexer.tokens);
@@ -671,8 +683,100 @@ static void test_generate_if_statement(Test_Runner* runner)
     type_table_free(type_table);
     parser_free(&parser);
     lexer_free(&lexer);
+}
 
-    // TODO(timo): if-then-else if-then-else
+
+static void test_generate_if_statement_3(Test_Runner* runner)
+{
+    Lexer lexer;
+    Parser parser;
+    hashtable* type_table;
+    Resolver resolver;
+    IR_Generator generator;
+    AST_Statement* statement;
+    char* source;
+    
+    // if-then-else if-then-else
+    source = "if 1 < 0 then {\n"
+             "    1 + 2;\n"
+             "} else if 1 == 0 then {\n"
+             "    3 - 4;\n"
+             "} else {\n"
+             "    5 * 6;\n"
+             "}";
+
+    lexer_init(&lexer, source);
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    statement = parse_statement(&parser);
+
+    type_table = type_table_init();
+    resolver_init(&resolver, type_table);
+    resolve_statement(&resolver, statement);
+    
+    ir_generator_init(&generator, resolver.global);
+    ir_generate_statement(&generator, statement);
+
+    // TODO(timo): asserts
+    runner->error = true;
+
+    // dump_instructions(generator.instructions);
+
+    statement_free(statement);
+    ir_generator_free(&generator);
+    resolver_free(&resolver);
+    type_table_free(type_table);
+    parser_free(&parser);
+    lexer_free(&lexer);
+}
+
+
+static void test_generate_if_statement_4(Test_Runner* runner)
+{
+    Lexer lexer;
+    Parser parser;
+    hashtable* type_table;
+    Resolver resolver;
+    IR_Generator generator;
+    AST_Statement* statement;
+    char* source;
+    
+    // if-then-else if-then-else
+    source = "if 1 < 0 then {\n"
+             "    1 + 2;\n"
+             "} else if 1 == 0 then {\n"
+             "    3 - 4;\n"
+             "} else if 1 != 0 then {\n"
+             "    5 * 6;\n"
+             "} else {\n"
+             "    7 / 8;\n"
+             "}";
+
+    lexer_init(&lexer, source);
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    statement = parse_statement(&parser);
+
+    type_table = type_table_init();
+    resolver_init(&resolver, type_table);
+    resolve_statement(&resolver, statement);
+    
+    ir_generator_init(&generator, resolver.global);
+    ir_generate_statement(&generator, statement);
+
+    // TODO(timo): asserts
+    runner->error = true;
+
+    // dump_instructions(generator.instructions);
+
+    statement_free(statement);
+    ir_generator_free(&generator);
+    resolver_free(&resolver);
+    type_table_free(type_table);
+    parser_free(&parser);
+    lexer_free(&lexer);
 }
 
 
@@ -1034,7 +1138,10 @@ Test_Set* ir_generator_test_set()
     // TODO(timo): array_push(set->tests, test_case("Index expression", test_generate_index_expression));
 
     // Statements
-    array_push(set->tests, test_case("If statement", test_generate_if_statement));
+    array_push(set->tests, test_case("If statement (if then)", test_generate_if_statement_1));
+    array_push(set->tests, test_case("If statement (if then - else)", test_generate_if_statement_2));
+    array_push(set->tests, test_case("If statement (if then - else if then - else)", test_generate_if_statement_3));
+    array_push(set->tests, test_case("If statement (arbitrary number of else if's)", test_generate_if_statement_4));
     array_push(set->tests, test_case("While statement", test_generate_while_statement));
     // TODO(timo): array_push(set->tests, test_case("While statement with a break", test_generate_while_statement_with_break));
     array_push(set->tests, test_case("Return statement", test_generate_return_statement));

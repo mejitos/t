@@ -364,12 +364,12 @@ void ir_generate_statement(IR_Generator* generator, AST_Statement* statement)
                 //printf("%s:\n", label_else);
                 instruction = instruction_label(label_else);
                 array_push(generator->instructions, instruction);
-
+                
                 ir_generate_statement(generator, statement->_if._else);
                 
                 //
                 //printf("%s:\n", label_exit);
-
+                
                 instruction = instruction_label(label_exit);
                 array_push(generator->instructions, instruction);
 
