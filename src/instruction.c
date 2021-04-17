@@ -64,6 +64,30 @@ Instruction* instruction_copy(char* arg, char* result)
 }
 
 
+Instruction* instruction_store_global(char* arg)
+{
+    Instruction* instruction = xcalloc(1, sizeof (Instruction));
+    instruction->operation = OP_STORE_GLOBAL;
+    instruction->arg1 = str_copy(arg);
+    instruction->arg2 = NULL;
+    instruction->result = NULL;
+
+    return instruction;
+}
+
+
+Instruction* instruction_load_global(char* arg, char* result)
+{
+    Instruction* instruction = xcalloc(1, sizeof (Instruction));
+    instruction->operation = OP_LOAD_GLOBAL;
+    instruction->arg1 = str_copy(arg);
+    instruction->arg2 = NULL;
+    instruction->result = str_copy(result);
+
+    return instruction;
+}
+
+
 Instruction* instruction_add(char* arg1, char* arg2, char* result)
 {
     Instruction* instruction = xcalloc(1, sizeof (Instruction));
@@ -364,6 +388,12 @@ void dump_instruction(Instruction* instruction)
         case OP_COPY:
             printf("\t%s := %s\n", instruction->result, instruction->arg1);
             break;
+        case OP_STORE_GLOBAL:
+            printf("\t.quad %s\n", instruction->arg1);
+            break;
+        case OP_LOAD_GLOBAL:
+            printf("\t%s := %s\n", instruction->result, instruction->arg1);
+            break;
         case OP_FUNCTION_BEGIN:
             printf("\tfunction_begin %d\n", instruction->size);
             break;
@@ -418,6 +448,8 @@ const char* operation_str(Operation operation)
     switch (operation)
     {
         case OP_COPY:               return "copy";
+        case OP_STORE_GLOBAL:       return "store global";
+        case OP_LOAD_GLOBAL:        return "load global";
         case OP_ADD:                return "add";
         case OP_SUB:                return "sub";
         case OP_MUL:                return "mul";

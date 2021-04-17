@@ -150,10 +150,16 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
         }
         case EXPRESSION_VARIABLE:
         {
+            Instruction* instruction = NULL;
             char* arg = (char*)expression->literal->lexeme;
             char* temp = temp_label(generator);
-
-            Instruction* instruction = instruction_copy(arg, temp);
+            
+            // If the current scope is not global and scope contains the identifier->local variable
+            if (strcmp(generator->local->name, "global") != 0 && scope_contains(generator->local, arg))
+                instruction = instruction_copy(arg, temp);
+            // Else if the global scope contains the variable->global
+            else if (scope_contains(generator->global, arg))
+                instruction = instruction_load_global(arg, temp);
 
             array_push(generator->instructions, instruction);
             scope_declare(generator->local, symbol_temp(instruction->result, expression->type));
@@ -165,10 +171,17 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
         }
         case EXPRESSION_ASSIGNMENT:
         {
+            Instruction* instruction;
             char* arg = ir_generate_expression(generator, expression->assignment.value);
             char* result = (char*)expression->assignment.variable->identifier->lexeme;
 
-            Instruction* instruction = instruction_copy(arg, result);
+            // If the current scope is not global and scope contains the identifier->local variable
+            if (strcmp(generator->local->name, "global") != 0 && scope_contains(generator->local, result))
+                instruction = instruction_copy(arg, result);
+            // Else if the global scope contains the variable->global
+            else if (scope_contains(generator->global, result))
+                instruction = instruction_load_global(arg, result);
+
             array_push(generator->instructions, instruction);
 
             //printf("\t%s := %s\n", result, arg);
@@ -188,20 +201,21 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
             
             // -----===== The function prologue =====-----
 
-            // 
-            //printf("\tfunction_begin N\n");
-
-            // TODO(timo): Change the scope to function scope
+            // TODO(timo): Change the scope to function scope. For now it is handled
+            // at the function declaration.
             
             // What functions begins?
             instruction = instruction_function_begin();
             array_push(generator->instructions, instruction);
 
-            // TODO(timo): Params?!?
+            // printf("\tfunction_begin N\n");
+            
+            // -----===== Function body =====-----
 
             ir_generate_statement(generator, expression->function.body);
             
-            // TODO(timo): Leave the function scope
+            // TODO(timo): Leave the function scope. For now it is handled
+            // at the function declaration
 
             // NOTE(timo): At this point, the scope has been already set to the function scope
             // so therefore we already know the size of the function via the scope
@@ -209,11 +223,13 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
             instruction->size = generator->local->offset;
             
             // -----===== The function epilogue =====-----
-            //printf("\tfunction_end\n");
             
             // What functions ends?
             instruction = instruction_function_end();
             array_push(generator->instructions, instruction);
+
+            // printf("\tfunction_end\n");
+
             break;
         }
         case EXPRESSION_CALL:
@@ -441,12 +457,32 @@ void ir_generate_declaration(IR_Generator* generator, AST_Declaration* declarati
     {
         case DECLARATION_VARIABLE:
         {
-            char* value = ir_generate_expression(generator, declaration->initializer);
+            if (strcmp(generator->local->name, "global") == 0)
+            {
+                Instruction* instruction;
 
-            Instruction* instruction;
+                char* label = (char*)declaration->identifier->lexeme;
+                // printf("_%s:\n", label);
+                instruction = instruction_label(label);
+                array_push(generator->instructions, instruction);
+                
+                // TODO(timo): Check for value type
+                char* value = xmalloc(sizeof (char) * 12);
+                snprintf(value, 12, "%d", declaration->initializer->value.integer);
 
-            instruction = instruction_copy(value, (char*)declaration->identifier->lexeme);
-            array_push(generator->instructions, instruction);
+                // printf("    .quad %s\n", value);
+                instruction = instruction_store_global(value);
+                array_push(generator->instructions, instruction);
+
+                free(value);
+            }
+            else
+            {
+                char* value = ir_generate_expression(generator, declaration->initializer);
+
+                Instruction* instruction = instruction_copy(value, (char*)declaration->identifier->lexeme);
+                array_push(generator->instructions, instruction);
+            }
             break;
         }
         case DECLARATION_FUNCTION:

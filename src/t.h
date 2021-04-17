@@ -620,6 +620,8 @@ typedef enum Operation
     OP_OR,
     // other
     OP_COPY, // assign / move / store
+    OP_STORE_GLOBAL,
+    OP_LOAD_GLOBAL,
     OP_GOTO, // jump
     OP_GOTO_IF, // branch
     OP_GOTO_IF_FALSE,
@@ -670,6 +672,8 @@ struct Instruction
 
 
 Instruction* instruction_copy(char* arg, char* result);
+Instruction* instruction_store_global(char* value);
+Instruction* instruction_load_global(char* arg, char* result);
 Instruction* instruction_add(char* arg1, char* arg2, char* result);
 Instruction* instruction_sub(char* arg1, char* arg2, char* result);
 Instruction* instruction_mul(char* arg1, char* arg2, char* result);

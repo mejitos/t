@@ -257,6 +257,9 @@ static void test_generate_variable_expression(Test_Runner* runner)
     resolver_init(&resolver, type_table);
     resolve_statement(&resolver, statement);
 
+    // NOTE(timo): We cannot be at global scope
+    resolver.global->name = "local";
+
     ir_generator_init(&generator, resolver.global);
     
     expression = ((AST_Statement*)statement->block.statements->items[1])->expression;
@@ -302,6 +305,9 @@ static void test_generate_assignment_expression(Test_Runner* runner)
     type_table = type_table_init();
     resolver_init(&resolver, type_table);
     resolve_statement(&resolver, statement);
+    
+    // NOTE(timo): We cannot be at global scope
+    resolver.global->name = "local";
     
     ir_generator_init(&generator, resolver.global);
     expression = ((AST_Statement*)statement->block.statements->items[1])->expression;
@@ -349,6 +355,9 @@ static void test_generate_assignment_expression_complex(Test_Runner* runner)
     resolver_init(&resolver, type_table);
     resolve_statement(&resolver, statement);
     
+    // NOTE(timo): We cannot be at global scope
+    resolver.global->name = "local";
+
     ir_generator_init(&generator, resolver.global);
     expression = ((AST_Statement*)statement->block.statements->items[1])->expression;
     ir_generate_expression(&generator, expression);
@@ -393,6 +402,9 @@ static void test_generate_assignment_expression_complex(Test_Runner* runner)
     resolver_init(&resolver, type_table);
     resolve_statement(&resolver, statement);
     
+    // NOTE(timo): We cannot be at global scope
+    resolver.global->name = "local";
+
     ir_generator_init(&generator, resolver.global);
     expression = ((AST_Statement*)statement->block.statements->items[3])->expression;
     ir_generate_expression(&generator, expression);
@@ -445,11 +457,18 @@ static void test_generate_function_expression(Test_Runner* runner)
 
     type_table = type_table_init();
     resolver_init(&resolver, type_table);
-
+    
+    // Resolver will enter a scope, and since we don't have a name for the
+    // function expression, we will have to set it here manually.
+    resolver.context.current_function = "some_func";
     // We need to take this type and free it, since it won't be freed otherwise
     Type* type = resolve_expression(&resolver, expression);
     
     ir_generator_init(&generator, resolver.global);
+
+    // We will also have to set the scope to the function scope manually
+    generator.local = type->function.scope;
+
     ir_generate_expression(&generator, expression);
 
     assert_base(runner, generator.instructions->length == 8,
@@ -600,6 +619,10 @@ static void test_generate_if_statement_1(Test_Runner* runner)
 
     type_table = type_table_init();
     resolver_init(&resolver, type_table);
+    // This scope is needed to have some kind of local scope
+    // Scope* local = scope_init(resolver.global, "local");
+    // resolver.local = local;
+    resolver.global->name = "local";
     resolve_statement(&resolver, statement);
     
     ir_generator_init(&generator, resolver.global);
@@ -625,6 +648,7 @@ static void test_generate_if_statement_1(Test_Runner* runner)
 
     // dump_instructions(generator.instructions);
 
+    // scope_free(local);
     statement_free(statement);
     ir_generator_free(&generator);
     resolver_free(&resolver);
@@ -862,6 +886,77 @@ static void test_generate_return_statement(Test_Runner* runner)
     // dump_instructions(generator.instructions);
 
     statement_free(statement);
+    ir_generator_free(&generator);
+    resolver_free(&resolver);
+    type_table_free(type_table);
+    parser_free(&parser);
+    lexer_free(&lexer);
+}
+
+
+static void test_generate_variable_declaration_global(Test_Runner* runner)
+{
+    Lexer lexer;
+    Parser parser;
+    hashtable* type_table;
+    Resolver resolver;
+    IR_Generator generator;
+    AST_Declaration* declaration;
+    char* source;
+    
+    source = "foo: int = 42;\n\n"
+             "bar: int = 7;\n\n"
+             "max: int = () => {\n"
+             "    result: int = 0;\n"
+             "    if foo > bar then {\n"
+             "        result := foo;\n"
+             "    } else {\n"
+             "        result := bar;\n"
+             "    }\n"
+             "    return result;\n"
+             "};";
+
+    lexer_init(&lexer, source);
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    parse(&parser);
+
+    type_table = type_table_init();
+    resolver_init(&resolver, type_table);
+    resolve(&resolver, parser.declarations);
+
+    ir_generator_init(&generator, resolver.global);
+    ir_generate(&generator, parser.declarations);
+
+    assert_base(runner, generator.instructions->length == 22,
+        "Invalid number of instructions: %d, expected 22", generator.instructions->length);
+    assert_instruction(runner, generator.instructions->items[0], OP_LABEL);
+    assert_instruction(runner, generator.instructions->items[1], OP_STORE_GLOBAL);
+    assert_instruction(runner, generator.instructions->items[2], OP_LABEL);
+    assert_instruction(runner, generator.instructions->items[3], OP_STORE_GLOBAL);
+    assert_instruction(runner, generator.instructions->items[4], OP_LABEL);
+    assert_instruction(runner, generator.instructions->items[5], OP_FUNCTION_BEGIN);
+    assert_instruction(runner, generator.instructions->items[6], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[7], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[8], OP_LOAD_GLOBAL);
+    assert_instruction(runner, generator.instructions->items[9], OP_LOAD_GLOBAL);
+    assert_instruction(runner, generator.instructions->items[10], OP_GT);
+    assert_instruction(runner, generator.instructions->items[11], OP_GOTO_IF_FALSE);
+    assert_instruction(runner, generator.instructions->items[12], OP_LOAD_GLOBAL);
+    assert_instruction(runner, generator.instructions->items[13], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[14], OP_GOTO);
+    assert_instruction(runner, generator.instructions->items[15], OP_LABEL);
+    assert_instruction(runner, generator.instructions->items[16], OP_LOAD_GLOBAL);
+    assert_instruction(runner, generator.instructions->items[17], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[18], OP_LABEL);
+    assert_instruction(runner, generator.instructions->items[19], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[20], OP_RETURN);
+    assert_instruction(runner, generator.instructions->items[21], OP_FUNCTION_END);
+    
+    dump_instructions(generator.instructions);
+
+    // declaration_free(declaration);
     ir_generator_free(&generator);
     resolver_free(&resolver);
     type_table_free(type_table);
@@ -1144,10 +1239,13 @@ Test_Set* ir_generator_test_set()
     array_push(set->tests, test_case("If statement (arbitrary number of else if's)", test_generate_if_statement_4));
     array_push(set->tests, test_case("While statement", test_generate_while_statement));
     // TODO(timo): array_push(set->tests, test_case("While statement with a break", test_generate_while_statement_with_break));
+    // TODO(timo): array_push(set->tests, test_case("Nested while statement", test_generate_nested_while_statement));
+    // TODO(timo): array_push(set->tests, test_case("Nested while statement witch break(s)", test_generate_nested_while_statement_with_break));
     array_push(set->tests, test_case("Return statement", test_generate_return_statement));
     // TODO(timo): array_push(set->tests, test_case("Break statement", test_generate_break_statement));
 
     // Declarations
+    array_push(set->tests, test_case("Variable declaration (global)", test_generate_variable_declaration_global));
     array_push(set->tests, test_case("Function declaration", test_generate_function_declaration));
 
     // MISC
