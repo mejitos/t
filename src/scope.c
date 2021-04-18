@@ -99,6 +99,21 @@ bool scope_contains(Scope* scope, const char* identifier)
 }
 
 
+array* scope_symbols(Scope* scope)
+{
+    array* symbols = array_init(sizeof (Symbol*));
+
+    for (int i = 0; i < scope->symbols->capacity; i++)
+    {
+        Symbol* symbol = scope->symbols->entries[i].value;
+
+        if (symbol) array_push(symbols, symbol);
+    }
+
+    return symbols;
+}
+
+
 void dump_scope(Scope* scope, int indentation)
 {
     for (int i = 0; i < indentation; i++)
