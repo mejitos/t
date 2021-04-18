@@ -268,6 +268,36 @@ static void test_example_local_variables_8(Test_Runner* runner)
 }
 
 
+static void test_example_global_variables_1(Test_Runner* runner)
+{
+    const char* program_name = "global_variables_1";
+    const char* file_path = "./examples/global_variables_1.t";
+    const char* result = "Program exited with the value 0\n";
+
+    char* buffer = run_example(runner, program_name, file_path, result);
+    
+    assert_base(runner, strcmp(result, buffer) == 0,
+        "Invalid exit value '%s', expected '%s'", result, buffer);
+
+    free(buffer);
+}
+
+
+static void test_example_global_variables_2(Test_Runner* runner)
+{
+    const char* program_name = "global_variables_2";
+    const char* file_path = "./examples/global_variables_2.t";
+    const char* result = "Program exited with the value 49\n";
+
+    char* buffer = run_example(runner, program_name, file_path, result);
+    
+    assert_base(runner, strcmp(result, buffer) == 0,
+        "Invalid exit value '%s', expected '%s'", result, buffer);
+
+    free(buffer);
+}
+
+
 static void test_example_if_1(Test_Runner* runner)
 {
     const char* program_name = "if_1";
@@ -596,6 +626,7 @@ Test_Set* compiler_test_set()
     array_push(set->tests, test_case("Example file: trivial_divide.t", test_example_trivial_divide));
     array_push(set->tests, test_case("Example file: trivial_arithmetics.t", test_example_trivial_arithmetics));
     
+    // Local variables
     // Return variable
     array_push(set->tests, test_case("Example file: local_variables_1.t", test_example_local_variables_1));
     // Arithmetics
@@ -607,6 +638,10 @@ Test_Set* compiler_test_set()
     // Reassign variable value
     array_push(set->tests, test_case("Example file: local_variables_7.t", test_example_local_variables_7));
     array_push(set->tests, test_case("Example file: local_variables_8.t", test_example_local_variables_8));
+
+    // Global variables
+    array_push(set->tests, test_case("Example file: global_variables_1.t", test_example_global_variables_1));
+    array_push(set->tests, test_case("Example file: global_variables_2.t", test_example_global_variables_2));
 
     // If statements
     array_push(set->tests, test_case("Example file: if_1.t", test_example_if_1));
