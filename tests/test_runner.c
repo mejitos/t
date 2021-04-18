@@ -106,37 +106,51 @@ void test_runner_append_test_set(Test_Runner* runner, Test_Set* set)
 }
 
 
-void test_runner_run(Test_Runner* runner)
+void test_runner_run(Test_Runner* runner, struct Test_Options options)
 {
     // Run tests
     for (int i = 0; i < runner->number_of_sets; i++)
     {
         Test_Set* set = (Test_Set*)runner->test_sets->items[i];
         runner->current_set = set;
-
-        printf("Running %s tests...\n", set->description);
+        
+        if (options.show_cases)
+            printf("Running %s tests...\n", set->description);
+        else
+            printf("Running %s tests...", set->description);
 
         for (int j = 0; j < set->length; j++)
         {
             Test_Case* _case = (Test_Case*)set->tests->items[j];
             runner->current_case = _case;
 
-            printf("    %s...", _case->description);
+            if (options.show_cases)
+                printf("    %s...", _case->description);
 
             (*_case->test)(runner);
 
             if (runner->error) 
             {
                 runner->failed++;
-                printf("FAILED\n");
+                if (options.show_cases)
+                    printf("FAILED\n");
             }
             else 
             {
                 runner->passed++;
-                printf("PASSED\n");
+                if (options.show_cases)
+                    printf("PASSED\n");
             }
 
             runner->error = false;
+        }
+
+        if (options.show_cases == false)
+        {
+            if (runner->errors->length > 0)
+                printf("FAILED\n");
+            else
+                printf("PASSED\n");
         }
     }
 }

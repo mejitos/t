@@ -7,7 +7,7 @@ TEST_BUILD_DIR=./tests/build
 TEST_EXECUTABLE=t_test.exe
 COMMAND=$1
 USAGE="
-Usage: t.sh [COMMAND]
+Usage: t.sh <command> [args]
 
 Commands:
     help:       Show the help/usage message
@@ -65,7 +65,7 @@ case $COMMAND in
                                                                                    src/memory.c 
                                                                                    src/common.c 
                                                                                    src/diagnostics.c"
-        $TEST_BUILD_DIR/$TEST_EXECUTABLE
+        $TEST_BUILD_DIR/$TEST_EXECUTABLE "${@:2}"
         exit 0;;
     run )
         build "$BUILD_DIR" "$SRC_DIR/main.c" "$BUILD_DIR/$EXECUTABLE" "$SRC_DIR/*.c"
@@ -100,7 +100,7 @@ case $COMMAND in
                                                                                    src/memory.c 
                                                                                    src/common.c
                                                                                    src/diagnostics.c"
-        valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --log-file="vglog" --verbose $TEST_BUILD_DIR/$TEST_EXECUTABLE
+        valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --log-file="vglog" --verbose $TEST_BUILD_DIR/$TEST_EXECUTABLE "${@:2}"
         exit 0;;
 esac
 

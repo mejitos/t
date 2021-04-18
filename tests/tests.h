@@ -4,6 +4,23 @@
 #include "../src/array.h"
 #include <stdbool.h>
 
+
+struct Test_Options
+{
+    bool show_cases;
+    bool show_summary;
+    bool show_errors;
+
+    bool run_all;
+    bool lexer_tests;
+    bool parser_tests;
+    bool resolver_tests;
+    bool interpreter_tests;
+    bool ir_generator_tests;
+    bool compiler_tests;
+};
+
+
 typedef struct Test_Runner Test_Runner;
 
 
@@ -49,7 +66,7 @@ struct Test_Runner
 
 void test_runner_init(Test_Runner* runner);
 void test_runner_append_test_set(Test_Runner* runner, Test_Set* set);
-void test_runner_run(Test_Runner* runner);
+void test_runner_run(Test_Runner* runner, struct Test_Options options);
 void test_runner_print_summary(Test_Runner* runner);
 void test_runner_print_errors(Test_Runner* runner);
 void test_runner_free(Test_Runner* runner);
