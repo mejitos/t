@@ -1,6 +1,7 @@
 #include "common.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
 
 char* read_file(const char* path)
@@ -35,4 +36,21 @@ char* read_file(const char* path)
     fclose(file);
     
     return buffer;
+}
+
+
+static char* shift(int* argc, char*** argv)
+{
+    char* arg = **argv;
+    // NOTE(timo): For some reason ++ and -- does not work here
+    *argv += 1;
+    *argc -= 1;
+
+    return arg;
+}
+
+
+bool str_equals(char* string1, char* string2)
+{
+    return strcmp(string1, string2) == 0;
 }

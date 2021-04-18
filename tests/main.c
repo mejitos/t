@@ -5,23 +5,6 @@
 #include "../src/hashtable.h"
 
 
-static char* shift(int* argc, char*** argv)
-{
-    char* arg = **argv;
-    // NOTE(timo): For some reason ++ and -- does not work here
-    *argv += 1;
-    *argc -= 1;
-
-    return arg;
-}
-
-
-bool str_equals(char* string1, char* string2)
-{
-    return strcmp(string1, string2) == 0;
-}
-
-
 // TODO(timo): Some kind of error handling
 void parse_test_options(struct Test_Options* options, int* argc, char*** argv)
 {
