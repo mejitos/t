@@ -433,6 +433,36 @@ static void test_example_if_9(Test_Runner* runner)
 }
 
 
+static void test_example_if_10(Test_Runner* runner)
+{
+    const char* program_name = "if_10";
+    const char* file_path = "./examples/if_10.t";
+    const char* result = "Program exited with the value 1\n";
+
+    char* buffer = run_example(runner, program_name, file_path, result);
+    
+    assert_base(runner, strcmp(result, buffer) == 0,
+        "Invalid exit value '%s', expected '%s'", result, buffer);
+
+    free(buffer);
+}
+
+
+static void test_example_if_11(Test_Runner* runner)
+{
+    const char* program_name = "if_11";
+    const char* file_path = "./examples/if_11.t";
+    const char* result = "Program exited with the value 777\n";
+
+    char* buffer = run_example(runner, program_name, file_path, result);
+    
+    assert_base(runner, strcmp(result, buffer) == 0,
+        "Invalid exit value '%s', expected '%s'", result, buffer);
+
+    free(buffer);
+}
+
+
 static void test_example_while_1(Test_Runner* runner)
 {
     const char* program_name = "while_1";
@@ -468,6 +498,21 @@ static void test_example_while_3(Test_Runner* runner)
     const char* program_name = "while_3";
     const char* file_path = "./examples/while_loop_3.t";
     const char* result = "Program exited with the value 28\n";
+
+    char* buffer = run_example(runner, program_name, file_path, result);
+    
+    assert_base(runner, strcmp(result, buffer) == 0,
+        "Invalid exit value '%s', expected '%s'", result, buffer);
+
+    free(buffer);
+}
+
+
+static void test_example_while_4(Test_Runner* runner)
+{
+    const char* program_name = "while_4";
+    const char* file_path = "./examples/while_loop_4.t";
+    const char* result = "Program exited with the value 42\n";
 
     char* buffer = run_example(runner, program_name, file_path, result);
     
@@ -654,12 +699,17 @@ Test_Set* compiler_test_set()
     array_push(set->tests, test_case("Example file: if_7.t", test_example_if_7));
     array_push(set->tests, test_case("Example file: if_8.t", test_example_if_8));
     array_push(set->tests, test_case("Example file: if_9.t", test_example_if_9));
+    // With simple boolean value as condition
+    array_push(set->tests, test_case("Example file: if_10.t", test_example_if_10));
+    array_push(set->tests, test_case("Example file: if_11.t", test_example_if_11));
 
     // While statements
     array_push(set->tests, test_case("Example file: while_loop_1.t", test_example_while_1));
     array_push(set->tests, test_case("Example file: while_loop_2.t", test_example_while_2));
     // With break
     array_push(set->tests, test_case("Example file: while_loop_3.t", test_example_while_3));
+    // Basic "while true" -loop
+    array_push(set->tests, test_case("Example file: while_loop_4.t", test_example_while_3));
 
     // Functions
     array_push(set->tests, test_case("Example file: function_1.t", test_example_function_1));

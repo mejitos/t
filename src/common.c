@@ -39,7 +39,7 @@ char* read_file(const char* path)
 }
 
 
-static char* shift(int* argc, char*** argv)
+char* shift(int* argc, char*** argv)
 {
     char* arg = **argv;
     // NOTE(timo): For some reason ++ and -- does not work here

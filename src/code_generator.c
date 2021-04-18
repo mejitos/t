@@ -264,34 +264,54 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
             {
                 case OP_EQ:
                     fprintf(generator->output,
-                        "    jne %s\n", instruction->label);
+                        "    jne    %s\n", instruction->label);
                     break;
                 case OP_NEQ:
                     fprintf(generator->output,
-                        "    je %s\n", instruction->label);
+                        "    je     %s\n", instruction->label);
                     break;
                 case OP_LT:
                     fprintf(generator->output,
-                        "    jge %s\n", instruction->label);
+                        "    jge    %s\n", instruction->label);
                     break;
                 case OP_LTE:
                     fprintf(generator->output,
-                        "    jg %s\n", instruction->label);
+                        "    jg     %s\n", instruction->label);
                     break;
                 case OP_GT:
                     fprintf(generator->output,
-                        "    jle %s\n", instruction->label);
+                        "    jle    %s\n", instruction->label);
                     break;
                 case OP_GTE:
                     fprintf(generator->output,
-                        "    jl %s\n", instruction->label);
+                        "    jl    %s\n", instruction->label);
                     break;
+                case OP_COPY:
+                {
+                    // NOTE(timo): The preceding was a boolean copied to variable?
+                    Symbol* arg = scope_lookup(generator->local, instruction->arg1);
+                    
+                    if (arg->type->kind == TYPE_BOOLEAN)
+                    {
+                        fprintf(generator->output,
+                            "    mov    r10, %d\n", arg->value.boolean ? 0 : 1);
+                        fprintf(generator->output,
+                            "    mov    r11, [rbp-%d]\n", arg->offset);
+                        fprintf(generator->output,
+                            "    cmp    r10, r11\n");
+                        fprintf(generator->output,
+                            "    jne    %s\n", instruction->label);
+                    }
+                    break;
+                }
                 default:
+                    // NOTE(timo): If the previous condition was something else than relational
+                    // operation, there is no need for the preceding operation. Not sure how it
+                    // will be with the logical expressions
                     // TODO(timo): Create diagnostic
-                    printf("[CODE_GENERATOR] - Invalid preceding instruction in OP_GOTO_IF_FALSE\n");
+                    printf("[CODE_GENERATOR] - Invalid preceding instruction in OP_GOTO_IF_FALSE '%s'\n", operation_str(preceding->operation));
                     exit(1);
             }
-
             break;
         }
         case OP_COPY:

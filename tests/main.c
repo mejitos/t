@@ -3,6 +3,7 @@
 #include "tests.h"
 #define T_HASHTABLE_IMPLEMENTATION
 #include "../src/hashtable.h"
+#include "../src/common.h"
 
 
 // TODO(timo): Some kind of error handling

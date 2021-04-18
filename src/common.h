@@ -5,7 +5,7 @@
 
 
 char* read_file(const char* path);
-static char* shift(int* argc, char*** argv);
+char* shift(int* argc, char*** argv);
 bool str_equals(char* string1, char* string2);
 
 
