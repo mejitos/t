@@ -208,6 +208,30 @@ Instruction* instruction_gte(char* arg1, char* arg2, char* result)
 }
 
 
+Instruction* instruction_and(char* arg1, char* arg2, char* result)
+{
+    Instruction* instruction = xcalloc(1, sizeof (Instruction));
+    instruction->operation = OP_AND;
+    instruction->arg1 = str_copy(arg1);
+    instruction->arg2 = str_copy(arg2);
+    instruction->result = str_copy(result);
+
+    return instruction;
+}
+
+
+Instruction* instruction_or(char* arg1, char* arg2, char* result)
+{
+    Instruction* instruction = xcalloc(1, sizeof (Instruction));
+    instruction->operation = OP_OR;
+    instruction->arg1 = str_copy(arg1);
+    instruction->arg2 = str_copy(arg2);
+    instruction->result = str_copy(result);
+
+    return instruction;
+}
+
+
 Instruction* instruction_minus(char* arg, char* result)
 {
     Instruction* instruction = xcalloc(1, sizeof (Instruction));
@@ -220,10 +244,10 @@ Instruction* instruction_minus(char* arg, char* result)
 }
 
 
-Instruction* instruction_neg(char* arg, char* result)
+Instruction* instruction_not(char* arg, char* result)
 {
     Instruction* instruction = xcalloc(1, sizeof (Instruction));
-    instruction->operation = OP_NEG;
+    instruction->operation = OP_NOT;
     instruction->arg1 = arg;
     instruction->arg2 = NULL;
     instruction->result = result;
@@ -382,8 +406,14 @@ void dump_instruction(Instruction* instruction)
         case OP_MINUS:
             printf("\t%s := -%s\n", instruction->result, instruction->arg1);
             break;
-        case OP_NEG:
+        case OP_NOT:
             printf("\t%s := not %s\n", instruction->result, instruction->arg1);
+            break;
+        case OP_AND:
+            printf("\t%s := %s and %s\n", instruction->result, instruction->arg1, instruction->arg2);
+            break;
+        case OP_OR:
+            printf("\t%s := %s or %s\n", instruction->result, instruction->arg1, instruction->arg2);
             break;
         case OP_COPY:
             printf("\t%s := %s\n", instruction->result, instruction->arg1);

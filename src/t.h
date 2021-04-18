@@ -608,7 +608,7 @@ typedef enum Operation
     OP_DIV,
     // unary
     OP_MINUS, // unary minus
-    OP_NEG, // logical negation
+    OP_NOT, // logical negation
     // relational 
     OP_LT,
     OP_LTE,
@@ -616,6 +616,7 @@ typedef enum Operation
     OP_GTE,
     OP_EQ,
     OP_NEQ,
+    // logical
     OP_AND,
     OP_OR,
     // other
@@ -684,8 +685,10 @@ Instruction* instruction_lt(char* arg1, char* arg2, char* result);
 Instruction* instruction_lte(char* arg1, char* arg2, char* result);
 Instruction* instruction_gt(char* arg1, char* arg2, char* result);
 Instruction* instruction_gte(char* arg1, char* arg2, char* result);
+Instruction* instruction_and(char* arg1, char* arg2, char* result);
+Instruction* instruction_or(char* arg1, char* arg2, char* result);
 Instruction* instruction_minus(char* arg, char* result);
-Instruction* instruction_neg(char* arg, char* result);
+Instruction* instruction_not(char* arg, char* result);
 Instruction* instruction_function_begin();
 Instruction* instruction_function_end();
 Instruction* instruction_param_push(char* arg);
@@ -727,6 +730,7 @@ typedef struct IR_Generator
     // Context
     bool not_in_loop;
     char* while_exit;
+    // TODO(timo): Could we use if exit here as well?
 } IR_Generator;
 
 
