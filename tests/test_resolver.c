@@ -905,6 +905,8 @@ static void test_resolve_function_expression(Test_Runner* runner)
     
     type_table = type_table_init();
     resolver_init(&resolver, type_table);
+    // NOTE(timo): The function has to be in named context to get the scoping work
+    resolver.context.current_function = "anonymous";
     type = resolve_expression(&resolver, expression);
 
     assert_base(runner, resolver.diagnostics->length == 0,
