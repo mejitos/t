@@ -75,7 +75,7 @@ static void test_generate_unary_expression(Test_Runner* runner)
     assert_instruction(runner, generator.instructions->items[0], OP_COPY);
     assert_instruction(runner, generator.instructions->items[1], OP_MINUS);
 
-    // dump_instructions(generator.instructions);
+    dump_instructions(generator.instructions);
 
     expression_free(expression);
     ir_generator_free(&generator);
@@ -85,7 +85,6 @@ static void test_generate_unary_expression(Test_Runner* runner)
     lexer_free(&lexer);
 
     // not
-    /*
     lexer_init(&lexer, "not false");
     lex(&lexer);
 
@@ -99,7 +98,12 @@ static void test_generate_unary_expression(Test_Runner* runner)
     ir_generator_init(&generator, resolver.global);
     ir_generate_expression(&generator, expression);
 
-    //dump_instructions(generator.instructions);
+    assert_base(runner, generator.instructions->length == 2,
+        "Invalid number of instructions: %d, expected 2", generator.instructions->length);
+    assert_instruction(runner, generator.instructions->items[0], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[1], OP_NOT);
+
+    dump_instructions(generator.instructions);
 
     expression_free(expression);
     ir_generator_free(&generator);
@@ -107,7 +111,6 @@ static void test_generate_unary_expression(Test_Runner* runner)
     type_table_free(type_table);
     parser_free(&parser);
     lexer_free(&lexer);
-    */
 }
 
 

@@ -248,9 +248,9 @@ Instruction* instruction_not(char* arg, char* result)
 {
     Instruction* instruction = xcalloc(1, sizeof (Instruction));
     instruction->operation = OP_NOT;
-    instruction->arg1 = arg;
+    instruction->arg1 = str_copy(arg);
     instruction->arg2 = NULL;
-    instruction->result = result;
+    instruction->result = str_copy(result);
 
     return instruction;
 }
