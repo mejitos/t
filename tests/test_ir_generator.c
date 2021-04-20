@@ -75,7 +75,7 @@ static void test_generate_unary_expression(Test_Runner* runner)
     assert_instruction(runner, generator.instructions->items[0], OP_COPY);
     assert_instruction(runner, generator.instructions->items[1], OP_MINUS);
 
-    dump_instructions(generator.instructions);
+    // dump_instructions(generator.instructions);
 
     expression_free(expression);
     ir_generator_free(&generator);
@@ -103,7 +103,7 @@ static void test_generate_unary_expression(Test_Runner* runner)
     assert_instruction(runner, generator.instructions->items[0], OP_COPY);
     assert_instruction(runner, generator.instructions->items[1], OP_NOT);
 
-    dump_instructions(generator.instructions);
+    // dump_instructions(generator.instructions);
 
     expression_free(expression);
     ir_generator_free(&generator);
@@ -192,6 +192,72 @@ static void test_generate_binary_expression_comparison(Test_Runner* runner)
         {OP_COPY, OP_COPY, OP_LTE},
         {OP_COPY, OP_COPY, OP_GT},
         {OP_COPY, OP_COPY, OP_GTE}
+    };
+
+    Lexer lexer;
+    Parser parser;
+    hashtable* type_table;
+    Resolver resolver;
+    IR_Generator generator;
+    AST_Expression* expression;
+
+    for (int i = 0; i < sizeof (tests) / sizeof (*tests); i++)
+    {
+        lexer_init(&lexer, tests[i]);
+        lex(&lexer);
+
+        parser_init(&parser, lexer.tokens);
+        expression = parse_expression(&parser);
+        
+        type_table = type_table_init();
+        resolver_init(&resolver, type_table);
+        resolve_expression(&resolver, expression);
+        
+        ir_generator_init(&generator, resolver.global);
+        ir_generate_expression(&generator, expression);
+
+        assert_base(runner, generator.instructions->length == 3,
+            "Invalid number of instructions: %d, expected 3", generator.instructions->length);
+
+        for (int j = 0; j < generator.instructions->length; j++)
+            assert_instruction(runner, generator.instructions->items[j], results[i][j]);
+
+        // dump_instructions(generator.instructions);
+        
+        expression_free(expression);
+        ir_generator_free(&generator);
+        resolver_free(&resolver);
+        type_table_free(type_table);
+        parser_free(&parser);
+        lexer_free(&lexer);
+    }
+}
+
+
+static void test_generate_logical_expression(Test_Runner* runner)
+{
+    const char* tests[] =
+    {
+        "true and true",
+        "true and false",
+        "false and true",
+        "false and false",
+        "true or true",
+        "true or false",
+        "false or true",
+        "false or false"
+    };
+
+    Operation results[][3] = 
+    {
+        {OP_COPY, OP_COPY, OP_AND},
+        {OP_COPY, OP_COPY, OP_AND},
+        {OP_COPY, OP_COPY, OP_AND},
+        {OP_COPY, OP_COPY, OP_AND},
+        {OP_COPY, OP_COPY, OP_OR},
+        {OP_COPY, OP_COPY, OP_OR},
+        {OP_COPY, OP_COPY, OP_OR},
+        {OP_COPY, OP_COPY, OP_OR}
     };
 
     Lexer lexer;
@@ -1264,6 +1330,7 @@ Test_Set* ir_generator_test_set()
     array_push(set->tests, test_case("Unary expression", test_generate_unary_expression));
     array_push(set->tests, test_case("Binary expression (arithmetic)", test_generate_binary_expression_arithmetic));
     array_push(set->tests, test_case("Binary expression (comparison)", test_generate_binary_expression_comparison));
+    array_push(set->tests, test_case("Logical expression", test_generate_logical_expression));
     array_push(set->tests, test_case("Variable expression", test_generate_variable_expression));
     array_push(set->tests, test_case("Assignment expression", test_generate_assignment_expression));
     array_push(set->tests, test_case("Assignment expression (complex)", test_generate_assignment_expression_complex));
