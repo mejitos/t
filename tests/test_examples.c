@@ -102,6 +102,38 @@ static void test_example_first(Test_Runner* runner)
 }
 
 
+static void test_example_first_bool_true(Test_Runner* runner)
+{
+    const char* program_name = "first_bool_true";
+    const char* file_path = "./examples/first_bool_true.t";
+    const char* result = "Program exited with the value true\n";
+    const char* args = NULL;
+
+    char* buffer = run_example(runner, program_name, file_path, result, args);
+    
+    assert_base(runner, strcmp(result, buffer) == 0,
+        "Invalid exit value '%s', expected '%s'", buffer, result);
+
+    free(buffer);
+}
+
+
+static void test_example_first_bool_false(Test_Runner* runner)
+{
+    const char* program_name = "first_bool_false";
+    const char* file_path = "./examples/first_bool_false.t";
+    const char* result = "Program exited with the value false\n";
+    const char* args = NULL;
+
+    char* buffer = run_example(runner, program_name, file_path, result, args);
+    
+    assert_base(runner, strcmp(result, buffer) == 0,
+        "Invalid exit value '%s', expected '%s'", buffer, result);
+
+    free(buffer);
+}
+
+
 static void test_example_trivial_add(Test_Runner* runner)
 {
     const char* program_name = "trivial_add";
@@ -171,6 +203,150 @@ static void test_example_trivial_arithmetics(Test_Runner* runner)
     const char* program_name = "trivial_arithmetics";
     const char* file_path = "./examples/trivial_arithmetics.t";
     const char* result = "Program exited with the value 7\n";
+    const char* args = NULL;
+
+    char* buffer = run_example(runner, program_name, file_path, result, args);
+    
+    assert_base(runner, strcmp(result, buffer) == 0,
+        "Invalid exit value '%s', expected '%s'", buffer, result);
+
+    free(buffer);
+}
+
+
+static void test_example_logical_not_1(Test_Runner* runner)
+{
+    const char* program_name = "logical_not_1";
+    const char* file_path = "./examples/logical_not_1.t";
+    const char* result = "Program exited with the value false\n";
+    const char* args = NULL;
+
+    char* buffer = run_example(runner, program_name, file_path, result, args);
+    
+    assert_base(runner, strcmp(result, buffer) == 0,
+        "Invalid exit value '%s', expected '%s'", buffer, result);
+
+    free(buffer);
+}
+
+
+static void test_example_logical_not_2(Test_Runner* runner)
+{
+    const char* program_name = "logical_not_2";
+    const char* file_path = "./examples/logical_not_2.t";
+    const char* result = "Program exited with the value true\n";
+    const char* args = NULL;
+
+    char* buffer = run_example(runner, program_name, file_path, result, args);
+    
+    assert_base(runner, strcmp(result, buffer) == 0,
+        "Invalid exit value '%s', expected '%s'", buffer, result);
+
+    free(buffer);
+}
+
+
+static void test_example_logical_and_1(Test_Runner* runner)
+{
+    const char* program_name = "logical_and_1";
+    const char* file_path = "./examples/logical_and_1.t";
+    const char* result = "Program exited with the value true\n";
+    const char* args = NULL;
+
+    char* buffer = run_example(runner, program_name, file_path, result, args);
+    
+    assert_base(runner, strcmp(result, buffer) == 0,
+        "Invalid exit value '%s', expected '%s'", buffer, result);
+
+    free(buffer);
+}
+
+
+static void test_example_logical_and_2(Test_Runner* runner)
+{
+    const char* program_name = "logical_and_2";
+    const char* file_path = "./examples/logical_and_2.t";
+    const char* result = "Program exited with the value false\n";
+    const char* args = NULL;
+
+    char* buffer = run_example(runner, program_name, file_path, result, args);
+    
+    assert_base(runner, strcmp(result, buffer) == 0,
+        "Invalid exit value '%s', expected '%s'", buffer, result);
+
+    free(buffer);
+}
+
+
+static void test_example_logical_and_3(Test_Runner* runner)
+{
+    const char* program_name = "logical_and_3";
+    const char* file_path = "./examples/logical_and_3.t";
+    const char* result = "Program exited with the value false\n";
+    const char* args = NULL;
+
+    char* buffer = run_example(runner, program_name, file_path, result, args);
+    
+    assert_base(runner, strcmp(result, buffer) == 0,
+        "Invalid exit value '%s', expected '%s'", buffer, result);
+
+    free(buffer);
+}
+
+
+static void test_example_logical_or_1(Test_Runner* runner)
+{
+    const char* program_name = "logical_or_1";
+    const char* file_path = "./examples/logical_or_1.t";
+    const char* result = "Program exited with the value true\n";
+    const char* args = NULL;
+
+    char* buffer = run_example(runner, program_name, file_path, result, args);
+    
+    assert_base(runner, strcmp(result, buffer) == 0,
+        "Invalid exit value '%s', expected '%s'", buffer, result);
+
+    free(buffer);
+}
+
+
+static void test_example_logical_or_2(Test_Runner* runner)
+{
+    const char* program_name = "logical_or_2";
+    const char* file_path = "./examples/logical_or_2.t";
+    const char* result = "Program exited with the value true\n";
+    const char* args = NULL;
+
+    char* buffer = run_example(runner, program_name, file_path, result, args);
+    
+    assert_base(runner, strcmp(result, buffer) == 0,
+        "Invalid exit value '%s', expected '%s'", buffer, result);
+
+    free(buffer);
+}
+
+
+static void test_example_logical_or_3(Test_Runner* runner)
+{
+    const char* program_name = "logical_or_3";
+    const char* file_path = "./examples/logical_or_3.t";
+    const char* result = "Program exited with the value true\n";
+    const char* args = NULL;
+
+    char* buffer = run_example(runner, program_name, file_path, result, args);
+    
+    assert_base(runner, strcmp(result, buffer) == 0,
+        "Invalid exit value '%s', expected '%s'", buffer, result);
+
+    free(buffer);
+}
+
+
+static void test_example_logical_or_4(Test_Runner* runner)
+{
+    const char* program_name = "logical_or_4";
+    const char* file_path = "./examples/logical_or_4.t";
+    const char* result = "Program exited with the value false\n";
     const char* args = NULL;
 
     char* buffer = run_example(runner, program_name, file_path, result, args);
@@ -812,12 +988,23 @@ Test_Set* compiler_test_set()
 
     // First
     array_push(set->tests, test_case("Example file: first.t", test_example_first));
+    array_push(set->tests, test_case("Example file: first_bool_true.t", test_example_first_bool_true));
+    array_push(set->tests, test_case("Example file: first_bool_false.t", test_example_first_bool_false));
     // Trivial basic stuff
     array_push(set->tests, test_case("Example file: trivial_add.t", test_example_trivial_add));
     array_push(set->tests, test_case("Example file: trivial_subtract.t", test_example_trivial_subtract));
     array_push(set->tests, test_case("Example file: trivial_multiply.t", test_example_trivial_multiply));
     array_push(set->tests, test_case("Example file: trivial_divide.t", test_example_trivial_divide));
     array_push(set->tests, test_case("Example file: trivial_arithmetics.t", test_example_trivial_arithmetics));
+    array_push(set->tests, test_case("Example file: logical_not_1.t", test_example_logical_not_1));
+    array_push(set->tests, test_case("Example file: logical_not_2.t", test_example_logical_not_2));
+    array_push(set->tests, test_case("Example file: logical_and_1.t", test_example_logical_and_1));
+    array_push(set->tests, test_case("Example file: logical_and_2.t", test_example_logical_and_2));
+    array_push(set->tests, test_case("Example file: logical_and_3.t", test_example_logical_and_3));
+    array_push(set->tests, test_case("Example file: logical_or_1.t", test_example_logical_or_1));
+    array_push(set->tests, test_case("Example file: logical_or_2.t", test_example_logical_or_2));
+    array_push(set->tests, test_case("Example file: logical_or_3.t", test_example_logical_or_3));
+    array_push(set->tests, test_case("Example file: logical_or_4.t", test_example_logical_or_4));
     
     // Local variables
     // Return variable

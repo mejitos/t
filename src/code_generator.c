@@ -190,22 +190,22 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
             if (source != NULL)
             {
                 fprintf(generator->output,
-                    "    div qword    [rbp-%d]        ; --\n", source->offset);
+                    "    div     qword [rbp-%d]      ; --\n", source->offset);
             }
 
             if (result != NULL)
             {
                 fprintf(generator->output,
-                    "    mov qword    [rbp-%d], rax        ; --\n", result->offset);
+                    "    mov    qword [rbp-%d], rax ; --\n", result->offset);
             }
             else
             {
                 result->_register = destination->_register;
 
                 fprintf(generator->output,
-                    "    mov    rdx, 0        ; setting rdx to 0 because it represents the top bits of the input divident\n"
-                    "    mov    rax, %s\n"
-                    "    div    %s        ; divide the rax with the source\n"
+                    "    mov    rdx, 0              ; setting rdx to 0 because it represents the top bits of the input divident\n"
+                    "    mov    rax, %s             ; \n"
+                    "    div    %s                  ; divide the rax with the source\n"
                     "    mov    %s, rax\n", register_list[destination->_register], register_list[source->_register], register_list[result->_register]);
 
                 free_register(source->_register);
@@ -221,7 +221,6 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
         case OP_GT:
         case OP_GTE:
         {
-            // Just put things into the registers and compare?
             Symbol* destination = scope_lookup(generator->local, instruction->arg1);
             Symbol* source = scope_lookup(generator->local, instruction->arg2);
             Symbol* result = scope_lookup(generator->local, instruction->result);
@@ -240,13 +239,54 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
             }
 
             fprintf(generator->output,
-                "    cmp    %s, %s        ; --\n", register_list[destination->_register], register_list[source->_register]);
+                "    cmp    %s, %s              ; --\n", register_list[destination->_register], register_list[source->_register]);
 
             // TODO(timo): What to save into the result? I mean we could save the correct jump
             // instruction at this point already and just print it at the GOTO_IF_FALSE
 
             free_register(destination->_register);
             free_register(source->_register);
+            break;
+        }
+        case OP_NOT:
+        {
+            Symbol* arg = scope_lookup(generator->local, instruction->arg1);
+            Symbol* result = scope_lookup(generator->local, instruction->result);
+            
+            // NOTE(timo): Bitwise not is not the same as straight logical not, since
+            // bitwise not will flip all the bits, so there has to be and 1 afterwards
+            fprintf(generator->output,
+                "    mov    rax, [rbp-%d]       ; \n"
+                "    not    rax                 ; \n"
+                "    and    rax, 1              ; \n"
+                "    mov    [rbp-%d], rax       ; \n", arg->offset, result->offset);
+            // NOTE(timo): There is no need to save a reference to created boolean variables,
+            // since the value will be checked at the end so if it is 0, it will be false and
+            // if it is 1, it will be true.
+            break;
+        }
+        case OP_AND:
+        {
+            Symbol* destination = scope_lookup(generator->local, instruction->arg1);
+            Symbol* source = scope_lookup(generator->local, instruction->arg2);
+            Symbol* result = scope_lookup(generator->local, instruction->result);
+            
+            fprintf(generator->output,
+                "    mov    rax, [rbp-%d]       ; \n"
+                "    and    rax, [rbp-%d]       ; \n"
+                "    mov    [rbp-%d], rax       ; \n", destination->offset, source->offset, result->offset);
+            break;
+        }
+        case OP_OR:
+        {
+            Symbol* destination = scope_lookup(generator->local, instruction->arg1);
+            Symbol* source = scope_lookup(generator->local, instruction->arg2);
+            Symbol* result = scope_lookup(generator->local, instruction->result);
+            
+            fprintf(generator->output,
+                "    mov    rax, [rbp-%d]       ; \n"
+                "    or    rax, [rbp-%d]       ; \n"
+                "    mov    [rbp-%d], rax       ; \n", destination->offset, source->offset, result->offset);
             break;
         }
         case OP_GOTO_IF_FALSE:
