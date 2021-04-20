@@ -334,6 +334,55 @@ static void test_diagnose_invalid_operand_types_binary_expression(Test_Runner* r
 }
 
 
+static void test_resolve_logical_expression(Test_Runner* runner)
+{
+    const char* tests[] =
+    {
+        "true and true",
+        "true and false",
+        "false and true",
+        "false and false",
+        "true or true",
+        "true or false",
+        "false or true",
+        "false or false"
+    };
+
+    Lexer lexer;
+    Parser parser;
+    Resolver resolver;
+    hashtable* type_table;
+    AST_Expression* expression;
+
+    for (size_t i = 0; i < sizeof (tests) / sizeof (*tests); i++)
+    {
+        lexer_init(&lexer, tests[i]);
+        lex(&lexer);
+
+        parser_init(&parser, lexer.tokens);
+        AST_Expression* expression = parse_expression(&parser);
+
+        assert_expression(runner, expression->kind, EXPRESSION_BINARY);
+        assert_expression(runner, expression->binary.left->kind, EXPRESSION_LITERAL);
+        assert_expression(runner, expression->binary.right->kind, EXPRESSION_LITERAL);
+        
+        type_table = type_table_init();
+        resolver_init(&resolver, type_table);
+        Type* type = resolve_expression(&resolver, expression);
+        
+        assert_base(runner, resolver.diagnostics->length == 0,
+            "Invalid number of resolver diagnostics: %d, expected 0", resolver.diagnostics->length);
+        assert_type(runner, type->kind, TYPE_BOOLEAN);
+
+        expression_free(expression);
+        resolver_free(&resolver);
+        type_table_free(type_table);
+        parser_free(&parser);
+        lexer_free(&lexer);
+    }
+}
+
+
 static void test_resolve_variable_expression(Test_Runner* runner)
 {
     Lexer lexer;
@@ -1598,6 +1647,9 @@ Test_Set* resolver_test_set()
     array_push(set->tests, test_case("Binary expression", test_resolve_binary_expression));
     array_push(set->tests, test_case("Diagnose invalid binary operands", test_diagnose_invalid_operand_types_binary_expression));
 
+    // Logical expressions
+    array_push(set->tests, test_case("Logical expression", test_resolve_logical_expression));
+
     // Variable
     array_push(set->tests, test_case("Variable expression", test_resolve_variable_expression));
     array_push(set->tests, test_case("Diagnose referencing variable before declaring it", test_diagnose_referencing_variable_before_declaring));
@@ -1639,6 +1691,7 @@ Test_Set* resolver_test_set()
 
     // Variable declarations
     array_push(set->tests, test_case("Global variable declaration", test_resolve_variable_declaration));
+    // TODO(timo): array_push(set->tests, test_case("Global variable declaration has to be literal constant", test_resolve_variable_declaration_literal_const_only));
     array_push(set->tests, test_case("Multiple global variable declarations", test_resolve_multiple_global_variable_declarations));
     
     // Function declarations

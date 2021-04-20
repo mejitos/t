@@ -254,6 +254,7 @@ static Type* resolve_binary_expression(Resolver* resolver, AST_Expression* expre
         case TOKEN_MINUS:
         case TOKEN_MULTIPLY:
         case TOKEN_DIVIDE:
+        {
             if (type_left->kind != TYPE_INTEGER || type_right->kind != TYPE_INTEGER)
             {
                 Diagnostic* _diagnostic = diagnostic(
@@ -262,12 +263,16 @@ static Type* resolve_binary_expression(Resolver* resolver, AST_Expression* expre
                     type_as_string(type_left->kind), type_as_string(type_right->kind), _operator->lexeme);
                 array_push(resolver->diagnostics, _diagnostic);
 
-                // TODO(timo): Return none type?
+                type = hashtable_get(resolver->type_table, "none");
             }
-            type = type_left;
+            else
+                type = type_left;
+
             break;
+        }
         case TOKEN_IS_EQUAL:
         case TOKEN_NOT_EQUAL:
+        {
             if ((type_left->kind == TYPE_INTEGER && type_right->kind != TYPE_INTEGER) || 
                 (type_left->kind == TYPE_BOOLEAN && type_right->kind != TYPE_BOOLEAN))
             {
@@ -277,14 +282,18 @@ static Type* resolve_binary_expression(Resolver* resolver, AST_Expression* expre
                     type_as_string(type_left->kind), type_as_string(type_right->kind), _operator->lexeme);
                 array_push(resolver->diagnostics, _diagnostic);
 
-                // TODO(timo): Return none type?
+                type = hashtable_get(resolver->type_table, "none");
             }
-            type = hashtable_get(resolver->type_table, "bool");
+            else
+                type = hashtable_get(resolver->type_table, "bool");
+
             break;
+        }
         case TOKEN_LESS_THAN:
         case TOKEN_LESS_THAN_EQUAL:
         case TOKEN_GREATER_THAN:
         case TOKEN_GREATER_THAN_EQUAL:
+        {
             // TODO(timo): Operand/values has to be scalar types e.g. integers
             // in this case for the ordering expression
             if (type_left->kind != TYPE_INTEGER || type_right->kind != TYPE_INTEGER)
@@ -295,10 +304,31 @@ static Type* resolve_binary_expression(Resolver* resolver, AST_Expression* expre
                     type_as_string(type_left->kind), type_as_string(type_right->kind), _operator->lexeme);
                 array_push(resolver->diagnostics, _diagnostic);
 
-                // TODO(timo): Return none type?
+                type = hashtable_get(resolver->type_table, "none");
             }
-            type = hashtable_get(resolver->type_table, "bool");
+            else
+                type = hashtable_get(resolver->type_table, "bool");
+
             break;
+        }
+        case TOKEN_AND:
+        case TOKEN_OR:
+        {
+            if (type_left->kind != TYPE_BOOLEAN || type_right->kind != TYPE_BOOLEAN)
+            {
+                Diagnostic* _diagnostic = diagnostic(
+                    DIAGNOSTIC_ERROR, expression->position,
+                    ":RESOLVER - TypeError: Unsupported operand types '%s' and '%s' for binary '%s'",
+                    type_as_string(type_left->kind), type_as_string(type_right->kind), _operator->lexeme);
+                array_push(resolver->diagnostics, _diagnostic);
+
+                type = hashtable_get(resolver->type_table, "none");
+            }
+            else
+                type = type_left;
+
+            break;
+        }
         default:
         {
             Diagnostic* _diagnostic = diagnostic(
@@ -307,7 +337,7 @@ static Type* resolve_binary_expression(Resolver* resolver, AST_Expression* expre
                 _operator->lexeme);
             array_push(resolver->diagnostics, _diagnostic);
 
-            // TODO(timo): Return none type?
+            type = hashtable_get(resolver->type_table, "none");
             break;
         }
     }
@@ -355,7 +385,7 @@ static Type* resolve_assignment_expression(Resolver* resolver, AST_Expression* e
             type_as_string(variable_type->kind), type_as_string(value_type->kind));
         array_push(resolver->diagnostics, _diagnostic);
 
-        // TODO(timo): Return none type?
+        type = hashtable_get(resolver->type_table, "none");
     }
 
     expression->type = value_type;
