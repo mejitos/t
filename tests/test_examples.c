@@ -710,6 +710,54 @@ static void test_example_args_1(Test_Runner* runner)
 }
 
 
+static void test_example_args_2(Test_Runner* runner)
+{
+    const char* program_name = "args_2";
+    const char* file_path = "./examples/args_2.t";
+    const char* result = "Program exited with the value 1\n";
+    const char* args = "1 2 3";
+
+    char* buffer = run_example(runner, program_name, file_path, result, args);
+    
+    assert_base(runner, strcmp(result, buffer) == 0,
+        "Invalid exit value '%s', expected '%s'", buffer, result);
+
+    free(buffer);
+}
+
+
+static void test_example_args_3(Test_Runner* runner)
+{
+    const char* program_name = "args_3";
+    const char* file_path = "./examples/args_3.t";
+    const char* result = "Program exited with the value 2\n";
+    const char* args = "1 2 3 4";
+
+    char* buffer = run_example(runner, program_name, file_path, result, args);
+    
+    assert_base(runner, strcmp(result, buffer) == 0,
+        "Invalid exit value '%s', expected '%s'", buffer, result);
+
+    free(buffer);
+}
+
+
+static void test_example_args_4(Test_Runner* runner)
+{
+    const char* program_name = "args_4";
+    const char* file_path = "./examples/args_4.t";
+    const char* result = "Program exited with the value 1\n";
+    const char* args = "1 2 3 4";
+
+    char* buffer = run_example(runner, program_name, file_path, result, args);
+    
+    assert_base(runner, strcmp(result, buffer) == 0,
+        "Invalid exit value '%s', expected '%s'", buffer, result);
+
+    free(buffer);
+}
+
+
 static void test_example_factorial(Test_Runner* runner)
 {
     const char* program_name = "factorial";
@@ -806,6 +854,9 @@ Test_Set* compiler_test_set()
 
     // Command line arguments
     array_push(set->tests, test_case("Example file: args_1.t", test_example_args_1));
+    array_push(set->tests, test_case("Example file: args_2.t", test_example_args_2));
+    array_push(set->tests, test_case("Example file: args_3.t", test_example_args_3));
+    array_push(set->tests, test_case("Example file: args_4.t", test_example_args_4));
 
     // Little programs
     array_push(set->tests, test_case("Example file: factorial.t", test_example_factorial));
