@@ -374,6 +374,7 @@ static Type* resolve_variable_expression(Resolver* resolver, AST_Expression* exp
 
 static Type* resolve_assignment_expression(Resolver* resolver, AST_Expression* expression)
 {
+    Type* type;
     Type* variable_type = resolve_expression(resolver, expression->assignment.variable);
     Type* value_type = resolve_expression(resolver, expression->assignment.value);
     
@@ -387,10 +388,12 @@ static Type* resolve_assignment_expression(Resolver* resolver, AST_Expression* e
 
         type = hashtable_get(resolver->type_table, "none");
     }
+    else
+        type = value_type;
 
-    expression->type = value_type;
+    expression->type = type;
 
-    return value_type;
+    return type;
 }
 
 

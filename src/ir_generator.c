@@ -135,6 +135,12 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
                 case TOKEN_GREATER_THAN_EQUAL:
                     instruction = instruction_gte(left, right, temp);
                     break;
+                case TOKEN_AND:
+                    instruction = instruction_and(left, right, temp);
+                    break;
+                case TOKEN_OR:
+                    instruction = instruction_or(left, right, temp);
+                    break;
                 default:
                     // TODO(timo): Error
                     break;
@@ -234,10 +240,6 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
             free(temp);
             // printf("\t%s = *(%s)\n");
             return instruction->result;
-
-            // Total offset for the accessed element
-            
-            // break;
         }
         case EXPRESSION_FUNCTION:
         {
@@ -276,6 +278,8 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
             array_push(generator->instructions, instruction);
 
             // printf("\tfunction_end\n");
+            
+            // TODO(timo): This should probably return something?
 
             break;
         }
