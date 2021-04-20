@@ -369,6 +369,18 @@ Instruction* instruction_goto_if_false(char* arg, char* label)
 }
 
 
+Instruction* instruction_dereference(char* arg1, char* result, int offset)
+{
+    Instruction* instruction = xcalloc(1, sizeof (Instruction));
+    instruction->operation = OP_DEREFERENCE;
+    instruction->arg1 = str_copy(arg1);
+    instruction->arg2 = NULL;
+    instruction->result = str_copy(result);
+
+    return instruction;
+}
+
+
 void dump_instruction(Instruction* instruction)
 {
     switch (instruction->operation)
@@ -451,6 +463,9 @@ void dump_instruction(Instruction* instruction)
         case OP_GOTO_IF_FALSE:
             printf("\tif_false %s goto %s\n", instruction->arg1, instruction->label);
             break;
+        case OP_DEREFERENCE:
+            printf("\t%s = *(%s)\n", instruction->result, instruction->arg1);
+            break;
         default:
             // TODO(timo): Error
             break;
@@ -493,6 +508,7 @@ const char* operation_str(Operation operation)
         case OP_LABEL:              return "label";
         case OP_GOTO:               return "goto";
         case OP_GOTO_IF_FALSE:      return "goto if false";
+        case OP_DEREFERENCE:        return "dereference";
         default:                    return "invalid operation";
     }
 }

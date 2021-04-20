@@ -78,7 +78,7 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
                     instruction = instruction_minus(operand, temp);
                     break;
                 case TOKEN_NOT:
-                    instruction = instruction_neg(operand, temp);
+                    instruction = instruction_not(operand, temp);
                     break;
                 default:
                     // TODO(timo): Error
@@ -184,13 +184,60 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
 
             array_push(generator->instructions, instruction);
 
-            //printf("\t%s := %s\n", result, arg);
+            // printf("\t%s := %s\n", result, arg);
 
             return result;
         }
         case EXPRESSION_INDEX:
         {
-            break;
+            Instruction* instruction;
+            char* temp;
+
+            // Generate the total offset for the accessed element
+            char* subscript = ir_generate_expression(generator, expression->index.value);
+            // NOTE(timo): All variables and types are 8 bytes for now
+            // TODO(timo): We should probably create separate functions for different 
+            // kind of instructions. We don't really have any flexibility now.
+            // char* element_size = ir_generate_expression(generator, 8);
+            char* element_size = temp_label(generator); // TODO(timo): remove
+
+            instruction = instruction_copy("8", element_size); // TODO(timo): remove
+            array_push(generator->instructions, instruction); // TODO(timo): remove
+            scope_declare(generator->local, symbol_temp(instruction->result, expression->index.variable->type->array.element_type)); // TODO(timo): remove
+
+            temp = temp_label(generator);
+
+            instruction = instruction_mul(subscript, element_size, temp);
+            array_push(generator->instructions, instruction);
+            scope_declare(generator->local, symbol_temp(instruction->result, expression->index.variable->type->array.element_type));
+            
+            free(element_size); // TODO(timo): remove
+            free(temp);
+            // print(\t%s = %s * %s\n);
+
+            // Add the offset to the base pointer
+            char* arg = (char*)expression->index.variable->identifier->lexeme;
+            temp = temp_label(generator);
+            instruction = instruction_add(arg, instruction->result, temp);
+            array_push(generator->instructions, instruction);
+            scope_declare(generator->local, symbol_temp(instruction->result, expression->index.variable->type->array.element_type));
+
+            free(temp);
+            // print(\t%s = %s + %s\n);
+        
+            // Defererence the accessed element
+            temp = temp_label(generator); // result
+            instruction = instruction_dereference(instruction->result, temp, -1);
+            array_push(generator->instructions, instruction);
+            scope_declare(generator->local, symbol_temp(instruction->result, expression->index.variable->type->array.element_type));
+
+            free(temp);
+            // printf("\t%s = *(%s)\n");
+            return instruction->result;
+
+            // Total offset for the accessed element
+            
+            // break;
         }
         case EXPRESSION_FUNCTION:
         {
@@ -321,7 +368,7 @@ void ir_generate_statement(IR_Generator* generator, AST_Statement* statement)
             char* condition = ir_generate_expression(generator, statement->_while.condition);
 
             // if false, jump to label 2
-            //printf("\tif_false %s goto %s\n", condition, label_exit);
+            // printf("\tif_false %s goto %s\n", condition, label_exit);
 
             instruction = instruction_goto_if_false(condition, label_exit);
             array_push(generator->instructions, instruction);
@@ -330,13 +377,13 @@ void ir_generate_statement(IR_Generator* generator, AST_Statement* statement)
             ir_generate_statement(generator, statement->_while.body);
             
             // go back to the start of the loop to test the condition again
-            //printf("\tgoto %s\n", label_condition);
+            // printf("\tgoto %s\n", label_condition);
 
             instruction = instruction_goto(label_condition);
             array_push(generator->instructions, instruction);
             
             // exit
-            //printf("%s:\n", label_exit);
+            // printf("%s:\n", label_exit);
 
             instruction = instruction_label(label_exit);
             array_push(generator->instructions, instruction);

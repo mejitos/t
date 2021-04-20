@@ -435,7 +435,48 @@ static void test_generate_assignment_expression_complex(Test_Runner* runner)
 
 static void test_generate_index_expression(Test_Runner* runner)
 {
-    //
+    Lexer lexer;
+    Parser parser;
+    hashtable* type_table;
+    Resolver resolver;
+    IR_Generator generator;
+    char* source;
+
+    source = "main: int = (argc: int, argv: [int]) => { return argv[0]; };";
+
+    lexer_init(&lexer, source);
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    parse(&parser);
+
+    type_table = type_table_init();
+    resolver_init(&resolver, type_table);
+    resolve(&resolver, parser.declarations);
+    
+    assert(parser.declarations->length == 1);
+    AST_Declaration* declaration = parser.declarations->items[0];
+    AST_Statement* body = declaration->initializer->function.body;
+    AST_Statement* _return = body->block.statements->items[0];
+
+    ir_generator_init(&generator, resolver.global);
+    ir_generate_expression(&generator, _return->_return.value);
+
+    // dump_instructions(generator.instructions);
+
+    assert_base(runner, generator.instructions->length == 5,
+        "Invalid number of instructions: %d, expected 5", generator.instructions->length);
+    assert_instruction(runner, generator.instructions->items[0], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[1], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[2], OP_MUL);
+    assert_instruction(runner, generator.instructions->items[3], OP_ADD);
+    assert_instruction(runner, generator.instructions->items[4], OP_DEREFERENCE);
+    
+    ir_generator_free(&generator);
+    resolver_free(&resolver);
+    type_table_free(type_table);
+    parser_free(&parser);
+    lexer_free(&lexer);
 }
 
 
@@ -1230,7 +1271,7 @@ Test_Set* ir_generator_test_set()
     array_push(set->tests, test_case("Assignment expression (complex)", test_generate_assignment_expression_complex));
     array_push(set->tests, test_case("Function expression", test_generate_function_expression));
     array_push(set->tests, test_case("Call expression", test_generate_call_expression));
-    // TODO(timo): array_push(set->tests, test_case("Index expression", test_generate_index_expression));
+    array_push(set->tests, test_case("Index expression", test_generate_index_expression));
 
     // Statements
     array_push(set->tests, test_case("If statement (if then)", test_generate_if_statement_1));

@@ -634,6 +634,7 @@ typedef enum Operation
     OP_CALL,
     OP_RETURN,
     OP_LABEL,
+    OP_DEREFERENCE,
 } Operation;
 
 typedef struct Instruction Instruction;
@@ -698,6 +699,7 @@ Instruction* instruction_return(char* arg);
 Instruction* instruction_label(char* label);
 Instruction* instruction_goto(char* label);
 Instruction* instruction_goto_if_false(char* arg, char* label);
+Instruction* instruction_dereference(char* arg, char* result, int offset);
 void instruction_free(Instruction* instruction);
 void dump_instruction(Instruction* instruction);
 void dump_instructions(array* instructions);
