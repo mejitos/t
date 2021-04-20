@@ -53,15 +53,26 @@ void compile(const char* source, Options options)
     ir_generator_init(&ir_generator, resolver.global);
     ir_generate(&ir_generator, parser.declarations);
 
+    if (ir_generator.diagnostics->length > 0)
+    {
+        print_diagnostics(ir_generator.diagnostics);
+        goto teardown_ir_generator;
+    }
+
     // Code generation
     code_generator_init(&code_generator, ir_generator.global, ir_generator.instructions);
     
-    // TODO(timo): ...
+    // TODO(timo): ...do I really need this
     char asm_file[64];
     snprintf(asm_file, 64, "%s.asm", options.program);
     code_generator.asm_file = asm_file;
-
     code_generate(&code_generator);
+
+    if (code_generator.diagnostics->length > 0)
+    {
+        print_diagnostics(code_generator.diagnostics);
+        goto teardown_code_generator;
+    }
 
     // Assembler
     // char* assemble = "nasm -f elf64 -o main.o main.asm";
@@ -71,7 +82,6 @@ void compile(const char* source, Options options)
 
     if ((assemble_error = system(assemble)) != 0)
     {
-        printf("FAILED\n");
         printf("Error code on command '%s': %d\n", assemble, assemble_error);
     }
 
@@ -83,11 +93,13 @@ void compile(const char* source, Options options)
 
     if ((link_error = system(link)) != 0)
     {
-        printf("FAILED\n");
         printf("Error code on command '%s': %d\n", link, link_error);
     }
     
     // Teardown
+teardown_code_generator:
+    code_generator_free(&code_generator);
+teardown_ir_generator:
     ir_generator_free(&ir_generator);
 teardown_resolver:
     resolver_free(&resolver);
@@ -105,7 +117,6 @@ teardown_lexer:
     
     if ((rm_files_error = system(rm_files)) != 0 )
     {
-        printf("\n");
         printf("Error code on command '%s': %d\n", rm_files, rm_files_error);
     }
 }
@@ -155,8 +166,6 @@ void compile_verbose(const char* source, Options options)
     clock_t resolving_end = clock();
     double resolving_time = (double)(resolving_end - resolving_start) * 1000 / (double)CLOCKS_PER_SEC;
 
-    // TODO(timo): AST tree interpreter could be run if there is option set for that
-
     // IR generation
     clock_t ir_generating_start = clock();
 
@@ -165,6 +174,12 @@ void compile_verbose(const char* source, Options options)
 
     clock_t ir_generating_end = clock();
     double ir_generating_time = (double)(ir_generating_end - ir_generating_start) * 1000 / (double)CLOCKS_PER_SEC;
+
+    if (ir_generator.diagnostics->length > 0)
+    {
+        print_diagnostics(ir_generator.diagnostics);
+        goto teardown_ir_generator;
+    }
 
     // Dump instructions
     dump_instructions(ir_generator.instructions);
@@ -181,7 +196,7 @@ void compile_verbose(const char* source, Options options)
     
     code_generator_init(&code_generator, ir_generator.global, ir_generator.instructions);
 
-    // TODO(timo): ...
+    // TODO(timo): ...do I really need this
     char asm_file[64];
     snprintf(asm_file, 64, "%s.asm", options.program);
     code_generator.asm_file = asm_file;
@@ -191,11 +206,16 @@ void compile_verbose(const char* source, Options options)
     clock_t code_generating_end = clock();
     double code_generating_time = (double)(code_generating_end - code_generating_start) * 1000 / (double)CLOCKS_PER_SEC;
 
+    if (code_generator.diagnostics->length > 0)
+    {
+        print_diagnostics(code_generator.diagnostics);
+        goto teardown_code_generator;
+    }
+
     // Cat the created assembly file
     printf("-----===== ASSEMBLY =====-----\n");
     printf("\n");
 
-    // char* cat_main = "cat main.asm";
     char cat[128];
     snprintf(cat, 128, "cat %s.asm", options.program);
     int cat_error;
@@ -213,7 +233,6 @@ void compile_verbose(const char* source, Options options)
 
     clock_t assembly_start = clock();
 
-    // char* assemble = "nasm -f elf64 -o main.o main.asm";
     char assemble[128];
     snprintf(assemble, 128, "nasm -f elf64 -o %s.o %s.asm", options.program, options.program);
     int assemble_error;
@@ -234,7 +253,6 @@ void compile_verbose(const char* source, Options options)
 
     clock_t linker_start = clock();
 
-    // char* link = "gcc -no-pie -o main main.o";
     char link[128];
     snprintf(link, 128, "gcc -no-pie -o %s %s.o", options.program, options.program);
     int link_error;
@@ -252,11 +270,17 @@ void compile_verbose(const char* source, Options options)
 
     // Teardown
     printf("Teardown...");
-    
+   
+teardown_code_generator:
+    code_generator_free(&code_generator);
+teardown_ir_generator:
     ir_generator_free(&ir_generator);
+teardown_resolver:
     resolver_free(&resolver);
     type_table_free(type_table);
+teardown_parser:
     parser_free(&parser);
+teardown_lexer:
     lexer_free(&lexer);
     
     char rm_files[128];
@@ -269,17 +293,6 @@ void compile_verbose(const char* source, Options options)
         printf("\n");
         printf("Error code on command '%s': %d\n", rm_files, rm_files_error);
     }
-
-    /*
-    char* rm_main_o = "rm main.o";
-    int rm_main_o_error;
-
-    if ((rm_main_o_error = system(rm_main_o)) != 0 )
-    {
-        printf("\n");
-        printf("Error code on command '%s': %d\n", rm_main_o, rm_main_o_error);
-    }
-    */
 
     printf("DONE\n");
 

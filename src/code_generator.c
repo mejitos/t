@@ -11,19 +11,20 @@ static void free_registers()
 }
 
 
-static void free_register(int _register)
+static void free_register(Code_Generator* generator, int _register)
 {
     if (registers[_register] != 0)
     {
-        printf("[CODE_GENERATOR] - Error: Trying to free already free'd register\n");
-        exit(1);
+        Diagnostic* _diagnostic = diagnostic(DIAGNOSTIC_ERROR, (Position){0},
+            ":CODE_GENERATOR - Error: Trying to free already free'd register");
+        array_push(generator->diagnostics, _diagnostic);
     }
 
     registers[_register] = 1;
 }
 
 
-static int allocate_register()
+static int allocate_register(Code_Generator* generator)
 {
     for (int i = 0; i < 6; i++)
     {
@@ -34,18 +35,39 @@ static int allocate_register()
         }
     }
 
-    printf("[CODE_GENERATOR] - Error: Out of free registers\n");
-    exit(1);
+    Diagnostic* _diagnostic = diagnostic(DIAGNOSTIC_ERROR, (Position){0},
+        ":CODE_GENERATOR - Error: Out of free registers");
+    array_push(generator->diagnostics, _diagnostic);
 }
 
 
 void code_generator_init(Code_Generator* generator, Scope* global, array* instructions)
 {
     *generator = (Code_Generator) { .global = global,
+                                    .diagnostics = array_init(sizeof (Diagnostic*)),
                                     .index = 0,
                                     .instructions = instructions };
 
     generator->local = generator->global;
+}
+
+
+void code_generator_free(Code_Generator* generator)
+{
+    for (int i = 0; i < generator->diagnostics->length; i++)
+    {
+        Diagnostic* diagnostic = generator->diagnostics->items[i];
+
+        free((char*)diagnostic->message);
+        diagnostic->message = NULL;
+
+        free(diagnostic);
+        diagnostic = NULL;
+    }
+
+    array_free(generator->diagnostics);
+
+    // NOTE(timo): Generator is not being freed because it is in the stack at the top level
 }
 
 
@@ -63,13 +85,13 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
 
             if (destination != NULL)
             {
-                destination->_register = allocate_register();
+                destination->_register = allocate_register(generator);
                 fprintf(generator->output,
                     "    mov    %s, [rbp-%d]        ; --\n", register_list[destination->_register], destination->offset);
             }
             if (source != NULL)
             {
-                source->_register = allocate_register();
+                source->_register = allocate_register(generator);
                 fprintf(generator->output,
                     "    mov    %s, [rbp-%d]        ; --\n", register_list[source->_register], source->offset);
             }
@@ -89,7 +111,7 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
                     "    add    %s, %s\n", register_list[destination->_register], register_list[source->_register]);
             }
 
-            free_register(source->_register);
+            free_register(generator, source->_register);
             source->_register = -1;
             break;
         }
@@ -103,13 +125,13 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
 
             if (destination != NULL)
             {
-                destination->_register = allocate_register();
+                destination->_register = allocate_register(generator);
                 fprintf(generator->output,
                     "    mov    %s, [rbp-%d]        ; --\n", register_list[destination->_register], destination->offset);
             }
             if (source != NULL)
             {
-                source->_register = allocate_register();
+                source->_register = allocate_register(generator);
                 fprintf(generator->output,
                     "    mov    %s, [rbp-%d]        ; --\n", register_list[source->_register], source->offset);
             }
@@ -129,7 +151,7 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
                     "    sub    %s, %s\n", register_list[destination->_register], register_list[source->_register]);
             }
 
-            free_register(source->_register);
+            free_register(generator, source->_register);
             source->_register = -1;
             break;
         }
@@ -166,7 +188,7 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
                     "    mul    %s        ; multiply the value in the rax with the source\n"
                     "    mov    %s, rax\n", register_list[destination->_register], register_list[source->_register], register_list[result->_register]);
 
-                free_register(source->_register);
+                free_register(generator, source->_register);
                 source->_register = -1;
             }
 
@@ -208,7 +230,7 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
                     "    div    %s                  ; divide the rax with the source\n"
                     "    mov    %s, rax\n", register_list[destination->_register], register_list[source->_register], register_list[result->_register]);
 
-                free_register(source->_register);
+                free_register(generator, source->_register);
                 source->_register = -1;
             }
 
@@ -227,13 +249,13 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
 
             if (destination != NULL)
             {
-                destination->_register = allocate_register();
+                destination->_register = allocate_register(generator);
                 fprintf(generator->output,
                     "    mov    %s, [rbp-%d]        ; --\n", register_list[destination->_register], destination->offset);
             }
             if (source != NULL)
             {
-                source->_register = allocate_register();
+                source->_register = allocate_register(generator);
                 fprintf(generator->output,
                     "    mov    %s, [rbp-%d]        ; --\n", register_list[source->_register], source->offset);
             }
@@ -244,8 +266,8 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
             // TODO(timo): What to save into the result? I mean we could save the correct jump
             // instruction at this point already and just print it at the GOTO_IF_FALSE
 
-            free_register(destination->_register);
-            free_register(source->_register);
+            free_register(generator, destination->_register);
+            free_register(generator, source->_register);
             break;
         }
         case OP_NOT:
@@ -409,7 +431,7 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
             {
                 // NOTE(timo): Is this actually needed? I mean at this point we save pretty much everything to
                 // stack at this point, so there is probably no need for register allocation here
-                // result->_register = allocate_register();
+                // result->_register = allocate_register(generator);
                 
                 if (result->type->kind == TYPE_INTEGER)
                     fprintf(generator->output,
@@ -668,7 +690,9 @@ void code_generate(Code_Generator* generator)
 {
     if ((generator->output = fopen(generator->asm_file, "w")) == NULL)
     {
-        printf("Unable to create assembly file\n");
+        Diagnostic* _diagnostic = diagnostic(DIAGNOSTIC_ERROR, (Position){0},
+            "Unable to open the assembly file");
+        array_push(generator->diagnostics, _diagnostic);
         return;
     }
     
@@ -721,29 +745,23 @@ void code_generate(Code_Generator* generator)
     if (main->type->function.return_type->kind == TYPE_INTEGER)
         fprintf(generator->output,
             // "    mov    rbx, rax                    ; save the return value into sys exit\n"
-            "    push rax                           ; caller save register for printf\n"
-            "    push rcx                           ; caller save register for printf\n"
-            "    mov    rdi, return_message         ; first argument of printf - format\n"
+            "    mov    rdi, return_message_success ; first argument of printf - format\n"
             "    mov    rsi, rax                    ; second argument of printf - formatted value\n"
             "    xor    rax, rax                    ; because the varargs printf uses\n"
             "    call printf                        ; print the return value - printf(format, value)\n"
-            "    pop    rcx                         ; restore caller save register of printf\n"
-            "    pop    rax                         ; restore caller save register of printf\n"
             "    mov    rax, 0                      ; exit success\n"
             // "    mov    rax, rbx                    ; return value\n" // Return the value as a program exit code
             "    leave                              ; leave the current stack frame without manually setting it\n"
             "    ret                                ; exit the program\n"
             "\n"
-            "return_message:\n"
+            "return_message_success:\n"
             "    db 'Program exited with the value %s', 10, 0", "%d");
     else if (main->type->function.return_type->kind == TYPE_BOOLEAN)
         fprintf(generator->output,
             // "    mov    rbx, rax                    ; save the return value into sys exit\n"
-            "    push rax                           ; caller save register for printf\n"
-            "    push rcx                           ; caller save register for printf\n"
-            "    mov    rdi, return_message         ; first argument of printf - format\n"
+            "    mov    rdi, return_message_success ; first argument of printf - format\n"
             "    cmp    rax, [true]                 ; check if the return value is true\n"
-            "    jnz end_false\n"
+            "    jne end_false\n"
             "    mov    rsi, true_str               ; second argument of printf - formatted value\n"
             "    jmp end_print\n"
             "end_false:\n"
@@ -751,14 +769,12 @@ void code_generate(Code_Generator* generator)
             "end_print:\n"
             "    xor    rax, rax                    ; because the varargs printf uses\n"
             "    call printf                        ; print the return value - printf(format, value)\n"
-            "    pop    rcx                         ; restore caller save register of printf\n"
-            "    pop    rax                         ; restore caller save register of printf\n"
             "    mov    rax, 0                      ; exit success\n"
             // "    mov    rax, rbx                    ; return value\n" // Return the value as a program exit code
             "    leave                              ; leave the current stack frame without manually setting it\n"
             "    ret                                ; exit the program\n"
             "\n"
-            "return_message:\n"
+            "return_message_success:\n"
             "    db 'Program exited with the value %s', 10, 0", "%s");
 
     fclose(generator->output);

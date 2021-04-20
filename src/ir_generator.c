@@ -7,6 +7,7 @@ void ir_generator_init(IR_Generator* generator, Scope* global)
                                   .label = 0,
                                   .global = global,
                                   .not_in_loop = true,
+                                  .diagnostics = array_init(sizeof (Diagnostic*)),
                                   .instructions = array_init(sizeof (Instruction*)) };
 
     generator->local = generator->global;
@@ -15,6 +16,21 @@ void ir_generator_init(IR_Generator* generator, Scope* global)
 
 void ir_generator_free(IR_Generator* generator)
 {
+    // Free diagnostics
+    for (int i = 0; i < generator->diagnostics->length; i++)
+    {
+        Diagnostic* diagnostic = generator->diagnostics->items[i];
+
+        free((char*)diagnostic->message);
+        diagnostic->message = NULL;
+
+        free(diagnostic);
+        diagnostic = NULL;
+    }
+
+    array_free(generator->diagnostics);
+
+    // Free instructions
     for (int i = 0; i < generator->instructions->length; i++)
         instruction_free(generator->instructions->items[i]);
 
@@ -92,7 +108,6 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
             // printf("\t%s := %s %s\n", instruction->result, operator, operand);
 
             return instruction->result;
-        
         }
         case EXPRESSION_BINARY:
         {
@@ -212,6 +227,7 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
             scope_declare(generator->local, symbol_temp(instruction->result, expression->index.variable->type->array.element_type)); // TODO(timo): remove
 
             temp = temp_label(generator);
+            // printf(\t%s = %s\n");
 
             instruction = instruction_mul(subscript, element_size, temp);
             array_push(generator->instructions, instruction);
@@ -239,6 +255,7 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
 
             free(temp);
             // printf("\t%s = *(%s)\n");
+
             return instruction->result;
         }
         case EXPRESSION_FUNCTION:

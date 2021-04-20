@@ -73,6 +73,7 @@ typedef struct Diagnostic
 
 
 Diagnostic* diagnostic(Diagnostic_Kind kind, Position position, const char* message, ...);
+Diagnostic* diagnostic_simple(Diagnostic_Kind kind, const char* message, ...);
 void print_diagnostics(array* diagnostic);
 void print_diagnostic(Diagnostic* diagnostic);
 
@@ -724,6 +725,7 @@ typedef struct IR_Generator
     FILE* output_file;
     // array* blocks;
     array* instructions;
+    array* diagnostics;
     int label;
     int temp;
     Scope* global;
@@ -754,7 +756,7 @@ typedef struct Code_Generator
     FILE* output;
     array* instructions;
     int index;
-
+    array* diagnostics;
     Scope* global;
     Scope* local;
 
@@ -770,6 +772,7 @@ typedef struct Code_Generator
 
 void code_generator_init(Code_Generator* generator, Scope* global, array* instructions);
 void code_generate(Code_Generator* generator);
+void code_generator_free(Code_Generator* generator);
 
 
 #endif
