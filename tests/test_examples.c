@@ -790,6 +790,22 @@ static void test_example_fibonacci(Test_Runner* runner)
 }
 
 
+static void test_example_prime_number(Test_Runner* runner)
+{
+    const char* program_name = "prime_number";
+    const char* file_path = "./examples/prime_number.t";
+    const char* result = "Program exited with the value true\n";
+    const char* args = "29";
+
+    char* buffer = run_example(runner, program_name, file_path, result, args);
+    
+    assert_base(runner, strcmp(result, buffer) == 0,
+        "Invalid exit value '%s', expected '%s'", buffer, result);
+
+    free(buffer);
+}
+
+
 Test_Set* compiler_test_set()
 {
     Test_Set* set = test_set("Compiler");
@@ -861,6 +877,7 @@ Test_Set* compiler_test_set()
     // Little programs
     array_push(set->tests, test_case("Example file: factorial.t", test_example_factorial));
     array_push(set->tests, test_case("Example file: fibonacci.t", test_example_fibonacci));
+    array_push(set->tests, test_case("Example file: prime_number.t", test_example_prime_number));
 
     set->length = set->tests->length;
 

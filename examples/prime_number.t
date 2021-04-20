@@ -20,20 +20,23 @@ modulo: int = (number: int, divisor: int) => {
     # return number - divisor * (number / divisor);
 };
 
-main: int = (argc: int, argv: [int]) => {
-    result: int = 1;
-    number: int = 29;
-    i: int = 2;
+main: bool = (argc: int, argv: [int]) => {
+    result: bool = true;
 
-    while i < number do {
-        if modulo(number, i) == 0 then {
-            result := 0;
-            break;
+    if argc == 0 then result := false;
+    else {
+        number: int = argv[0];
+        i: int = 2;
+
+        while i < number do {
+            if modulo(number, i) == 0 then {
+                result := false;
+                break;
+            }
+
+            i := i + 1;
         }
-
-        i := i + 1;
     }
 
-    # Return value of 0 is false and 1 is true
     return result;
 };
