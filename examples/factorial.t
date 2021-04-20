@@ -9,8 +9,7 @@ main: int = (argc: int, argv: [int]) => {
     if argc <= 0 then {
         result := 0;
     } else {
-        # n: int = argv[0];
-        n: int = 10;
+        n: int = argv[0];
         factorial: int = 1;
         i: int = 1;
 
