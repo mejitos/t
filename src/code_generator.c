@@ -440,37 +440,24 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
                     "    mov    rbp, rsp                ; started stack frame\n");
                 fprintf(generator->output,
                     "    sub    rsp, %d                 ; allocate memory for local variables from stack\n", instruction->size);
-                // TODO(timo): This argument handling should only be done if the argc and/or argv is declared in the main function
-                fprintf(generator->output,
-                    "    sub    rdi, 1                  ; decrement argument count by 1\n"
-                    "    mov    [rbp-%d], rdi           ; save argc to the stack\n"
-                    "    add    rsi, 8                  ; increment the argv pointer and skip the program name\n"
-                    "    mov    [rbp-%d], rsi           ; save pointer to argv to the stack\n", argc->offset, argv->offset);
 
-                // Check the command line arguments here and save them to the stack
-                fprintf(generator->output,
-                    ""
-                    ""
-                    ""
-                    ""
-                    ""
-                    ""
-                    ""
-                    ""
-                    ""
-                    ""
-                    ""
-                    ""
-                    ""
-                    ""
-                    ""
-                    ""
-                    "");
+                if (argc != NULL)
+                {
+                    fprintf(generator->output,
+                        "    sub    rdi, 1                  ; decrement argument count by 1 to skip the program name\n"
+                        "    mov    [rbp-%d], rdi           ; save argc to the stack\n", argc->offset);
+                }
+                if (argv != NULL)
+                {
+                    fprintf(generator->output,
+                        "    add    rsi, 8                  ; increment the argv pointer and skip the program name\n"
+                        "    mov    [rbp-%d], rsi           ; save pointer to argv to the stack\n", argv->offset);
+                }
             }
-            // These instructions are same as instruction "enter, N" where enter sets the stackframe 
-            // and if N is given, N bytes of memory will be reserved from the stack
             else
             {
+                // These instructions are same as instruction "enter, N" where enter sets the stackframe 
+                // and if N is given, N bytes of memory will be reserved from the stack
                 fprintf(generator->output, 
                     "    push    rbp\n"
                     "    mov    rbp, rsp                ; started stack frame\n");
@@ -479,12 +466,9 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
                     "    sub    rsp, %d                 ; allocate memory for local variables from stack\n", instruction->size);
             }
 
-            // TODO(timo): Save the parameters to the local variables in here
+            // TODO(timo): Save the parameters to the local variables in here? Even though I don't think this is
+            // necessary. I just should do better job when defining the offsets in the scope
 
-            // Push all the parameters
-
-            // TODO(timo): So I should actually resolve the params normally
-            // for the main, but they are "special params" mapped in assembly
             break;
         }
         case OP_PARAM_PUSH:
