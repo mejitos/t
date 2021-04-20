@@ -970,34 +970,29 @@ static void test_generate_variable_declaration_global(Test_Runner* runner)
     ir_generator_init(&generator, resolver.global);
     ir_generate(&generator, parser.declarations);
 
-    assert_base(runner, generator.instructions->length == 22,
-        "Invalid number of instructions: %d, expected 22", generator.instructions->length);
+    assert_base(runner, generator.instructions->length == 18,
+        "Invalid number of instructions: %d, expected 18", generator.instructions->length);
     assert_instruction(runner, generator.instructions->items[0], OP_LABEL);
-    assert_instruction(runner, generator.instructions->items[1], OP_STORE_GLOBAL);
-    assert_instruction(runner, generator.instructions->items[2], OP_LABEL);
-    assert_instruction(runner, generator.instructions->items[3], OP_STORE_GLOBAL);
-    assert_instruction(runner, generator.instructions->items[4], OP_LABEL);
-    assert_instruction(runner, generator.instructions->items[5], OP_FUNCTION_BEGIN);
-    assert_instruction(runner, generator.instructions->items[6], OP_COPY);
-    assert_instruction(runner, generator.instructions->items[7], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[1], OP_FUNCTION_BEGIN);
+    assert_instruction(runner, generator.instructions->items[2], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[3], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[4], OP_LOAD_GLOBAL);
+    assert_instruction(runner, generator.instructions->items[5], OP_LOAD_GLOBAL);
+    assert_instruction(runner, generator.instructions->items[6], OP_GT);
+    assert_instruction(runner, generator.instructions->items[7], OP_GOTO_IF_FALSE);
     assert_instruction(runner, generator.instructions->items[8], OP_LOAD_GLOBAL);
-    assert_instruction(runner, generator.instructions->items[9], OP_LOAD_GLOBAL);
-    assert_instruction(runner, generator.instructions->items[10], OP_GT);
-    assert_instruction(runner, generator.instructions->items[11], OP_GOTO_IF_FALSE);
+    assert_instruction(runner, generator.instructions->items[9], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[10], OP_GOTO);
+    assert_instruction(runner, generator.instructions->items[11], OP_LABEL);
     assert_instruction(runner, generator.instructions->items[12], OP_LOAD_GLOBAL);
     assert_instruction(runner, generator.instructions->items[13], OP_COPY);
-    assert_instruction(runner, generator.instructions->items[14], OP_GOTO);
-    assert_instruction(runner, generator.instructions->items[15], OP_LABEL);
-    assert_instruction(runner, generator.instructions->items[16], OP_LOAD_GLOBAL);
-    assert_instruction(runner, generator.instructions->items[17], OP_COPY);
-    assert_instruction(runner, generator.instructions->items[18], OP_LABEL);
-    assert_instruction(runner, generator.instructions->items[19], OP_COPY);
-    assert_instruction(runner, generator.instructions->items[20], OP_RETURN);
-    assert_instruction(runner, generator.instructions->items[21], OP_FUNCTION_END);
+    assert_instruction(runner, generator.instructions->items[14], OP_LABEL);
+    assert_instruction(runner, generator.instructions->items[15], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[16], OP_RETURN);
+    assert_instruction(runner, generator.instructions->items[17], OP_FUNCTION_END);
     
-    dump_instructions(generator.instructions);
+    // dump_instructions(generator.instructions);
 
-    // declaration_free(declaration);
     ir_generator_free(&generator);
     resolver_free(&resolver);
     type_table_free(type_table);
@@ -1286,9 +1281,7 @@ Test_Set* ir_generator_test_set()
     // TODO(timo): array_push(set->tests, test_case("Break statement", test_generate_break_statement));
 
     // Declarations
-    // TODO(timo): Variable declaration test is now broken since we 
-    // don't create separate IR instruction for storing global for now
-    // array_push(set->tests, test_case("Variable declaration (global)", test_generate_variable_declaration_global));
+    array_push(set->tests, test_case("Variable declaration (global)", test_generate_variable_declaration_global));
     array_push(set->tests, test_case("Function declaration", test_generate_function_declaration));
 
     // MISC
