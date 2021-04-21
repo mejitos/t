@@ -232,26 +232,28 @@ Instruction* instruction_not(char* arg, char* result)
 }
 
 
-Instruction* instruction_function_begin()
+Instruction* instruction_function_begin(char* label)
 {
     Instruction* instruction = xcalloc(1, sizeof (Instruction));
     instruction->operation = OP_FUNCTION_BEGIN;
     instruction->arg1 = NULL;
     instruction->arg2 = NULL;
     instruction->result = NULL;
+    instruction->label = str_copy(label);
     instruction->size = 0;
 
     return instruction;
 }
 
 
-Instruction* instruction_function_end()
+Instruction* instruction_function_end(char* label)
 {
     Instruction* instruction = xcalloc(1, sizeof (Instruction));
     instruction->operation = OP_FUNCTION_END;
     instruction->arg1 = NULL;
     instruction->arg2 = NULL;
     instruction->result = NULL;
+    instruction->label = str_copy(label);
 
     return instruction;
 }
@@ -466,6 +468,7 @@ const char* operation_str(Operation operation)
         case OP_ADD:                return "add";
         case OP_SUB:                return "sub";
         case OP_MUL:                return "mul";
+        case OP_MINUS:              return "minus";
         case OP_DIV:                return "div";
         case OP_LT:                 return "lt";
         case OP_LTE:                return "lte";

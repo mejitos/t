@@ -541,15 +541,12 @@ typedef struct Resolver
     array* diagnostics;
     hashtable* type_table;
     Scope* global;
-    Scope* local; // the current scope
-    // NOTE(timo): This scopes variable is probably not necessary since I actually
-    // have only two scopes: global and local.
-    // array* scopes; // the scope stack TODO(timo): push and pop functions
+    Scope* local;
     struct {
         bool not_in_loop;
         bool not_in_function;
         bool returned;
-        char* current_function;
+        char* current_function; // TODO(timo): This could also be pointer to symbol
         Type* return_type;
     } context;
 } Resolver;
@@ -685,8 +682,8 @@ Instruction* instruction_and(char* arg1, char* arg2, char* result);
 Instruction* instruction_or(char* arg1, char* arg2, char* result);
 Instruction* instruction_minus(char* arg, char* result);
 Instruction* instruction_not(char* arg, char* result);
-Instruction* instruction_function_begin();
-Instruction* instruction_function_end();
+Instruction* instruction_function_begin(char* label);
+Instruction* instruction_function_end(char* label);
 Instruction* instruction_param_push(char* arg);
 Instruction* instruction_param_pop(char* arg);
 Instruction* instruction_call(char* arg, char* result, int n);

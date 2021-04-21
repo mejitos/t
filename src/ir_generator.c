@@ -75,8 +75,6 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
             scope_declare(generator->local, symbol_temp(generator->local, instruction->result, expression->type));
             free(temp);
 
-            // printf("\t%s := %s\n", instruction->result, arg);
-
             return instruction->result;
         }
         case EXPRESSION_UNARY:
@@ -95,16 +93,11 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
                 case TOKEN_NOT:
                     instruction = instruction_not(operand, temp);
                     break;
-                default:
-                    // TODO(timo): Error
-                    break;
             }
 
             array_push(generator->instructions, instruction);
             scope_declare(generator->local, symbol_temp(generator->local, instruction->result, expression->type));
             free(temp);
-
-            // printf("\t%s := %s %s\n", instruction->result, operator, operand);
 
             return instruction->result;
         }
@@ -155,120 +148,100 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
                 case TOKEN_OR:
                     instruction = instruction_or(left, right, temp);
                     break;
-                default:
-                    // TODO(timo): Error
-                    break;
             }
             
             array_push(generator->instructions, instruction);
             scope_declare(generator->local, symbol_temp(generator->local, instruction->result, expression->type));
             free(temp);
 
-            // printf("\t%s := %s %s %s\n", result, left, operator, right);
-
             return instruction->result;
         }
         case EXPRESSION_VARIABLE:
         {
-            Instruction* instruction = NULL;
             char* arg = (char*)expression->literal->lexeme;
             char* temp = temp_label(generator);
             
-            instruction = instruction_copy(arg, temp);
-            array_push(generator->instructions, instruction);
+            Instruction* instruction = instruction_copy(arg, temp);
 
+            array_push(generator->instructions, instruction);
             scope_declare(generator->local, symbol_temp(generator->local, instruction->result, expression->type));
             free(temp);
-
-            // printf("\t%s := %s\n", result, arg);
 
             return instruction->result;
         }
         case EXPRESSION_ASSIGNMENT:
         {
-            Instruction* instruction;
             char* arg = ir_generate_expression(generator, expression->assignment.value);
             char* result = (char*)expression->assignment.variable->identifier->lexeme;
 
-            instruction = instruction_copy(arg, result);
+            Instruction* instruction = instruction_copy(arg, result);
             array_push(generator->instructions, instruction);
-
-            // printf("\t%s := %s\n", result, arg);
 
             return result;
         }
         case EXPRESSION_INDEX:
         {
+            // TODO(timo): This case is great example of why we probably should have
+            // functions to emit each of the operations, so we don't produce messy
+            // things like this right here.
             Instruction* instruction;
             char* temp;
 
             // Generate the total offset for the accessed element
             char* subscript = ir_generate_expression(generator, expression->index.value);
-            // NOTE(timo): All variables and types are 8 bytes for now
-            // TODO(timo): We should probably create separate functions for different 
-            // kind of instructions. We don't really have any flexibility now.
-            // char* element_size = ir_generate_expression(generator, 8);
-            char* element_size = temp_label(generator); // TODO(timo): remove
+            char* element_size = temp_label(generator); 
+            // NOTE(timo): All types are 8 bytes wide for now
+            instruction = instruction_copy("8", element_size);
 
-            instruction = instruction_copy("8", element_size); // TODO(timo): remove
-            array_push(generator->instructions, instruction); // TODO(timo): remove
+            array_push(generator->instructions, instruction);
             scope_declare(generator->local, symbol_temp(generator->local, instruction->result, expression->index.variable->type->array.element_type)); // TODO(timo): remove
 
             temp = temp_label(generator);
-            // printf(\t%s = %s\n");
-
             instruction = instruction_mul(subscript, element_size, temp);
+
             array_push(generator->instructions, instruction);
             scope_declare(generator->local, symbol_temp(generator->local, instruction->result, expression->index.variable->type->array.element_type));
-            
-            free(element_size); // TODO(timo): remove
+            free(element_size);
             free(temp);
-            // print(\t%s = %s * %s\n);
             
             // TODO(timo): Basically we should also copy the result of the multiplication to temp variable
 
             // Add the offset to the base pointer
-            // char* arg = (char*)expression->index.variable->identifier->lexeme;
             char* arg = ir_generate_expression(generator, expression->index.variable);
-
             temp = temp_label(generator);
             instruction = instruction_add(arg, instruction->result, temp);
+
             array_push(generator->instructions, instruction);
             scope_declare(generator->local, symbol_temp(generator->local, instruction->result, expression->index.variable->type->array.element_type));
-
             free(temp);
-            // print(\t%s = %s + %s\n);
         
             // Defererence the accessed element
-            temp = temp_label(generator); // result
+            temp = temp_label(generator);
             instruction = instruction_dereference(instruction->result, temp, -1);
+
             array_push(generator->instructions, instruction);
             scope_declare(generator->local, symbol_temp(generator->local, instruction->result, expression->index.variable->type->array.element_type));
-
             free(temp);
-            // printf("\t%s = *(%s)\n");
 
             return instruction->result;
         }
         case EXPRESSION_FUNCTION:
         {
             Instruction* instruction;
-            // TODO(timo): Does the function declaration handle the beginnning and ending?
-            // It probably is job of the expression, if we think about a little into the
-            // future and to anonymous functions
+            // TODO(timo): Generate temp label where the return value is being put?
+            // That is the thing this function should return. That label is probably
+            // needed to have in the return statement so it can be set to the correct one?
+            // OR the return statement sets the return address.
             
-            // -----===== The function prologue =====-----
+            // Function prologue
 
             // TODO(timo): Change the scope to function scope. For now it is handled
             // at the function declaration.
             
-            // What functions begins?
-            instruction = instruction_function_begin();
+            instruction = instruction_function_begin((char*)generator->local->name);
             array_push(generator->instructions, instruction);
 
-            // printf("\tfunction_begin N\n");
-            
-            // -----===== Function body =====-----
+            // Function body 
 
             ir_generate_statement(generator, expression->function.body);
             
@@ -280,29 +253,21 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
             // We could also take this info at the code generation stage from the scope
             instruction->size = generator->local->offset;
             
-            // -----===== The function epilogue =====-----
+            // Function epilogue
             
-            // What functions ends?
-            instruction = instruction_function_end();
+            instruction = instruction_function_end((char*)generator->local->name);
             array_push(generator->instructions, instruction);
-
-            // printf("\tfunction_end\n");
-            
-            // TODO(timo): This should probably return something?
-
             break;
         }
         case EXPRESSION_CALL:
         {
             Instruction* instruction;
 
-            // Push the params to the stack/registers
+            // Push the arguments to the stack/registers and save the argument
+            // addresses to pop them later in correct order
             array* arguments = expression->call.arguments;
             char* args[arguments->length];
 
-            // TODO(timo): Could we just straight up push the parameters to the
-            // stack without using temporary variables as middle man? Like we 
-            // can when we pop the params.
             for (int i = arguments->length - 1; i >= 0; i--)
             {
                 AST_Expression* argument = (AST_Expression*)arguments->items[i];
@@ -311,37 +276,35 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
                 instruction = instruction_param_push(arg);
                 array_push(generator->instructions, instruction);
                 args[i] = arg;
-
-                //printf("\tparameter_push %s\n", arg);
             }
 
             // Call instruction itself
             char* arg = (char*)expression->call.variable->identifier->lexeme;
             char* temp = temp_label(generator);
-            // NOTE(timo): According to the Dragon Book the number of arguments is
-            // important info to pass on in case of nested function calls
+
             instruction = instruction_call(arg, temp, arguments->length);
 
             scope_declare(generator->local, symbol_temp(generator->local, instruction->result, expression->type));
             array_push(generator->instructions, instruction);
             free(temp);
-
-            //printf("\t%s := call %s, %d\n", instruction->result, arg, arguments->length);
             
             // Pop the params from the stack after the call has returned
             for (int i = 0; i < arguments->length; i++)
             {
                 Instruction* instruction = instruction_param_pop(args[i]);
                 array_push(generator->instructions, instruction);
-
-                //printf("\tparameter_pop %s\n", args[i]);
             }
 
             return instruction->result;
         }
         default:
-            // TODO(timo): Error
+        {
+            Diagnostic* _diagnostic = diagnostic(DIAGNOSTIC_ERROR, (Position){0},
+                ":IR_GENERATOR - Unreachable: Unexpected expression in ir_generate_expression()");
+            array_push(generator->diagnostics, _diagnostic);
+            // TODO(timo): What to return in error situation?
             break;
+        }
     }
 }
 
@@ -369,37 +332,31 @@ void ir_generate_statement(IR_Generator* generator, AST_Statement* statement)
             char* label_exit = label(generator); // exit
 
             // TODO(timo): Quick hacky hack solution for break statements. There might be a better way.
+            // TODO(timo): But what if there is nested while loops?
             generator->while_exit = label_exit;
-
-            //printf("%s:\n", label_condition);
 
             instruction = instruction_label(label_condition);
             array_push(generator->instructions, instruction);
 
-            char* condition = ir_generate_expression(generator, statement->_while.condition);
-
             // if false, jump to label 2
-            // printf("\tif_false %s goto %s\n", condition, label_exit);
+            char* condition = ir_generate_expression(generator, statement->_while.condition);
 
             instruction = instruction_goto_if_false(condition, label_exit);
             array_push(generator->instructions, instruction);
             
-            // print the body
+            // Generate the body
             ir_generate_statement(generator, statement->_while.body);
             
-            // go back to the start of the loop to test the condition again
-            // printf("\tgoto %s\n", label_condition);
-
+            // Go back to the start of the loop to test the condition again
             instruction = instruction_goto(label_condition);
             array_push(generator->instructions, instruction);
             
-            // exit
-            // printf("%s:\n", label_exit);
-
+            // Exit Label
             instruction = instruction_label(label_exit);
             array_push(generator->instructions, instruction);
-            
+
             // TODO(timo): Quick hacky hack solution for break statements. There might be a better way.
+            // TODO(timo): But what if there is nested while loops?
             generator->while_exit = NULL;
 
             free(label_condition);
@@ -408,44 +365,40 @@ void ir_generate_statement(IR_Generator* generator, AST_Statement* statement)
         }
         case STATEMENT_IF:
         {
-            // if-then-else
-            if (statement->_if._else != NULL)
+            if (statement->_if._else != NULL) // if-then-else
             {
                 Instruction* instruction;
+
                 // Local labels
                 char* label_else = label(generator);
                 char* label_exit = label(generator);
                 char* condition = ir_generate_expression(generator, statement->_if.condition);
                 
-                // printf("\tif_false %s goto %s\n", condition, label_else);
-
+                // Condition
                 instruction = instruction_goto_if_false(condition, label_else);
                 array_push(generator->instructions, instruction);
 
+                // Generate the body
                 ir_generate_statement(generator, statement->_if.then);
                 
-                // printf("\tgoto %s\n", label_exit);
-
+                // Goto exit
                 instruction = instruction_goto(label_exit);
                 array_push(generator->instructions, instruction);
-                
-                // printf("%s:\n", label_else);
-                
+
+                // Else label
                 instruction = instruction_label(label_else);
                 array_push(generator->instructions, instruction);
-                
+
                 ir_generate_statement(generator, statement->_if._else);
                 
-                // printf("%s:\n", label_exit);
-                
+                // Exit label
                 instruction = instruction_label(label_exit);
                 array_push(generator->instructions, instruction);
 
                 free(label_else);
                 free(label_exit);
             }
-            // if-then
-            else
+            else // if-then
             {
                 Instruction* instruction;
 
@@ -453,15 +406,14 @@ void ir_generate_statement(IR_Generator* generator, AST_Statement* statement)
                 char* label_exit = label(generator);
                 char* condition = ir_generate_expression(generator, statement->_if.condition);
                 
-                // printf("\tif_false %s goto %s\n", condition, label_exit);
-
+                // Condition
                 instruction = instruction_goto_if_false(condition, label_exit);
                 array_push(generator->instructions, instruction);
 
+                // Generate the body
                 ir_generate_statement(generator, statement->_if.then);
                 
-                // printf("%s:\n", label_exit);
-
+                // Exit label
                 instruction = instruction_label(label_exit);
                 array_push(generator->instructions, instruction);
 
@@ -475,21 +427,21 @@ void ir_generate_statement(IR_Generator* generator, AST_Statement* statement)
 
             Instruction* instruction = instruction_return(value);
             array_push(generator->instructions, instruction);
-
-            // printf("\treturn %s\n", value);
             break;
         }
         case STATEMENT_BREAK:
         {
             Instruction* instruction = instruction_goto(generator->while_exit);
             array_push(generator->instructions, instruction);
-
-            // printf("goto %s\n");
             break;
         }
         default:
-            // TODO(timo): Error
+        {
+            Diagnostic* _diagnostic = diagnostic(DIAGNOSTIC_ERROR, (Position){0},
+                ":IR_GENERATOR - Unreachable: Unexpected statement in ir_generate_statement()");
+            array_push(generator->diagnostics, _diagnostic);
             break;
+        }
     }
 }
 
@@ -500,7 +452,7 @@ void ir_generate_declaration(IR_Generator* generator, AST_Declaration* declarati
     {
         case DECLARATION_VARIABLE:
         {
-            // TODO(timo): Don't do anything for global variable
+            // NOTE(timo): We don't do anything with global variable
             // declarations. They are put to .data section in assembly.
             if (generator->local != generator->global)
             {
@@ -516,7 +468,6 @@ void ir_generate_declaration(IR_Generator* generator, AST_Declaration* declarati
             Instruction* instruction;
 
             char* label = (char*)declaration->identifier->lexeme;
-            //printf("_%s:\n", label);
 
             instruction = instruction_label(label);
             array_push(generator->instructions, instruction);
@@ -526,17 +477,24 @@ void ir_generate_declaration(IR_Generator* generator, AST_Declaration* declarati
             generator->local = function->type->function.scope;
             
             // Generate the body of the function (=initializer)
+            // TODO(timo): Should this actually return the place where the
+            // result of the function is saved?
             ir_generate_expression(generator, declaration->initializer);
             
             // Restore the scope to the enclosing scope
-            // NOTE(timo): These two are basically the same thing in our case
-            // generator->local = generator->local->enclosing;
-            generator->local = generator->global;
+            generator->local = generator->local->enclosing;
+            
+            // TODO(timo): This should be removed when more flexible scoping is added
+            assert(generator->local == generator->global);
             break;
         }
         default:
-            // TODO(timo): Error
+        {
+            Diagnostic* _diagnostic = diagnostic(DIAGNOSTIC_ERROR, (Position){0},
+                ":IR_GENERATOR - Unreachable: Unexpected declaration in ir_generate_declaration()");
+            array_push(generator->diagnostics, _diagnostic);
             break;
+        }
     }
 }
 

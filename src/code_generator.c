@@ -251,6 +251,11 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
 
             break;
         }
+        case OP_MINUS:
+        {
+            // TODO(timo): THIS. Apparently I have totally forgotten this one
+            break;
+        }
         case OP_EQ:
         case OP_NEQ:
         case OP_LT:
@@ -384,27 +389,26 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
                     
                     if (arg->type->kind == TYPE_BOOLEAN)
                     {
+                        int reg_1 = allocate_register(generator);
+                        int reg_2 = allocate_register(generator);
                         // If the value is true, compare against 0
                         // If the value is false, compare against 1
-                        // TODO(timo): Allocate the registers through the functions
                         fprintf(generator->output,
-                            "    mov    r10, %d\n", 
-                            arg->value.boolean ? 0 : 1);
+                            "    mov    %s, %d\n"
+                            "    mov    %s, [rbp-%d]\n", 
+                            register_list[reg_1], arg->value.boolean ? 0 : 1,
+                            register_list[reg_2], arg->offset);
                         fprintf(generator->output,
-                            "    mov    r11, [rbp-%d]\n", 
-                            arg->offset);
-                        fprintf(generator->output,
-                            "    cmp    r10, r11\n");
-                        fprintf(generator->output,
-                            "    jne    %s\n", 
-                            instruction->label);
+                            "    cmp    %s, %s                  ; --\n"
+                            "    jne    %s                      ; --\n", 
+                            register_list[reg_1], register_list[reg_2], instruction->label);
+
+                        free_register(generator, reg_1);
+                        free_register(generator, reg_2);
                     }
                     break;
                 }
                 default:
-                    // NOTE(timo): If the previous condition was something else than relational
-                    // operation, there is no need for the preceding operation. Not sure how it
-                    // will be with the logical expressions
                     // TODO(timo): Create diagnostic
                     printf("[CODE_GENERATOR] - Invalid preceding instruction in OP_GOTO_IF_FALSE '%s'\n", operation_str(preceding->operation));
                     exit(1);
@@ -433,20 +437,16 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
                 else if (arg->kind == SYMBOL_PARAMETER)
                 {
                     fprintf(generator->output,
-                        "    mov    rax, [rbp+%d]           ; move parameter from stack to rax\n", 
-                        arg->offset);
-                    fprintf(generator->output,
+                        "    mov    rax, [rbp+%d]           ; move parameter from stack to rax\n"
                         "    mov    qword [rbp-%d], rax     ; move parameter from rax to stack\n", 
-                        result->offset);
+                        arg->offset, result->offset);
                 }
                 else
                 {
                     fprintf(generator->output,
-                        "    mov    rax, [rbp-%d]           ; --\n", 
-                        arg->offset);
-                    fprintf(generator->output,
+                        "    mov    rax, [rbp-%d]           ; --\n"
                         "    mov    qword [rbp-%d], rax     ; --\n", 
-                        result->offset);
+                        arg->offset, result->offset);
                 }
             }
             else // This is used when literal constants are being copied
@@ -457,41 +457,39 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
                 
                 if (result->type->kind == TYPE_INTEGER)
                     fprintf(generator->output,
-                        "    mov    qword [rbp-%d], %s      ; --\n", result->offset, instruction->arg1);
+                        "    mov    qword [rbp-%d], %s      ; --\n", 
+                        result->offset, instruction->arg1);
                 else if (result->type->kind == TYPE_BOOLEAN)
-                {
                     fprintf(generator->output,
-                        "    mov    rax, [%s]               ; --\n", instruction->arg1);
-                    fprintf(generator->output,
-                        "    mov    qword [rbp-%d], rax     ; --\n", result->offset);
-                }
+                        "    mov    rax, [%s]               ; --\n"
+                        "    mov    qword [rbp-%d], rax     ; --\n",
+                        instruction->arg1, result->offset);
             }
 
             break;
         }
         case OP_LABEL:
         {
-            // If the label is function symbol -> change the scope
             Symbol* symbol = scope_lookup(generator->local, instruction->label);
-
-            if (symbol != NULL && symbol->type->kind == TYPE_FUNCTION)
-            {
-                generator->local = symbol->type->function.scope;
-            }
-
             fprintf(generator->output, "%s:\n", instruction->label);
             break;
         }
         case OP_GOTO:
         {
             fprintf(generator->output,
-                "    jmp    %s                      ; --\n", instruction->label);
+                "    jmp    %s                      ; --\n", 
+                instruction->label);
             break;
         }
         case OP_FUNCTION_BEGIN:
         {
-            // TODO(timo): That scope change should probably happen in here and not in OP_LABEL
-            // but we do need the name of the function. Should we save it into the function begin instruction?
+            // Change the scope to the functions scope
+            Symbol* symbol = scope_lookup(generator->local, instruction->label);
+
+            if (symbol != NULL && symbol->type->kind == TYPE_FUNCTION)
+            {
+                generator->local = symbol->type->function.scope;
+            }
             
             // TODO(timo): Handle the main function separately somewhere else so we don't have to do this
             // check every time there is a function
@@ -524,44 +522,47 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
         }
         case OP_PARAM_PUSH:
         {
-            // arg1: the parameter being pushed into the stack
             Symbol* parameter = scope_lookup(generator->local, instruction->arg1);
             
             // Local variable saved in the stack
             if (parameter != NULL)
             {
                 fprintf(generator->output,
-                    "    push   qword[rbp-%d]          ; pushing function parameter\n", parameter->offset);
+                    "    push   qword[rbp-%d]          ; pushing function parameter\n", 
+                    parameter->offset);
             }
             else
             {
-                // TODO(timo): Just use the registers or error
+                fprintf(generator->output,
+                    "    push   %s                      ; pushing function parameter\n",
+                    instruction->arg1);
             }
 
             break;
         }
         case OP_PARAM_POP:
         {
-            // arg1: the parameter being popped from the stack
             Symbol* parameter = scope_lookup(generator->local, instruction->arg1);
             
             // Local variable saved in the stack
             if (parameter != NULL)
             {
                 fprintf(generator->output,
-                    "    pop    qword [rbp-%d]          ; popping function parameter\n", parameter->offset);
+                    "    pop    qword [rbp-%d]          ; popping function parameter\n", 
+                    parameter->offset);
             }
             else
             {
-                // TODO(timo): Just use the registers or error
+                fprintf(generator->output,
+                    "    pop    %s                      ; popping function parameter\n",
+                    instruction->arg1);
             }
 
             break;
         }
         case OP_FUNCTION_END:
         {
-            fprintf(generator->output,
-                "%s_epilogue:\n", generator->local->name);
+            fprintf(generator->output, "%s_epilogue:\n", instruction->label);
 
             // Restore the stack
             // NOTE(timo): Parameters are popped one by one with OP_PARAM_POP
@@ -580,7 +581,7 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
                     "    ret\n");
             }
 
-            // Set the current scope to the enclosing (global) scope
+            // Set the current scope to the enclosing scope
             generator->local = generator->local->enclosing;
 
             // TODO(timo): This should be removed when more flexible scoping is added
@@ -594,34 +595,35 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
             if (value != NULL)
             {
                 fprintf(generator->output,
-                    "    mov    rax, [rbp-%d]           ; put return value to rax\n", value->offset);
+                    "    mov    rax, [rbp-%d]           ; put return value to rax\n", 
+                    value->offset);
             }
             else
             {
                 fprintf(generator->output,
-                    "    mov    rax, %s                 ; put return value to rax\n", register_list[value->_register]);
+                    "    mov    rax, %s                 ; put return value to rax\n", 
+                    register_list[value->_register]);
             }
 
             // TODO(timo): Make jump to function epilogue where the function will be teared down
             // Even though the jump is not necessary right now since we only have one return per function
             fprintf(generator->output,
-                "    jmp    %s_epilogue             ; run the function epilogue\n", generator->local->name);
+                "    jmp    %s_epilogue             ; run the function epilogue\n", 
+                generator->local->name);
 
             free_registers();
             break;
         }
         case OP_CALL:
         {
-            // Instruction has arg1: what is being called
-            //                 result: where the result is being saved
-            //                 n: number of arguments the function was being called with
             Symbol* value = scope_lookup(generator->local, instruction->arg1);
             Symbol* result = scope_lookup(generator->local, instruction->result);
             
             if (value != NULL)
             {
                 fprintf(generator->output,
-                    "    call   %s                     ; calling the function %s\n", value->identifier, value->identifier);
+                    "    call   %s                     ; calling the function %s\n", 
+                    value->identifier, value->identifier);
             }
             else
             {
@@ -632,7 +634,8 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
             if (result != NULL)
             {
                 fprintf(generator->output,
-                    "    mov    [rbp-%d], rax           ; Moving the function result to the result address\n", result->offset);
+                    "    mov    [rbp-%d], rax           ; Moving the function result to the result address\n", 
+                    result->offset);
             }
             else
             {
@@ -652,13 +655,17 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
                 // TODO(timo): Type check to make sure the argument is a digit/number 
                 // before calling atoll. If argument is not a number, show error and exit
                 "    call   atoll                   ; \n"
-                "    mov    [rbp-%d], rax           ; \n", variable->offset, result->offset);
+                "    mov    [rbp-%d], rax           ; \n", 
+                variable->offset, result->offset);
 
             break;
         }
         default:
         {
-            // TODO(timo): Error
+            Diagnostic* _diagnostic = diagnostic(DIAGNOSTIC_ERROR, (Position){0},
+                ":CODE_GENERATOR - Unreachable: Invalid operation in code_generate_instruction() '%s' / '%d'", 
+                operation_str(instruction->operation), instruction->operation);
+            array_push(generator->diagnostics, _diagnostic);
             break;
         }
     }
