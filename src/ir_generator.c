@@ -175,14 +175,9 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
             char* arg = (char*)expression->literal->lexeme;
             char* temp = temp_label(generator);
             
-            // If the current scope is not global and scope contains the identifier->local variable
-            if (strcmp(generator->local->name, "global") != 0 && scope_contains(generator->local, arg))
-                instruction = instruction_copy(arg, temp);
-            // Else if the global scope contains the variable->global
-            else if (scope_contains(generator->global, arg))
-                instruction = instruction_load_global(arg, temp);
-
+            instruction = instruction_copy(arg, temp);
             array_push(generator->instructions, instruction);
+
             scope_declare(generator->local, symbol_temp(generator->local, instruction->result, expression->type));
             free(temp);
 
@@ -196,13 +191,7 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
             char* arg = ir_generate_expression(generator, expression->assignment.value);
             char* result = (char*)expression->assignment.variable->identifier->lexeme;
 
-            // If the current scope is not global and scope contains the identifier->local variable
-            if (strcmp(generator->local->name, "global") != 0 && scope_contains(generator->local, result))
-                instruction = instruction_copy(arg, result);
-            // Else if the global scope contains the variable->global
-            else if (scope_contains(generator->global, result))
-                instruction = instruction_load_global(arg, result);
-
+            instruction = instruction_copy(arg, result);
             array_push(generator->instructions, instruction);
 
             // printf("\t%s := %s\n", result, arg);
@@ -430,29 +419,26 @@ void ir_generate_statement(IR_Generator* generator, AST_Statement* statement)
                 char* label_exit = label(generator);
                 char* condition = ir_generate_expression(generator, statement->_if.condition);
                 
-                //
-                //printf("\tif_false %s goto %s\n", condition, label_else);
+                // printf("\tif_false %s goto %s\n", condition, label_else);
 
                 instruction = instruction_goto_if_false(condition, label_else);
                 array_push(generator->instructions, instruction);
 
                 ir_generate_statement(generator, statement->_if.then);
                 
-                //
-                //printf("\tgoto %s\n", label_exit);
+                // printf("\tgoto %s\n", label_exit);
 
                 instruction = instruction_goto(label_exit);
                 array_push(generator->instructions, instruction);
                 
-                //
-                //printf("%s:\n", label_else);
+                // printf("%s:\n", label_else);
+                
                 instruction = instruction_label(label_else);
                 array_push(generator->instructions, instruction);
                 
                 ir_generate_statement(generator, statement->_if._else);
                 
-                //
-                //printf("%s:\n", label_exit);
+                // printf("%s:\n", label_exit);
                 
                 instruction = instruction_label(label_exit);
                 array_push(generator->instructions, instruction);
@@ -469,16 +455,14 @@ void ir_generate_statement(IR_Generator* generator, AST_Statement* statement)
                 char* label_exit = label(generator);
                 char* condition = ir_generate_expression(generator, statement->_if.condition);
                 
-                //
-                //printf("\tif_false %s goto %s\n", condition, label_exit);
+                // printf("\tif_false %s goto %s\n", condition, label_exit);
 
                 instruction = instruction_goto_if_false(condition, label_exit);
                 array_push(generator->instructions, instruction);
 
                 ir_generate_statement(generator, statement->_if.then);
                 
-                // 
-                //printf("%s:\n", label_exit);
+                // printf("%s:\n", label_exit);
 
                 instruction = instruction_label(label_exit);
                 array_push(generator->instructions, instruction);
@@ -525,30 +509,9 @@ void ir_generate_declaration(IR_Generator* generator, AST_Declaration* declarati
     {
         case DECLARATION_VARIABLE:
         {
-            if (strcmp(generator->local->name, "global") == 0)
-            {
-                // TODO(timo): Don't do anything for global variable
-                // declarations. They are put to .data section in assembly.
-                /*
-                Instruction* instruction;
-
-                char* label = (char*)declaration->identifier->lexeme;
-                // printf("_%s:\n", label);
-                instruction = instruction_label(label);
-                array_push(generator->instructions, instruction);
-                
-                // TODO(timo): Check for value type
-                char* value = xmalloc(sizeof (char) * 12);
-                snprintf(value, 12, "%d", declaration->initializer->value.integer);
-
-                // printf("    .quad %s\n", value);
-                instruction = instruction_store_global(value);
-                array_push(generator->instructions, instruction);
-
-                free(value);
-                */
-            }
-            else
+            // TODO(timo): Don't do anything for global variable
+            // declarations. They are put to .data section in assembly.
+            if (generator->local != generator->global)
             {
                 char* value = ir_generate_expression(generator, declaration->initializer);
 

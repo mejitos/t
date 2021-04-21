@@ -417,8 +417,17 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
             // NOTE(timo): If argument symbol is found, argument is a variable, else it is probably constant
             if (arg != NULL)
             {
+                if (arg->scope == generator->global)
+                {
+                    fprintf(generator->output,
+                        "    mov    rax, [%s]               ; move global variable to register\n"
+                        "    mov    [rbp-%d], rax           ; move global variable from register to stack\n", 
+                        arg->identifier, result->offset);
+                }
                 // TODO(timo): For now this is just a super quick hacky solution to get things working
-                if (arg->kind == SYMBOL_PARAMETER)
+                // TODO(timo): I should fixt the assigning of the offsets so I can get rid of alot of
+                // these conditions
+                else if (arg->kind == SYMBOL_PARAMETER)
                 {
                     // TODO(timo): I don't really like that there is this one parameter that 
                     // acts differently from others. Is there something we can do about it?
@@ -465,25 +474,6 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
                 }
             }
 
-            break;
-        }
-        /* TODO(timo): Not used right now. Need to think if this is even necessary
-        case OP_STORE_GLOBAL:
-        {
-            fprintf(generator->output,
-                "    .quad %s\n", instruction->arg1);
-            break;
-        }
-        */
-        case OP_LOAD_GLOBAL: // TODO(timo): Move this to OP_COPY. For that we need a reference or something to the symbol about its scope
-        {
-            Symbol* result = scope_lookup(generator->local, instruction->result);
-            Symbol* global = scope_lookup(generator->global, instruction->arg1);
-
-            fprintf(generator->output,
-                "    mov    rax, [%s]\n", global->identifier);
-            fprintf(generator->output,
-                "    mov    [rbp-%d], rax\n", result->offset);
             break;
         }
         case OP_LABEL:

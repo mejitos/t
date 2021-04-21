@@ -174,7 +174,7 @@ static Type* resolve_unary_expression(Resolver* resolver, AST_Expression* expres
             */
             // TODO(timo): Do we need values to every expression or do we just keep them in literal and unary?
             expression->value = operand->value;
-            // expression->value.integer = +expression->value.integer;
+            expression->value.integer = +expression->value.integer;
             break;
         }
         case TOKEN_MINUS:
@@ -202,7 +202,7 @@ static Type* resolve_unary_expression(Resolver* resolver, AST_Expression* expres
             */
             // TODO(timo): Do we need values to every expression or do we just keep them in literal and unary?
             expression->value = operand->value;
-            // expression->value.integer = -expression->value.integer;
+            expression->value.integer = -expression->value.integer;
             break;
         }
         case TOKEN_NOT:
@@ -219,7 +219,7 @@ static Type* resolve_unary_expression(Resolver* resolver, AST_Expression* expres
             }
             // TODO(timo): Do we need values to every expression or do we just keep them in literal and unary?
             expression->value = operand->value;
-            // expression->value.integer = !expression->value.boolean;
+            expression->value.integer = !expression->value.boolean;
             break;
         }
         default:

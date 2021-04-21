@@ -711,16 +711,7 @@ static void test_generate_if_statement_1(Test_Runner* runner)
     char* source;
     
     // if-then
-    source = "{\n"
-             "    a: int = 0;\n"
-             "    b: int = 0;\n"
-             "    c: int = 0;\n"
-             "\n"
-             "    if a < b then {\n"
-             "        a := c;\n"
-             "    }\n"
-             "    c := b;\n"
-             "}";
+    source = "if 1 >= 0 then 1 + 1;";
     lexer_init(&lexer, source); 
     lex(&lexer);
 
@@ -729,36 +720,24 @@ static void test_generate_if_statement_1(Test_Runner* runner)
 
     type_table = type_table_init();
     resolver_init(&resolver, type_table);
-    // This scope is needed to have some kind of local scope
-    // Scope* local = scope_init(resolver.global, "local");
-    // resolver.local = local;
-    resolver.global->name = "local";
     resolve_statement(&resolver, statement);
     
     ir_generator_init(&generator, resolver.global);
     ir_generate_statement(&generator, statement);
 
-    assert_base(runner, generator.instructions->length == 15,
-        "Invalid number of instructions: %d, expected 15", generator.instructions->length);
+    assert_base(runner, generator.instructions->length == 8,
+        "Invalid number of instructions: %d, expected 8", generator.instructions->length);
     assert_instruction(runner, generator.instructions->items[0], OP_COPY);
     assert_instruction(runner, generator.instructions->items[1], OP_COPY);
-    assert_instruction(runner, generator.instructions->items[2], OP_COPY);
-    assert_instruction(runner, generator.instructions->items[3], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[2], OP_GTE);
+    assert_instruction(runner, generator.instructions->items[3], OP_GOTO_IF_FALSE);
     assert_instruction(runner, generator.instructions->items[4], OP_COPY);
     assert_instruction(runner, generator.instructions->items[5], OP_COPY);
-    assert_instruction(runner, generator.instructions->items[6], OP_COPY);
-    assert_instruction(runner, generator.instructions->items[7], OP_COPY);
-    assert_instruction(runner, generator.instructions->items[8], OP_LT);
-    assert_instruction(runner, generator.instructions->items[9], OP_GOTO_IF_FALSE);
-    assert_instruction(runner, generator.instructions->items[10], OP_COPY);
-    assert_instruction(runner, generator.instructions->items[11], OP_COPY);
-    assert_instruction(runner, generator.instructions->items[12], OP_LABEL);
-    assert_instruction(runner, generator.instructions->items[13], OP_COPY);
-    assert_instruction(runner, generator.instructions->items[14], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[6], OP_ADD);
+    assert_instruction(runner, generator.instructions->items[7], OP_LABEL);
 
     // dump_instructions(generator.instructions);
 
-    // scope_free(local);
     statement_free(statement);
     ir_generator_free(&generator);
     resolver_free(&resolver);
@@ -1045,15 +1024,15 @@ static void test_generate_variable_declaration_global(Test_Runner* runner)
     assert_instruction(runner, generator.instructions->items[1], OP_FUNCTION_BEGIN);
     assert_instruction(runner, generator.instructions->items[2], OP_COPY);
     assert_instruction(runner, generator.instructions->items[3], OP_COPY);
-    assert_instruction(runner, generator.instructions->items[4], OP_LOAD_GLOBAL);
-    assert_instruction(runner, generator.instructions->items[5], OP_LOAD_GLOBAL);
+    assert_instruction(runner, generator.instructions->items[4], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[5], OP_COPY);
     assert_instruction(runner, generator.instructions->items[6], OP_GT);
     assert_instruction(runner, generator.instructions->items[7], OP_GOTO_IF_FALSE);
-    assert_instruction(runner, generator.instructions->items[8], OP_LOAD_GLOBAL);
+    assert_instruction(runner, generator.instructions->items[8], OP_COPY);
     assert_instruction(runner, generator.instructions->items[9], OP_COPY);
     assert_instruction(runner, generator.instructions->items[10], OP_GOTO);
     assert_instruction(runner, generator.instructions->items[11], OP_LABEL);
-    assert_instruction(runner, generator.instructions->items[12], OP_LOAD_GLOBAL);
+    assert_instruction(runner, generator.instructions->items[12], OP_COPY);
     assert_instruction(runner, generator.instructions->items[13], OP_COPY);
     assert_instruction(runner, generator.instructions->items[14], OP_LABEL);
     assert_instruction(runner, generator.instructions->items[15], OP_COPY);
