@@ -1,6 +1,7 @@
 #include "t.h"
 
 
+// TODO(timo): Separate Linux kernel argument registers and general purpose registers?
 static int registers[] = { 1, 1, 1, 1, 1, 1 };
 static const char* register_list[] = { "r10", "r11", "r12", "r13", "r14", "r15" };
 
@@ -494,6 +495,9 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
             
             // TODO(timo): Handle the main function separately somewhere else so we don't have to do this
             // check every time there is a function
+            // TODO(timo): Is this really even needed. Since if the user does not use the command line arguments,
+            // so what? They can still be pushed to the stack normally even if they are not used. That
+            // way I can remove this unnecessary code?
             if (strcmp(generator->local->name, "main") == 0)
             {
                 Symbol* argc = scope_lookup(generator->local, "argc");
@@ -501,48 +505,21 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
 
                 if (argv != NULL)
                     fprintf(generator->output,
-                        "    add    rsi, 8                  ; -- \n"
+                        "    add    rsi, 8                  ; increment argv pointer and skip the program name\n"
                         "    push   rsi                     ; push argv to stack before starting main program\n");
 
                 if (argc != NULL)
                     fprintf(generator->output,
-                        "    sub    rdi, 1                  ; -- \n"
+                        "    sub    rdi, 1                  ; decrement argument count by 1 to skip the program name\n"
                         "    push   rdi                     ; push argc to stack before starting main program\n");
-
-                fprintf(generator->output,
-                    "    push   rbp\n"
-                    "    mov    rbp, rsp                ; started stack frame\n");
-                fprintf(generator->output,
-                    "    sub    rsp, %d                 ; allocate memory for local variables from stack\n", instruction->size);
-
-                /*
-                if (argc != NULL)
-                {
-                    fprintf(generator->output,
-                        "    mov    rax, [rbp+16]            ; decrement argument count by 1 to skip the program name\n"
-                        "    mov    [rbp-%d], rax           ; save argc to the stack\n", argc->offset);
-                        // "    sub    rdi, 1                  ; decrement argument count by 1 to skip the program name\n"
-                        // "    mov    [rbp-%d], rdi           ; save argc to the stack\n", argc->offset);
-                }
-                if (argv != NULL)
-                {
-                    fprintf(generator->output,
-                        "    add    rsi, 8                  ; increment the argv pointer and skip the program name\n"
-                        "    mov    [rbp-%d], rsi           ; save pointer to argv to the stack\n", argv->offset);
-                }
-                */
             }
-            else
-            {
-                // These instructions are same as instruction "enter, N" where enter sets the stackframe 
-                // and if N is given, N bytes of memory will be reserved from the stack
-                fprintf(generator->output, 
-                    "    push   rbp\n"
-                    "    mov    rbp, rsp                ; started stack frame\n");
 
-                fprintf(generator->output,
-                    "    sub    rsp, %d                 ; allocate memory for local variables from stack\n", instruction->size);
-            }
+            fprintf(generator->output, 
+                "    push   rbp\n"
+                "    mov    rbp, rsp                ; started stack frame\n"
+                "    sub    rsp, %d                 ; allocate memory for local variables from stack\n", 
+                instruction->size);
+
             break;
         }
         case OP_PARAM_PUSH:
@@ -583,34 +560,31 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
         }
         case OP_FUNCTION_END:
         {
-            // The function epilogue
-
-            // Label
             fprintf(generator->output,
                 "%s_epilogue:\n", generator->local->name);
 
             // Restore the stack
+            // NOTE(timo): Parameters are popped one by one with OP_PARAM_POP
+
             // Restore the arguments/registers
+            // TODO(timo): This should be implemented when caller/callee saved registers
+            // are taken into account. Now everything is being passed through stack.
+
             // Return to the caller
-            // TODO(timo): Hacky solution to get things work for now
+            // TODO(timo): Hacky solution to get things work for now. Main function is
+            // handled at the main code_generate() function. Maybe there is a better way.
             if (strcmp(generator->local->name, "main") != 0)
             {
                 fprintf(generator->output,
-                    // "    add    rsp, 8\n"
-                    // "    leave\n"
-                    "    mov    rsp, rbp                ; restore stack frame\n"
-                    "    pop    rbp\n"
+                    "    leave\n"
                     "    ret\n");
             }
 
             // Set the current scope to the enclosing (global) scope
-            if (generator->local->enclosing != NULL)
-            {
-                // NOTE(timo): At this point, these two are equal
-                generator->local = generator->global;
-                // generator->local = generator->local->enclosing;
-            }
+            generator->local = generator->local->enclosing;
 
+            // TODO(timo): This should be removed when more flexible scoping is added
+            assert(generator->local == generator->global);
             break;
         }
         case OP_RETURN:
@@ -638,8 +612,6 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
         }
         case OP_CALL:
         {
-            // NOTE(timo): The call instruction itself contains the RIP push to the stack and jmp to the function
-
             // Instruction has arg1: what is being called
             //                 result: where the result is being saved
             //                 n: number of arguments the function was being called with
@@ -650,11 +622,6 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
             {
                 fprintf(generator->output,
                     "    call   %s                     ; calling the function %s\n", value->identifier, value->identifier);
-
-                /*
-                fprintf(generator->output,
-                    "    add    rsp, 16\n");
-                */
             }
             else
             {
@@ -684,7 +651,7 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
                 "    mov    rdi, [rax]              ; \n"
                 // TODO(timo): Type check to make sure the argument is a digit/number 
                 // before calling atoll. If argument is not a number, show error and exit
-                "    call   atoll                  ; \n"
+                "    call   atoll                   ; \n"
                 "    mov    [rbp-%d], rax           ; \n", variable->offset, result->offset);
 
             break;
