@@ -6,6 +6,7 @@ Scope* scope_init(Scope* enclosing, const char* name)
     Scope* scope = xmalloc(sizeof (Scope));
     scope->name = name;
     scope->offset = 0;
+    scope->offset_parameter = 16;
     scope->enclosing = enclosing;
     scope->symbols = hashtable_init(10);
 
@@ -22,8 +23,6 @@ void scope_free(Scope* scope)
     }
 
     hashtable_free(scope->symbols);
-
-    // if (scope->enclosing) scope_free(scope->enclosing);
 
     free(scope);
     scope = NULL;
@@ -74,18 +73,37 @@ void scope_declare(Scope* scope, Symbol* symbol)
     }
 
     // Setting the memory offsets / alignment
+    // TODO(timo): I'm not sure though this is job of the scope to set these offsets
     // NOTE(timo): This has to be offset + 8 because of how the stack works
     // We cannot have position stack_top - 0, since then the value would go
     // outside of the stack.
-    symbol->offset = scope->offset + 8;
+    // TODO(timo): Get rid of this and do something more useful
+    // At least separate the parameters and local variables from each other
+    // TODO(timo): We would need a separate counter for parameter offsets
+    if (symbol->kind == SYMBOL_PARAMETER)
+    {
+        if (strcmp(scope->name, "main") == 0)
+            symbol->offset = scope->offset_parameter - 8;
+        else
+            symbol->offset = scope->offset_parameter;
+        
+        scope->offset_parameter += symbol->type->size;
 
-    // Compute the new offset for the scope
-    // scope->offset += symbol->type->size;
-    scope->offset += symbol->type->alignment;
+        // TODO(timo): We should probably compute the correct alignment
+        // for these parameters too
+    }
+    else
+    {
+        symbol->offset = scope->offset + 8;
 
-    // Lets just use the alignment of 8 bytes for everything for now to make life easier
-    while (scope->offset % 8 != 0)
-        scope->offset += 4;
+        // Compute the new offset for the scope
+        scope->offset += symbol->type->size;
+        // scope->offset += symbol->type->alignment;
+
+        // Lets just use the alignment of 8 bytes for everything for now to make life easier
+        while (scope->offset % symbol->type->alignment != 0)
+            scope->offset += 1;
+    }
 
     scope_put(scope, symbol);
 }

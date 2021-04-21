@@ -5,9 +5,9 @@ Type* type_none()
 {
     Type* type = xmalloc(sizeof (Type));
     type->kind = TYPE_NONE;
+    // TODO(timo): This should be something sensible
     type->size = 0;
-    type->alignment = 0;
-    // type->offset = 0;
+    type->alignment = 8;
 
     return type;
 }
@@ -17,9 +17,9 @@ Type* type_integer()
 {
     Type* type = xmalloc(sizeof (Type));
     type->kind = TYPE_INTEGER;
-    type->size = 4;
-    // type->offset = 0;
-    type->alignment = 4;
+    // TODO(timo): This should be 4 bytes, but for simplicity everything is 8 bytes
+    type->size = 8;
+    type->alignment = 8;
 
     return type;
 }
@@ -29,8 +29,8 @@ Type* type_boolean()
 {
     Type* type = xmalloc(sizeof (Type));
     type->kind = TYPE_BOOLEAN;
-    type->size = 1;
-    // type->offset = 0;
+    // TODO(timo): This should be like 1 byte, but for simplicity everything is 8 bytes
+    type->size = 8;
     type->alignment = 8;
 
     return type;
@@ -41,15 +41,11 @@ Type* type_function()
 {
     Type* type = xmalloc(sizeof (Type));
     type->kind = TYPE_FUNCTION;
-    // TODO(timo): How to calculate the size?
     type->function.return_type = NULL;
     type->function.parameters = array_init(sizeof (Symbol*));
     type->function.arity = 0;
-
-    // TODO(timo): These
     type->size = 8;
     type->alignment = 8;
-    // type->offset = 0;
 
     return type;
 }
@@ -59,13 +55,11 @@ Type* type_array(Type* element_type)
 {
     Type* type = xmalloc(sizeof (Type));
     type->kind = TYPE_ARRAY;
-    // TODO(timo): Size can be calculated with the size of the element type * length
+    // TODO(timo): Total size can be calculated with the size of the element type * length
     type->array.element_type = element_type;
     type->array.length = 0;
-
-    // TODO(timo): These
-    type->size = 8; // Size of the pointer is 8 bytes and array is basically a pointer type
-    // type->offset = 0;
+    // The size is the size of the base pointer
+    type->size = 8;
     type->alignment = 8;
 
     return type;
@@ -85,12 +79,10 @@ const char* type_as_string(Type_Kind kind)
         case TYPE_FUNCTION:
             // TODO(timo): Probably should return something else
             return "function";
-            // return type_as_string(type->function.return_type);
         case TYPE_ARRAY:
             // TODO(timo): I probably should return something else but since the array 
             // is just array of elements type of element type and basically a pointer type
             return "array";
-            // return type_as_string(type->array.element_type);
         default:
             return "unknown type";
     }
@@ -142,7 +134,6 @@ void type_free(Type* type)
             if (type->function.scope) scope_free(type->function.scope);
             // NOTE(timo): Return types are primitive types at this point so there 
             // is no need to explicitly remove them as they point to type table
-            // type_free(type->function.return_type);
             // NOTE(timo): The parameter list is a list of pointers to symbols
             // which are being freed elsewhere
             array_free(type->function.parameters);
@@ -150,7 +141,6 @@ void type_free(Type* type)
         case TYPE_ARRAY:
             // NOTE(timo): Element types are primitive types at this point so there 
             // is no need to explicitly remove them as they point to type table
-            // type_free(type->array.element_type);
             break;
         default:
             // TODO(timo): Error

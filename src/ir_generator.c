@@ -6,7 +6,6 @@ void ir_generator_init(IR_Generator* generator, Scope* global)
     *generator = (IR_Generator) { .temp = 0,
                                   .label = 0,
                                   .global = global,
-                                  .not_in_loop = true,
                                   .diagnostics = array_init(sizeof (Diagnostic*)),
                                   .instructions = array_init(sizeof (Instruction*)) };
 
@@ -225,9 +224,13 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
             free(element_size); // TODO(timo): remove
             free(temp);
             // print(\t%s = %s * %s\n);
+            
+            // TODO(timo): Basically we should also copy the result of the multiplication to temp variable
 
             // Add the offset to the base pointer
-            char* arg = (char*)expression->index.variable->identifier->lexeme;
+            // char* arg = (char*)expression->index.variable->identifier->lexeme;
+            char* arg = ir_generate_expression(generator, expression->index.variable);
+
             temp = temp_label(generator);
             instruction = instruction_add(arg, instruction->result, temp);
             array_push(generator->instructions, instruction);
@@ -360,14 +363,12 @@ void ir_generate_statement(IR_Generator* generator, AST_Statement* statement)
         case STATEMENT_WHILE:
         {
             Instruction* instruction;
-            // "label" + L1 + condition_code + "label" + L2 + statement_code_body
 
             // Local labels
             char* label_condition = label(generator); // condition
             char* label_exit = label(generator); // exit
 
             // TODO(timo): Quick hacky hack solution for break statements. There might be a better way.
-            generator->not_in_loop = false;
             generator->while_exit = label_exit;
 
             //printf("%s:\n", label_condition);
@@ -399,7 +400,6 @@ void ir_generate_statement(IR_Generator* generator, AST_Statement* statement)
             array_push(generator->instructions, instruction);
             
             // TODO(timo): Quick hacky hack solution for break statements. There might be a better way.
-            generator->not_in_loop = true;
             generator->while_exit = NULL;
 
             free(label_condition);
@@ -408,8 +408,6 @@ void ir_generate_statement(IR_Generator* generator, AST_Statement* statement)
         }
         case STATEMENT_IF:
         {
-            // condition_code + then + label + else  + label
-            
             // if-then-else
             if (statement->_if._else != NULL)
             {
@@ -474,27 +472,20 @@ void ir_generate_statement(IR_Generator* generator, AST_Statement* statement)
         case STATEMENT_RETURN:
         {
             char* value = ir_generate_expression(generator, statement->_return.value);
-            //printf("\treturn %s\n", value);
 
             Instruction* instruction = instruction_return(value);
             array_push(generator->instructions, instruction);
+
+            // printf("\treturn %s\n", value);
             break;
         }
         case STATEMENT_BREAK:
         {
-            // TODO(timo): Is this actually needed? Since the invalid loop
-            // context should be resolved already
-            if (generator->not_in_loop)
-            {
-                // TODO(timo): Add diagnostic
-                printf("[IR_GENERATOR] - Error: Trying to create break instruction when not in loop\n");
-                exit(1);
-            }
-            else
-            {
-                Instruction* instruction = instruction_goto(generator->while_exit);
-                array_push(generator->instructions, instruction);
-            }
+            Instruction* instruction = instruction_goto(generator->while_exit);
+            array_push(generator->instructions, instruction);
+
+            // printf("goto %s\n");
+            break;
         }
         default:
             // TODO(timo): Error

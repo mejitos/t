@@ -533,13 +533,14 @@ static void test_generate_index_expression(Test_Runner* runner)
 
     // dump_instructions(generator.instructions);
 
-    assert_base(runner, generator.instructions->length == 5,
-        "Invalid number of instructions: %d, expected 5", generator.instructions->length);
+    assert_base(runner, generator.instructions->length == 6,
+        "Invalid number of instructions: %d, expected 6", generator.instructions->length);
     assert_instruction(runner, generator.instructions->items[0], OP_COPY);
     assert_instruction(runner, generator.instructions->items[1], OP_COPY);
     assert_instruction(runner, generator.instructions->items[2], OP_MUL);
-    assert_instruction(runner, generator.instructions->items[3], OP_ADD);
-    assert_instruction(runner, generator.instructions->items[4], OP_DEREFERENCE);
+    assert_instruction(runner, generator.instructions->items[3], OP_COPY);
+    assert_instruction(runner, generator.instructions->items[4], OP_ADD);
+    assert_instruction(runner, generator.instructions->items[5], OP_DEREFERENCE);
     
     ir_generator_free(&generator);
     resolver_free(&resolver);

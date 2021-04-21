@@ -81,7 +81,7 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
             Symbol* destination = scope_lookup(generator->local, instruction->arg1);
             Symbol* source = scope_lookup(generator->local, instruction->arg2);
             Symbol* result = scope_lookup(generator->local, instruction->result);
-
+            
             if (destination != NULL) // get variable from stack to register
             {
                 destination->_register = allocate_register(generator);
@@ -294,6 +294,8 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
             
             // NOTE(timo): Bitwise not is not the same as straight logical not, since
             // bitwise not will flip all the bits, so there has to be and 1 afterwards
+            // TODO(timo): Actually xor 1 could make this a one instruction operation
+            // instead of two with not + and
             fprintf(generator->output,
                 "    mov    rax, [rbp-%d]           ; \n"
                 "    not    rax                     ; \n"
@@ -429,31 +431,21 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
                 // these conditions
                 else if (arg->kind == SYMBOL_PARAMETER)
                 {
-                    // TODO(timo): I don't really like that there is this one parameter that 
-                    // acts differently from others. Is there something we can do about it?
-                    if (strcmp(arg->identifier, "argc") == 0)
-                    {
-                        fprintf(generator->output,
-                            "    mov    rax, [rbp-%d]           ; move the argc to the register--\n", arg->offset);
-                        fprintf(generator->output,
-                            "    mov    qword [rbp-%d], rax     ; move the register to result position in the stack\n", result->offset);
-                    }
-                    else
-                    {
-                        // NOTE(timo): The offset has to be offset + 8 here, since the first spot in the
-                        // previous stackframe is always the return address and the parameters are behind it
-                        fprintf(generator->output,
-                            "    mov    rax, [rbp+%d]           ; --\n", arg->offset + 8);
-                        fprintf(generator->output,
-                            "    mov    qword [rbp-%d], rax     ; --\n", result->offset);
-                    }
+                    fprintf(generator->output,
+                        "    mov    rax, [rbp+%d]           ; move parameter from stack to rax\n", 
+                        arg->offset);
+                    fprintf(generator->output,
+                        "    mov    qword [rbp-%d], rax     ; move parameter from rax to stack\n", 
+                        result->offset);
                 }
                 else
                 {
                     fprintf(generator->output,
-                        "    mov    rax, [rbp-%d]           ; --\n", arg->offset);
+                        "    mov    rax, [rbp-%d]           ; --\n", 
+                        arg->offset);
                     fprintf(generator->output,
-                        "    mov    qword [rbp-%d], rax     ; --\n", result->offset);
+                        "    mov    qword [rbp-%d], rax     ; --\n", 
+                        result->offset);
                 }
             }
             else // This is used when literal constants are being copied
@@ -507,17 +499,30 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
                 Symbol* argc = scope_lookup(generator->local, "argc");
                 Symbol* argv = scope_lookup(generator->local, "argv");
 
-                fprintf(generator->output, 
+                if (argv != NULL)
+                    fprintf(generator->output,
+                        "    add    rsi, 8                  ; -- \n"
+                        "    push   rsi                     ; push argv to stack before starting main program\n");
+
+                if (argc != NULL)
+                    fprintf(generator->output,
+                        "    sub    rdi, 1                  ; -- \n"
+                        "    push   rdi                     ; push argc to stack before starting main program\n");
+
+                fprintf(generator->output,
                     "    push   rbp\n"
                     "    mov    rbp, rsp                ; started stack frame\n");
                 fprintf(generator->output,
                     "    sub    rsp, %d                 ; allocate memory for local variables from stack\n", instruction->size);
 
+                /*
                 if (argc != NULL)
                 {
                     fprintf(generator->output,
-                        "    sub    rdi, 1                  ; decrement argument count by 1 to skip the program name\n"
-                        "    mov    [rbp-%d], rdi           ; save argc to the stack\n", argc->offset);
+                        "    mov    rax, [rbp+16]            ; decrement argument count by 1 to skip the program name\n"
+                        "    mov    [rbp-%d], rax           ; save argc to the stack\n", argc->offset);
+                        // "    sub    rdi, 1                  ; decrement argument count by 1 to skip the program name\n"
+                        // "    mov    [rbp-%d], rdi           ; save argc to the stack\n", argc->offset);
                 }
                 if (argv != NULL)
                 {
@@ -525,6 +530,7 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
                         "    add    rsi, 8                  ; increment the argv pointer and skip the program name\n"
                         "    mov    [rbp-%d], rsi           ; save pointer to argv to the stack\n", argv->offset);
                 }
+                */
             }
             else
             {
@@ -537,10 +543,6 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
                 fprintf(generator->output,
                     "    sub    rsp, %d                 ; allocate memory for local variables from stack\n", instruction->size);
             }
-
-            // TODO(timo): Save the parameters to the local variables in here? Even though I don't think this is
-            // necessary. I just should do better job when defining the offsets in the scope
-
             break;
         }
         case OP_PARAM_PUSH:
@@ -751,24 +753,35 @@ void code_generate(Code_Generator* generator)
 
     // Template end
     Symbol* main = scope_lookup(generator->global, "main");
+    Symbol* argc = scope_lookup(main->type->function.scope, "argc");
+    Symbol* argv = scope_lookup(main->type->function.scope, "argv");
 
     if (main->type->function.return_type->kind == TYPE_INTEGER)
+    {
         fprintf(generator->output,
-            // "    mov    rbx, rax                    ; save the return value into sys exit\n"
             "    mov    rdi, return_message_success ; first argument of printf - format\n"
             "    mov    rsi, rax                    ; second argument of printf - formatted value\n"
             "    xor    rax, rax                    ; because the varargs printf uses\n"
             "    call   printf                      ; print the return value - printf(format, value)\n"
             "    mov    rax, 0                      ; exit success\n"
-            // "    mov    rax, rbx                    ; return value\n" // Return the value as a program exit code
-            "    leave                              ; leave the current stack frame without manually setting it\n"
+            "    leave                              ; leave the current stack frame without manually setting it\n");
+
+        if (argv != NULL)
+            fprintf(generator->output,
+                "    pop rsi                            ; pop the argv from the stack\n");
+        if (argc != NULL)
+            fprintf(generator->output,
+                "    pop rdi                            ; pop the argc from the stack\n");
+
+        fprintf(generator->output,
             "    ret                                ; exit the program\n"
             "\n"
             "return_message_success:\n"
             "    db 'Program exited with the value %s', 10, 0", "%d");
+    }
     else if (main->type->function.return_type->kind == TYPE_BOOLEAN)
+    {
         fprintf(generator->output,
-            // "    mov    rbx, rax                    ; save the return value into sys exit\n"
             "    mov    rdi, return_message_success ; first argument of printf - format\n"
             "    cmp    rax, [true]                 ; check if the return value is true\n"
             "    jne    end_false\n"
@@ -780,12 +793,21 @@ void code_generate(Code_Generator* generator)
             "    xor    rax, rax                    ; because the varargs printf uses\n"
             "    call   printf                      ; print the return value - printf(format, value)\n"
             "    mov    rax, 0                      ; exit success\n"
-            // "    mov    rax, rbx                    ; return value\n" // Return the value as a program exit code
-            "    leave                              ; leave the current stack frame without manually setting it\n"
+            "    leave                              ; leave the current stack frame without manually setting it\n");
+
+        if (argv != NULL)
+            fprintf(generator->output,
+                "    pop rsi                            ; pop the argv from the stack\n");
+        if (argc != NULL)
+            fprintf(generator->output,
+                "    pop rdi                            ; pop the argc from the stack\n");
+        
+        fprintf(generator->output,
             "    ret                                ; exit the program\n"
             "\n"
             "return_message_success:\n"
             "    db 'Program exited with the value %s', 10, 0", "%s");
+    }
 
     fclose(generator->output);
 }

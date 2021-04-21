@@ -517,6 +517,7 @@ struct Scope
 {
     const char* name;
     int offset; // alignment
+    int offset_parameter;
     Scope* enclosing;
     hashtable* symbols;
 };
@@ -725,9 +726,8 @@ typedef struct IR_Generator
     Scope* local;
 
     // Context
-    bool not_in_loop;
     char* while_exit;
-    // TODO(timo): Could we use if exit here as well?
+    // TODO(timo): Could we use if exit here as well to get rid of extra exit labels?
 } IR_Generator;
 
 

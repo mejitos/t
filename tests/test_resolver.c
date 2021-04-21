@@ -917,6 +917,8 @@ static void test_resolve_function_expression(Test_Runner* runner)
     
     type_table = type_table_init();
     resolver_init(&resolver, type_table);
+    // This has to be set to get some context to the function
+    resolver.context.current_function = "main";
     type = resolve_expression(&resolver, expression);
     
     assert_base(runner, resolver.diagnostics->length == 0,
