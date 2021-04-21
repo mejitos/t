@@ -253,7 +253,20 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
         }
         case OP_MINUS:
         {
-            // TODO(timo): THIS. Apparently I have totally forgotten this one
+            Symbol* arg = scope_lookup(generator->local, instruction->arg1);
+            Symbol* result = scope_lookup(generator->local, instruction->result);
+            int reg = allocate_register(generator);
+
+            fprintf(generator->output,
+                "    mov    %s, [rbp-%d]            ; --\n"
+                "    neg    %s                      ; --\n"
+                "    mov    [rbp-%d], %s            ; --\n",
+                register_list[reg], arg->offset,
+                register_list[reg],
+                result->offset, register_list[reg]);
+
+            free_register(generator, reg);
+
             break;
         }
         case OP_EQ:

@@ -31,6 +31,7 @@ static char* run_example(Test_Runner* runner, const char* program_name, const ch
 
     compile_from_file(file_path, options);
 
+    // TODO(timo): Make this work without this branch
     if (argv == NULL)
     {
         // Create the command to run the program
@@ -91,6 +92,22 @@ static void test_example_first(Test_Runner* runner)
     const char* program_name = "first";
     const char* file_path = "./examples/first.t";
     const char* result = "Program exited with the value 0\n";
+    const char* args = NULL;
+
+    char* buffer = run_example(runner, program_name, file_path, result, args);
+    
+    assert_base(runner, strcmp(result, buffer) == 0,
+        "Invalid exit value '%s', expected '%s'", buffer, result);
+
+    free(buffer);
+}
+
+
+static void test_example_first_negative(Test_Runner* runner)
+{
+    const char* program_name = "first_negative";
+    const char* file_path = "./examples/first_negative.t";
+    const char* result = "Program exited with the value -1\n";
     const char* args = NULL;
 
     char* buffer = run_example(runner, program_name, file_path, result, args);
@@ -988,6 +1005,7 @@ Test_Set* compiler_test_set()
 
     // First
     array_push(set->tests, test_case("Example file: first.t", test_example_first));
+    array_push(set->tests, test_case("Example file: first_negative.t", test_example_first_negative));
     array_push(set->tests, test_case("Example file: first_bool_true.t", test_example_first_bool_true));
     array_push(set->tests, test_case("Example file: first_bool_false.t", test_example_first_bool_false));
     // Trivial basic stuff
