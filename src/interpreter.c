@@ -250,7 +250,7 @@ static void evaluate_variable_declaration(Interpreter* interpreter, AST_Declarat
 
     if (symbol == NULL)
     {
-        Symbol* symbol = symbol_variable(declaration->identifier->lexeme, NULL);
+        Symbol* symbol = symbol_variable(interpreter->local, declaration->identifier->lexeme, NULL);
         // symbol->value = evaluate_expression(interpreter, declaration->initializer);
         scope_declare(interpreter->local, symbol);
     }

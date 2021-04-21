@@ -1,11 +1,12 @@
 #include "t.h"
 
 
-Symbol* symbol_variable(const char* identifier, Type* type)
+Symbol* symbol_variable(Scope* scope, const char* identifier, Type* type)
 {
     Symbol* symbol = xcalloc(1, sizeof (Symbol));
     symbol->state = STATE_UNRESOLVED;
     symbol->kind = SYMBOL_VARIABLE;
+    symbol->scope = scope;
     symbol->identifier = identifier;
     symbol->type = type;
     symbol->_register = -1;
@@ -14,11 +15,12 @@ Symbol* symbol_variable(const char* identifier, Type* type)
 }
 
 
-Symbol* symbol_function(const char* identifier, Type* type)
+Symbol* symbol_function(Scope* scope, const char* identifier, Type* type)
 {
     Symbol* symbol = xcalloc(1, sizeof (Symbol));
     symbol->state = STATE_UNRESOLVED;
     symbol->kind = SYMBOL_FUNCTION;
+    symbol->scope = scope;
     symbol->identifier = identifier;
     symbol->type = type;
     symbol->_register = -1;
@@ -27,11 +29,12 @@ Symbol* symbol_function(const char* identifier, Type* type)
 }
 
 
-Symbol* symbol_parameter(const char* identifier, Type* type)
+Symbol* symbol_parameter(Scope* scope, const char* identifier, Type* type)
 {
     Symbol* symbol = xcalloc(1, sizeof (Symbol));
     symbol->state = STATE_RESOLVED;
     symbol->kind = SYMBOL_PARAMETER;
+    symbol->scope = scope;
     symbol->identifier = identifier;
     symbol->type = type;
     symbol->_register = -1;
@@ -40,11 +43,12 @@ Symbol* symbol_parameter(const char* identifier, Type* type)
 }
 
 
-Symbol* symbol_temp(const char* identifier, Type* type)
+Symbol* symbol_temp(Scope* scope, const char* identifier, Type* type)
 {
     Symbol* symbol = xcalloc(1, sizeof (Symbol));
     symbol->state = STATE_RESOLVED;
     symbol->kind = SYMBOL_TEMP;
+    symbol->scope = scope;
     symbol->identifier = identifier;
     symbol->type = type;
     symbol->_register = -1;
@@ -73,6 +77,8 @@ void symbol_free(Symbol* symbol)
                 break;
         }
     }
+
+    // NOTE(timo): The scope is being freed by the resolver
 
     free(symbol);
     symbol = NULL;

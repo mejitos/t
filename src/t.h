@@ -489,13 +489,10 @@ typedef struct Symbol
 {
     Symbol_Kind kind;
     Symbol_State state;
+    Scope* scope;
     const char* identifier;
     Type* type;
     Value value;
-
-    // NOTE(timo): Since functions are expressions, we cannot really have them
-    // in the symbols themselves?
-    // Scope* scope; // function scope
 
     // Register stuff
     int offset;
@@ -504,10 +501,10 @@ typedef struct Symbol
 } Symbol;
 
 
-Symbol* symbol_variable(const char* identifier, Type* type);
-Symbol* symbol_temp(const char* identifier, Type* type);
-Symbol* symbol_parameter(const char* identifier, Type* type);
-Symbol* symbol_function(const char* identifier, Type* type);
+Symbol* symbol_variable(Scope* scope, const char* identifier, Type* type);
+Symbol* symbol_temp(Scope* scope, const char* identifier, Type* type);
+Symbol* symbol_parameter(Scope* scope, const char* identifier, Type* type);
+Symbol* symbol_function(Scope* scope, const char* identifier, Type* type);
 void symbol_free(Symbol* symbol);
 
 

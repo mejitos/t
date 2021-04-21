@@ -73,7 +73,7 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
             Instruction* instruction = instruction_copy(arg, temp);
 
             array_push(generator->instructions, instruction);
-            scope_declare(generator->local, symbol_temp(instruction->result, expression->type));
+            scope_declare(generator->local, symbol_temp(generator->local, instruction->result, expression->type));
             free(temp);
 
             // printf("\t%s := %s\n", instruction->result, arg);
@@ -102,7 +102,7 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
             }
 
             array_push(generator->instructions, instruction);
-            scope_declare(generator->local, symbol_temp(instruction->result, expression->type));
+            scope_declare(generator->local, symbol_temp(generator->local, instruction->result, expression->type));
             free(temp);
 
             // printf("\t%s := %s %s\n", instruction->result, operator, operand);
@@ -162,7 +162,7 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
             }
             
             array_push(generator->instructions, instruction);
-            scope_declare(generator->local, symbol_temp(instruction->result, expression->type));
+            scope_declare(generator->local, symbol_temp(generator->local, instruction->result, expression->type));
             free(temp);
 
             // printf("\t%s := %s %s %s\n", result, left, operator, right);
@@ -183,7 +183,7 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
                 instruction = instruction_load_global(arg, temp);
 
             array_push(generator->instructions, instruction);
-            scope_declare(generator->local, symbol_temp(instruction->result, expression->type));
+            scope_declare(generator->local, symbol_temp(generator->local, instruction->result, expression->type));
             free(temp);
 
             // printf("\t%s := %s\n", result, arg);
@@ -224,14 +224,14 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
 
             instruction = instruction_copy("8", element_size); // TODO(timo): remove
             array_push(generator->instructions, instruction); // TODO(timo): remove
-            scope_declare(generator->local, symbol_temp(instruction->result, expression->index.variable->type->array.element_type)); // TODO(timo): remove
+            scope_declare(generator->local, symbol_temp(generator->local, instruction->result, expression->index.variable->type->array.element_type)); // TODO(timo): remove
 
             temp = temp_label(generator);
             // printf(\t%s = %s\n");
 
             instruction = instruction_mul(subscript, element_size, temp);
             array_push(generator->instructions, instruction);
-            scope_declare(generator->local, symbol_temp(instruction->result, expression->index.variable->type->array.element_type));
+            scope_declare(generator->local, symbol_temp(generator->local, instruction->result, expression->index.variable->type->array.element_type));
             
             free(element_size); // TODO(timo): remove
             free(temp);
@@ -242,7 +242,7 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
             temp = temp_label(generator);
             instruction = instruction_add(arg, instruction->result, temp);
             array_push(generator->instructions, instruction);
-            scope_declare(generator->local, symbol_temp(instruction->result, expression->index.variable->type->array.element_type));
+            scope_declare(generator->local, symbol_temp(generator->local, instruction->result, expression->index.variable->type->array.element_type));
 
             free(temp);
             // print(\t%s = %s + %s\n);
@@ -251,7 +251,7 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
             temp = temp_label(generator); // result
             instruction = instruction_dereference(instruction->result, temp, -1);
             array_push(generator->instructions, instruction);
-            scope_declare(generator->local, symbol_temp(instruction->result, expression->index.variable->type->array.element_type));
+            scope_declare(generator->local, symbol_temp(generator->local, instruction->result, expression->index.variable->type->array.element_type));
 
             free(temp);
             // printf("\t%s = *(%s)\n");
@@ -330,7 +330,7 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
             // important info to pass on in case of nested function calls
             instruction = instruction_call(arg, temp, arguments->length);
 
-            scope_declare(generator->local, symbol_temp(instruction->result, expression->type));
+            scope_declare(generator->local, symbol_temp(generator->local, instruction->result, expression->type));
             array_push(generator->instructions, instruction);
             free(temp);
 

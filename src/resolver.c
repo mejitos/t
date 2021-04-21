@@ -46,6 +46,7 @@ void resolver_free(Resolver* resolver)
 static inline void enter_scope(Resolver* resolver, const char* name)
 {
     // NOTE(timo): local scope at this point should be the global scope
+    // since we only have two scopes at the moment
     assert(resolver->local == resolver->global);
 
     Scope* scope = scope_init(resolver->local, name);
@@ -126,7 +127,7 @@ static Type* resolve_literal_expression(Resolver* resolver, AST_Expression* expr
                 literal->lexeme);
             array_push(resolver->diagnostics, _diagnostic);
 
-            // TODO(timo): Return none type?
+            type = hashtable_get(resolver->type_table, "none");
             break;
         }
     }
@@ -173,7 +174,7 @@ static Type* resolve_unary_expression(Resolver* resolver, AST_Expression* expres
             */
             // TODO(timo): Do we need values to every expression or do we just keep them in literal and unary?
             expression->value = operand->value;
-            expression->value.integer = +expression->value.integer;
+            // expression->value.integer = +expression->value.integer;
             break;
         }
         case TOKEN_MINUS:
@@ -201,7 +202,7 @@ static Type* resolve_unary_expression(Resolver* resolver, AST_Expression* expres
             */
             // TODO(timo): Do we need values to every expression or do we just keep them in literal and unary?
             expression->value = operand->value;
-            expression->value.integer = -expression->value.integer;
+            // expression->value.integer = -expression->value.integer;
             break;
         }
         case TOKEN_NOT:
@@ -218,7 +219,7 @@ static Type* resolve_unary_expression(Resolver* resolver, AST_Expression* expres
             }
             // TODO(timo): Do we need values to every expression or do we just keep them in literal and unary?
             expression->value = operand->value;
-            expression->value.integer = !expression->value.boolean;
+            // expression->value.integer = !expression->value.boolean;
             break;
         }
         default:
@@ -518,7 +519,7 @@ static Type* resolve_function_expression(Resolver* resolver, AST_Expression* exp
         {
             Parameter* parameter = parameters->items[i];
             Type* parameter_type = resolve_type_specifier(resolver, parameter->specifier);
-            Symbol* symbol = symbol_parameter(parameter->identifier->lexeme, parameter_type);
+            Symbol* symbol = symbol_parameter(resolver->local, parameter->identifier->lexeme, parameter_type);
             scope_declare(resolver->local, symbol);
             array_push(type->function.parameters, symbol);
         }
@@ -827,7 +828,7 @@ void resolve_variable_declaration(Resolver* resolver, AST_Declaration* declarati
     }
 
     // Declare the symbol into the current scope
-    Symbol* symbol = symbol_variable(declaration->identifier->lexeme, actual_type);
+    Symbol* symbol = symbol_variable(resolver->local, declaration->identifier->lexeme, actual_type);
     
     // TODO(timo): Set value for a global variable, but this solution kinda sucks
     // just a hacky solution to get things going for now
@@ -878,7 +879,7 @@ void resolve_function_declaration(Resolver* resolver, AST_Declaration* declarati
     }
     
     // Declare the symbol into the current scope
-    Symbol* symbol = symbol_function(declaration->identifier->lexeme, actual_type);
+    Symbol* symbol = symbol_function(resolver->local, declaration->identifier->lexeme, actual_type);
 
     // TODO(timo): Should we take the responsibility of declaring errors of
     // already diagnosed variables instead of doing it in the scope
