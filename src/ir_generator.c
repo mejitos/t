@@ -497,8 +497,6 @@ void ir_generate_declaration(IR_Generator* generator, AST_Declaration* declarati
             generator->local = function->type->function.scope;
             
             // Generate the body of the function (=initializer)
-            // TODO(timo): Should this actually return the place where the
-            // result of the function is saved?
             ir_generate_expression(generator, declaration->initializer);
             
             // Restore the scope to the enclosing scope

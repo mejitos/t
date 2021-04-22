@@ -2,8 +2,10 @@
 
 
 // TODO(timo): Separate Linux kernel argument registers and general purpose registers?
+// TODO(timo): How about 8-, 16- and 32-bit registers?
 static int registers[] = { 1, 1, 1, 1, 1, 1 };
 static const char* register_list[] = { "r10", "r11", "r12", "r13", "r14", "r15" };
+
 
 static void free_registers()
 {
@@ -253,22 +255,21 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
 
             break;
         }
-        case OP_MINUS:
+        case OP_MINUS: // https://www.felixcloutier.com/x86/neg
         {
             Symbol* arg = scope_lookup(generator->local, instruction->arg1);
             Symbol* result = scope_lookup(generator->local, instruction->result);
-            int reg = allocate_register(generator);
+            int temp_reg = allocate_register(generator);
 
             fprintf(generator->output,
                 "    mov    %s, [rbp-%d]            ; --\n"
                 "    neg    %s                      ; --\n"
                 "    mov    [rbp-%d], %s            ; --\n",
-                register_list[reg], arg->offset,
-                register_list[reg],
-                result->offset, register_list[reg]);
+                register_list[temp_reg], arg->offset,
+                register_list[temp_reg],
+                result->offset, register_list[temp_reg]);
 
-            free_register(generator, reg);
-
+            free_register(generator, temp_reg);
             break;
         }
         case OP_EQ:
@@ -281,88 +282,92 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
             Symbol* destination = scope_lookup(generator->local, instruction->arg1);
             Symbol* source = scope_lookup(generator->local, instruction->arg2);
             Symbol* result = scope_lookup(generator->local, instruction->result);
+            int temp_reg_1 = allocate_register(generator);
+            int temp_reg_2 = allocate_register(generator);
 
-            if (destination != NULL)
-            {
-                destination->_register = allocate_register(generator);
-                fprintf(generator->output,
-                    "    mov    %s, [rbp-%d]            ; --\n", 
-                    register_list[destination->_register], destination->offset);
-            }
-            if (source != NULL)
-            {
-                source->_register = allocate_register(generator);
-                fprintf(generator->output,
-                    "    mov    %s, [rbp-%d]            ; --\n", 
-                    register_list[source->_register], source->offset);
-            }
-
-            fprintf(generator->output,
-                "    cmp    %s, %s                  ; --\n", 
-                register_list[destination->_register], register_list[source->_register]);
-
-                
-            int temp_reg = allocate_register(generator);
             // https://www.felixcloutier.com/x86/setcc
             // https://www.felixcloutier.com/x86/movzx
             switch (instruction->operation) 
             {
                 case OP_EQ:
                     fprintf(generator->output,
-                        "    sete   al                  ; --\n"
-                        "    movzx  %s, al              ; --\n"
-                        "    mov    [rbp-%d], %s        ; --\n",
-                        register_list[temp_reg], 
-                        result->offset, register_list[temp_reg]);
+                        "    mov    %s, [rbp-%d]            ; --\n"
+                        "    cmp    %s, [rbp-%d]            ; --\n"
+                        "    sete   al                      ; --\n"
+                        "    movzx  %s, al                  ; --\n"
+                        "    mov    [rbp-%d], %s            ; --\n",
+                        register_list[temp_reg_1], destination->offset,
+                        register_list[temp_reg_1], source->offset,
+                        register_list[temp_reg_2], 
+                        result->offset, register_list[temp_reg_2]);
                     break;
                 case OP_NEQ:
                     fprintf(generator->output,
-                        "    setne  al                  ; --\n"
-                        "    movzx  %s, al              ; --\n"
-                        "    mov    [rbp-%d], %s        ; --\n",
-                        register_list[temp_reg], 
-                        result->offset, register_list[temp_reg]);
+                        "    mov    %s, [rbp-%d]            ; --\n"
+                        "    cmp    %s, [rbp-%d]            ; --\n"
+                        "    setne  al                      ; --\n"
+                        "    movzx  %s, al                  ; --\n"
+                        "    mov    [rbp-%d], %s            ; --\n",
+                        register_list[temp_reg_1], destination->offset,
+                        register_list[temp_reg_1], source->offset,
+                        register_list[temp_reg_2], 
+                        result->offset, register_list[temp_reg_2]);
                     break;
                 case OP_LT:
                     fprintf(generator->output,
-                        "    setl   al                  ; --\n"
-                        "    movzx  %s, al              ; --\n"
-                        "    mov    [rbp-%d], %s        ; --\n",
-                        register_list[temp_reg], 
-                        result->offset, register_list[temp_reg]);
+                        "    mov    %s, [rbp-%d]            ; --\n"
+                        "    cmp    %s, [rbp-%d]            ; --\n"
+                        "    setl   al                      ; --\n"
+                        "    movzx  %s, al                  ; --\n"
+                        "    mov    [rbp-%d], %s            ; --\n",
+                        register_list[temp_reg_1], destination->offset,
+                        register_list[temp_reg_1], source->offset,
+                        register_list[temp_reg_2], 
+                        result->offset, register_list[temp_reg_2]);
                     break;
                 case OP_LTE:
                     fprintf(generator->output,
-                        "    setle  al                  ; --\n"
-                        "    movzx  %s, al              ; --\n"
-                        "    mov    [rbp-%d], %s        ; --\n",
-                        register_list[temp_reg], 
-                        result->offset, register_list[temp_reg]);
+                        "    mov    %s, [rbp-%d]            ; --\n"
+                        "    cmp    %s, [rbp-%d]            ; --\n"
+                        "    setle  al                      ; --\n"
+                        "    movzx  %s, al                  ; --\n"
+                        "    mov    [rbp-%d], %s            ; --\n",
+                        register_list[temp_reg_1], destination->offset,
+                        register_list[temp_reg_1], source->offset,
+                        register_list[temp_reg_2], 
+                        result->offset, register_list[temp_reg_2]);
                     break;
                 case OP_GT:
                     fprintf(generator->output,
-                        "    setg   al                  ; --\n"
-                        "    movzx  %s, al              ; --\n"
-                        "    mov    [rbp-%d], %s        ; --\n", 
-                        register_list[temp_reg], 
-                        result->offset, register_list[temp_reg]);
+                        "    mov    %s, [rbp-%d]            ; --\n"
+                        "    cmp    %s, [rbp-%d]            ; --\n"
+                        "    setg   al                      ; --\n"
+                        "    movzx  %s, al                  ; --\n"
+                        "    mov    [rbp-%d], %s            ; --\n", 
+                        register_list[temp_reg_1], destination->offset,
+                        register_list[temp_reg_1], source->offset,
+                        register_list[temp_reg_2], 
+                        result->offset, register_list[temp_reg_2]);
                     break;
                 case OP_GTE:
                     fprintf(generator->output,
-                        "    setge  al                  ; --\n"
-                        "    movzx  %s, al              ; --\n"
-                        "    mov    [rbp-%d], %s        ; --\n",
-                        register_list[temp_reg], 
-                        result->offset, register_list[temp_reg]);
+                        "    mov    %s, [rbp-%d]            ; --\n"
+                        "    cmp    %s, [rbp-%d]            ; --\n"
+                        "    setge  al                      ; --\n"
+                        "    movzx  %s, al                  ; --\n"
+                        "    mov    [rbp-%d], %s            ; --\n",
+                        register_list[temp_reg_1], destination->offset,
+                        register_list[temp_reg_1], source->offset,
+                        register_list[temp_reg_2], 
+                        result->offset, register_list[temp_reg_2]);
                     break;
             }
 
-            free_register(generator, destination->_register);
-            free_register(generator, source->_register);
-            free_register(generator, temp_reg);
+            free_register(generator, temp_reg_1);
+            free_register(generator, temp_reg_2);
             break;
         }
-        case OP_NOT:
+        case OP_NOT: // https://www.felixcloutier.com/x86/not
         {
             Symbol* arg = scope_lookup(generator->local, instruction->arg1);
             Symbol* result = scope_lookup(generator->local, instruction->result);
@@ -376,13 +381,12 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
                 "    not    rax                     ; \n"
                 "    and    rax, 1                  ; \n"
                 "    mov    [rbp-%d], rax           ; \n", 
-                arg->offset, result->offset);
-            // NOTE(timo): There is no need to save a reference to created boolean variables,
-            // since the value will be checked at the end so if it is 0, it will be false and
-            // if it is 1, it will be true.
+                arg->offset, 
+                result->offset);
+
             break;
         }
-        case OP_AND:
+        case OP_AND: // https://www.felixcloutier.com/x86/and
         {
             Symbol* destination = scope_lookup(generator->local, instruction->arg1);
             Symbol* source = scope_lookup(generator->local, instruction->arg2);
@@ -392,10 +396,13 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
                 "    mov    rax, [rbp-%d]       ; \n"
                 "    and    rax, [rbp-%d]       ; \n"
                 "    mov    [rbp-%d], rax       ; \n", 
-                destination->offset, source->offset, result->offset);
+                destination->offset, 
+                source->offset, 
+                result->offset);
+
             break;
         }
-        case OP_OR:
+        case OP_OR: // https://www.felixcloutier.com/x86/or
         {
             Symbol* destination = scope_lookup(generator->local, instruction->arg1);
             Symbol* source = scope_lookup(generator->local, instruction->arg2);
@@ -405,24 +412,26 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
                 "    mov    rax, [rbp-%d]       ; \n"
                 "    or     rax, [rbp-%d]       ; \n"
                 "    mov    [rbp-%d], rax       ; \n", 
-                destination->offset, source->offset, result->offset);
+                destination->offset, 
+                source->offset, 
+                result->offset);
+
             break;
         }
         case OP_GOTO_IF_FALSE:
         {
             Symbol* arg = scope_lookup(generator->local, instruction->arg1);
-            
-            int reg_1 = allocate_register(generator);
+            int temp_reg = allocate_register(generator);
 
             fprintf(generator->output,
-                "    mov    %s, [rbp-%d]\n", 
-                register_list[reg_1], arg->offset);
-            fprintf(generator->output,
+                "    mov    %s, [rbp-%d]            ; --\n"
                 "    cmp    %s, 0                   ; --\n"
                 "    je     %s                      ; --\n", 
-                register_list[reg_1], instruction->label);
+                register_list[temp_reg], arg->offset,
+                register_list[temp_reg], 
+                instruction->label);
 
-            free_register(generator, reg_1);
+            free_register(generator, temp_reg);
             break;
         }
         case OP_COPY:
@@ -482,15 +491,12 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
         }
         case OP_LABEL:
         {
-            Symbol* symbol = scope_lookup(generator->local, instruction->label);
             fprintf(generator->output, "%s:\n", instruction->label);
             break;
         }
         case OP_GOTO:
         {
-            fprintf(generator->output,
-                "    jmp    %s                      ; --\n", 
-                instruction->label);
+            fprintf(generator->output, "    jmp    %s\n", instruction->label);
             break;
         }
         case OP_FUNCTION_BEGIN:
@@ -499,15 +505,14 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
             Symbol* symbol = scope_lookup(generator->local, instruction->label);
 
             if (symbol != NULL && symbol->type->kind == TYPE_FUNCTION)
-            {
                 generator->local = symbol->type->function.scope;
-            }
             
-            // TODO(timo): Handle the main function separately somewhere else so we don't have to do this
-            // check every time there is a function
-            // TODO(timo): Is this really even needed. Since if the user does not use the command line arguments,
-            // so what? They can still be pushed to the stack normally even if they are not used. That
-            // way I can remove this unnecessary code?
+            // TODO(timo): Handle the main function separately somewhere else so 
+            // we don't have to do this check every time there is a function
+            // TODO(timo): Is this really even needed. Since if the user does not 
+            // use the command line arguments, so what? They can still be pushed 
+            // to the stack normally even if they are not used. That way I can 
+            // remove this unnecessary code?
             if (strcmp(generator->local->name, "main") == 0)
             {
                 Symbol* argc = scope_lookup(generator->local, "argc");
@@ -535,20 +540,10 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
         case OP_PARAM_PUSH:
         {
             Symbol* parameter = scope_lookup(generator->local, instruction->arg1);
-            
-            // Local variable saved in the stack
-            if (parameter != NULL)
-            {
-                fprintf(generator->output,
-                    "    push   qword[rbp-%d]          ; pushing function parameter\n", 
-                    parameter->offset);
-            }
-            else
-            {
-                fprintf(generator->output,
-                    "    push   %s                      ; pushing function parameter\n",
-                    instruction->arg1);
-            }
+
+            fprintf(generator->output,
+                "    push   qword[rbp-%d]           ; pushing function parameter\n", 
+                parameter->offset);
 
             break;
         }
@@ -556,19 +551,9 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
         {
             Symbol* parameter = scope_lookup(generator->local, instruction->arg1);
             
-            // Local variable saved in the stack
-            if (parameter != NULL)
-            {
-                fprintf(generator->output,
-                    "    pop    qword [rbp-%d]          ; popping function parameter\n", 
-                    parameter->offset);
-            }
-            else
-            {
-                fprintf(generator->output,
-                    "    pop    %s                      ; popping function parameter\n",
-                    instruction->arg1);
-            }
+            fprintf(generator->output,
+                "    pop    qword [rbp-%d]          ; popping function parameter\n", 
+                parameter->offset);
 
             break;
         }
@@ -604,23 +589,12 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
         {
             Symbol* value = scope_lookup(generator->local, instruction->arg1);
             
-            if (value != NULL)
-            {
-                fprintf(generator->output,
-                    "    mov    rax, [rbp-%d]           ; put return value to rax\n", 
-                    value->offset);
-            }
-            else
-            {
-                fprintf(generator->output,
-                    "    mov    rax, %s                 ; put return value to rax\n", 
-                    register_list[value->_register]);
-            }
-
-            // TODO(timo): Make jump to function epilogue where the function will be teared down
-            // Even though the jump is not necessary right now since we only have one return per function
+            // NOTE(timo): Jump to function epilogue is really not necessary right now 
+            // since we only allow one return per function
             fprintf(generator->output,
+                "    mov    rax, [rbp-%d]           ; put return value to rax\n"
                 "    jmp    %s_epilogue             ; run the function epilogue\n", 
+                value->offset, 
                 generator->local->name);
 
             free_registers();
@@ -631,28 +605,11 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
             Symbol* value = scope_lookup(generator->local, instruction->arg1);
             Symbol* result = scope_lookup(generator->local, instruction->result);
             
-            if (value != NULL)
-            {
-                fprintf(generator->output,
-                    "    call   %s                     ; calling the function %s\n", 
-                    value->identifier, value->identifier);
-            }
-            else
-            {
-                // TODO(timo): Just use the registers or error
-            }
-
-            // Save the call result to result address
-            if (result != NULL)
-            {
-                fprintf(generator->output,
-                    "    mov    [rbp-%d], rax           ; Moving the function result to the result address\n", 
-                    result->offset);
-            }
-            else
-            {
-                // TODO(timo): Just use the registers or error
-            }
+            fprintf(generator->output,
+                "    call   %s                      ; Calling the function\n"
+                "    mov    [rbp-%d], rax           ; Moving the function result to the result address\n",
+                value->identifier,
+                result->offset);
 
             break;
         }
@@ -668,7 +625,8 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
                 // before calling atoll. If argument is not a number, show error and exit
                 "    call   atoll                   ; \n"
                 "    mov    [rbp-%d], rax           ; \n", 
-                variable->offset, result->offset);
+                variable->offset, 
+                result->offset);
 
             break;
         }
