@@ -745,7 +745,6 @@ typedef struct Code_Generator
 {
     FILE* output;
     array* instructions;
-    int index;
     array* diagnostics;
     Scope* global;
     Scope* local;

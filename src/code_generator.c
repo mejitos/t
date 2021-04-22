@@ -47,7 +47,6 @@ void code_generator_init(Code_Generator* generator, Scope* global, array* instru
 {
     *generator = (Code_Generator) { .global = global,
                                     .diagnostics = array_init(sizeof (Diagnostic*)),
-                                    .index = 0,
                                     .instructions = instructions };
 
     generator->local = generator->global;
@@ -116,7 +115,10 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
                     register_list[destination->_register], register_list[source->_register]);
             }
 
-            free_register(generator, source->_register);
+            // TODO(timo): I'm constantly running out of registers, so maybe I shouldnt play around
+            // with them at all until I actually know what I'm doing. KISS = Keep It Stack Simple
+            // free_register(generator, source->_register);
+            free_registers();
             source->_register = -1;
             break;
         }
@@ -299,11 +301,65 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
                 "    cmp    %s, %s                  ; --\n", 
                 register_list[destination->_register], register_list[source->_register]);
 
-            // TODO(timo): What to save into the result? I mean we could save the correct jump
-            // instruction at this point already and just print it at the GOTO_IF_FALSE
+                
+            int temp_reg = allocate_register(generator);
+            // https://www.felixcloutier.com/x86/setcc
+            // https://www.felixcloutier.com/x86/movzx
+            switch (instruction->operation) 
+            {
+                case OP_EQ:
+                    fprintf(generator->output,
+                        "    sete   al                  ; --\n"
+                        "    movzx  %s, al              ; --\n"
+                        "    mov    [rbp-%d], %s        ; --\n",
+                        register_list[temp_reg], 
+                        result->offset, register_list[temp_reg]);
+                    break;
+                case OP_NEQ:
+                    fprintf(generator->output,
+                        "    setne  al                  ; --\n"
+                        "    movzx  %s, al              ; --\n"
+                        "    mov    [rbp-%d], %s        ; --\n",
+                        register_list[temp_reg], 
+                        result->offset, register_list[temp_reg]);
+                    break;
+                case OP_LT:
+                    fprintf(generator->output,
+                        "    setl   al                  ; --\n"
+                        "    movzx  %s, al              ; --\n"
+                        "    mov    [rbp-%d], %s        ; --\n",
+                        register_list[temp_reg], 
+                        result->offset, register_list[temp_reg]);
+                    break;
+                case OP_LTE:
+                    fprintf(generator->output,
+                        "    setle  al                  ; --\n"
+                        "    movzx  %s, al              ; --\n"
+                        "    mov    [rbp-%d], %s        ; --\n",
+                        register_list[temp_reg], 
+                        result->offset, register_list[temp_reg]);
+                    break;
+                case OP_GT:
+                    fprintf(generator->output,
+                        "    setg   al                  ; --\n"
+                        "    movzx  %s, al              ; --\n"
+                        "    mov    [rbp-%d], %s        ; --\n", 
+                        register_list[temp_reg], 
+                        result->offset, register_list[temp_reg]);
+                    break;
+                case OP_GTE:
+                    fprintf(generator->output,
+                        "    setge  al                  ; --\n"
+                        "    movzx  %s, al              ; --\n"
+                        "    mov    [rbp-%d], %s        ; --\n",
+                        register_list[temp_reg], 
+                        result->offset, register_list[temp_reg]);
+                    break;
+            }
 
             free_register(generator, destination->_register);
             free_register(generator, source->_register);
+            free_register(generator, temp_reg);
             break;
         }
         case OP_NOT:
@@ -354,82 +410,25 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
         }
         case OP_GOTO_IF_FALSE:
         {
-            // TODO(timo): This is pretty hacky solution just to get things to work
-            // just for this we added the index/cursor for the generator instructions
-            // and do all this switch jumping to get correct jumps. Like Raymond Hettinger
-            // would say: 'There must be a better way!'.
+            Symbol* arg = scope_lookup(generator->local, instruction->arg1);
+            
+            int reg_1 = allocate_register(generator);
 
-            Instruction* preceding = generator->instructions->items[generator->index - 1];
+            fprintf(generator->output,
+                "    mov    %s, [rbp-%d]\n", 
+                register_list[reg_1], arg->offset);
+            fprintf(generator->output,
+                "    cmp    %s, 0                   ; --\n"
+                "    je     %s                      ; --\n", 
+                register_list[reg_1], instruction->label);
 
-            // NOTE(timo): Since the operation is goto if false, we need to use the
-            // opposite conditions for the jumps
-            switch (preceding->operation)
-            {
-                case OP_EQ:
-                    fprintf(generator->output,
-                        "    jne    %s\n", 
-                        instruction->label);
-                    break;
-                case OP_NEQ:
-                    fprintf(generator->output,
-                        "    je      %s\n", 
-                        instruction->label);
-                    break;
-                case OP_LT:
-                    fprintf(generator->output,
-                        "    jge    %s\n", 
-                        instruction->label);
-                    break;
-                case OP_LTE:
-                    fprintf(generator->output,
-                        "    jg      %s\n", 
-                        instruction->label);
-                    break;
-                case OP_GT:
-                    fprintf(generator->output,
-                        "    jle    %s\n", 
-                        instruction->label);
-                    break;
-                case OP_GTE:
-                    fprintf(generator->output,
-                        "    jl     %s\n", 
-                        instruction->label);
-                    break;
-                case OP_COPY:
-                {
-                    // NOTE(timo): The preceding was a boolean copied to variable?
-                    Symbol* arg = scope_lookup(generator->local, instruction->arg1);
-                    
-                    if (arg->type->kind == TYPE_BOOLEAN)
-                    {
-                        int reg_1 = allocate_register(generator);
-                        int reg_2 = allocate_register(generator);
-                        // If the value is true, compare against 0
-                        // If the value is false, compare against 1
-                        fprintf(generator->output,
-                            "    mov    %s, %d\n"
-                            "    mov    %s, [rbp-%d]\n", 
-                            register_list[reg_1], arg->value.boolean ? 0 : 1,
-                            register_list[reg_2], arg->offset);
-                        fprintf(generator->output,
-                            "    cmp    %s, %s                  ; --\n"
-                            "    jne    %s                      ; --\n", 
-                            register_list[reg_1], register_list[reg_2], instruction->label);
-
-                        free_register(generator, reg_1);
-                        free_register(generator, reg_2);
-                    }
-                    break;
-                }
-                default:
-                    // TODO(timo): Create diagnostic
-                    printf("[CODE_GENERATOR] - Invalid preceding instruction in OP_GOTO_IF_FALSE '%s'\n", operation_str(preceding->operation));
-                    exit(1);
-            }
+            free_register(generator, reg_1);
             break;
         }
         case OP_COPY:
         {
+            // TODO(timo): Assignment to global variable
+
             // NOTE(timo): This result will always be set, since it is temporary
             Symbol* result = scope_lookup(generator->local, instruction->result);
             Symbol* arg = scope_lookup(generator->local, instruction->arg1);
@@ -728,11 +727,9 @@ void code_generate(Code_Generator* generator)
         "\n"
         "    section .text\n");
     
+    // Generate the instructions
     for (int i = 0; i < generator->instructions->length; i++)
-    {
         code_generate_instruction(generator, generator->instructions->items[i]);
-        generator->index++;
-    }
     
     // TODO(timo):
     // Should the main function has its own beginning and end operations?

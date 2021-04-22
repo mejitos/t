@@ -142,11 +142,31 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
                 case TOKEN_GREATER_THAN_EQUAL:
                     instruction = instruction_gte(left, right, temp);
                     break;
+                // TODO(timo): Should these have labels and jumps and stuff
+                // to get the short circuiting to work properly
+                // Yep. Thats why need more context when handling these things
+                // and thats why we really have to handle the condition expression
+                // in its own function
                 case TOKEN_AND:
                     instruction = instruction_and(left, right, temp);
+                    // TODO(timo): The context here has to be condition of while/if?
+                    // evaluate left
+                    // if left false goto exit (condition := false)
+                    // evaluate right
+                    // if right false goto exit (condition := false)
+                    // continue (if/while body) (condition := true)
+                    // exit (if/while exit)
                     break;
                 case TOKEN_OR:
                     instruction = instruction_or(left, right, temp);
+                    // TODO(timo): The context here has to be condition of while/if?
+                    // evaluate left
+                    // if left true goto continue (condition := true)
+                    // evaluate right
+                    // if right true goto continue (condition := true)
+                    // goto exit (condition := false)
+                    // continue (if/while body)
+                    // exit (if/while exit)
                     break;
             }
             

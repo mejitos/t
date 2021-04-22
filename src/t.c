@@ -142,6 +142,12 @@ void compile_verbose(const char* source, Options options)
     clock_t lexing_end = clock();
     double lexing_time = (double)(lexing_end - lexing_start) * 1000 / (double)CLOCKS_PER_SEC;
 
+    if (lexer.diagnostics->length > 0)
+    {
+        print_diagnostics(lexer.diagnostics);
+        goto teardown_lexer;
+    }
+
     // Parsing part
     clock_t parsing_start = clock();
 
@@ -150,6 +156,12 @@ void compile_verbose(const char* source, Options options)
 
     clock_t parsing_end = clock();
     double parsing_time = (double)(parsing_end - parsing_start) * 1000 / (double)CLOCKS_PER_SEC;
+
+    if (parser.diagnostics->length > 0)
+    {
+        print_diagnostics(parser.diagnostics);
+        goto teardown_parser;
+    }
     
     // Resolving part
     clock_t resolving_start = clock();
@@ -157,14 +169,20 @@ void compile_verbose(const char* source, Options options)
     type_table = type_table_init();
     resolver_init(&resolver, type_table);
     resolve(&resolver, parser.declarations);
+
+    clock_t resolving_end = clock();
+    double resolving_time = (double)(resolving_end - resolving_start) * 1000 / (double)CLOCKS_PER_SEC;
+
+    if (resolver.diagnostics->length > 0)
+    {
+        print_diagnostics(resolver.diagnostics);
+        goto teardown_resolver;
+    }
     
     // Dump symbol tables after resolving
     printf("-----===== SCOPES / SYMBOLS =====-----\n");
     dump_scope(resolver.global, 0);
     printf("-----===== |||||||||| =====-----\n");
-
-    clock_t resolving_end = clock();
-    double resolving_time = (double)(resolving_end - resolving_start) * 1000 / (double)CLOCKS_PER_SEC;
 
     // IR generation
     clock_t ir_generating_start = clock();
@@ -283,6 +301,7 @@ teardown_parser:
 teardown_lexer:
     lexer_free(&lexer);
     
+    /*
     char rm_files[128];
     // char* rm_main_asm = "rm main.asm";
     snprintf(rm_files, 128, "rm %s.asm %s.o", options.program, options.program);
@@ -293,6 +312,7 @@ teardown_lexer:
         printf("\n");
         printf("Error code on command '%s': %d\n", rm_files, rm_files_error);
     }
+    */
 
     printf("DONE\n");
 
