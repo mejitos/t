@@ -7,7 +7,9 @@ void ir_generator_init(IR_Generator* generator, Scope* global)
                                   .label = 0,
                                   .global = global,
                                   .diagnostics = array_init(sizeof (Diagnostic*)),
-                                  .instructions = array_init(sizeof (Instruction*)) };
+                                  .instructions = array_init(sizeof (Instruction*)),
+                                  .current_context = NULL,
+                                  .contexts = array_init(sizeof (IR_Context*)) };
 
     generator->local = generator->global;
 }
@@ -35,10 +37,61 @@ void ir_generator_free(IR_Generator* generator)
 
     array_free(generator->instructions);
 
+    array_free(generator->contexts);
+
     // NOTE(timo): The global scope will be freed by the resolver
 
     // NOTE(timo): Generator itself is not being freed since it is
     // initialized in the stack in top level function
+}
+
+
+IR_Context* ir_context(IR_Context_Kind kind, char* exit_label)
+{
+    IR_Context* context = xmalloc(sizeof (IR_Context));
+    context->kind = kind;
+
+    if (kind == IR_CONTEXT_WHILE)
+        context->_while.exit_label = str_copy(exit_label);
+    else if (kind == IR_CONTEXT_IF)
+        context->_if.exit_label = str_copy(exit_label);
+
+    return context;
+}
+
+
+
+void ir_context_push(IR_Generator* generator, IR_Context* context)
+{
+    array_push(generator->contexts, context);
+    generator->current_context = context;
+}
+
+
+void ir_context_pop(IR_Generator* generator)
+{
+    IR_Context* context = generator->contexts->items[generator->contexts->length - 1];
+    
+    if (context->kind == IR_CONTEXT_WHILE)
+    {
+        free(context->_while.exit_label);
+        context->_while.exit_label = NULL;
+    }
+    else if (context->kind == IR_CONTEXT_IF)
+    {
+        free(context->_if.exit_label);
+        context->_if.exit_label = NULL;
+    }
+
+    free(context);
+    context = NULL;
+
+    generator->contexts->length--;
+    
+    if (generator->contexts->length > 0)
+        generator->current_context = generator->contexts->items[generator->contexts->length - 1];
+    else 
+        generator->current_context = NULL;
 }
 
 
@@ -437,17 +490,17 @@ void ir_generate_statement(IR_Generator* generator, AST_Statement* statement)
             char* label_condition = label(generator); // condition
             char* label_exit = label(generator); // exit
 
-            // TODO(timo): Quick hacky hack solution for break statements. There might be a better way.
-            // TODO(timo): But what if there is nested while loops?
-            generator->while_exit = label_exit;
-
+            // Push context
+            ir_context_push(generator, ir_context(IR_CONTEXT_WHILE, label_exit));
+            
+            // Start of the loop
             instruction = instruction_label(label_condition);
             array_push(generator->instructions, instruction);
 
-            // if false, jump to label 2
+            // Generate condition
             char* condition = ir_generate_expression(generator, statement->_while.condition);
 
-            instruction = instruction_goto_if_false(condition, label_exit);
+            instruction = instruction_goto_if_false(condition, generator->current_context->_while.exit_label);
             array_push(generator->instructions, instruction);
             
             // Generate the body
@@ -458,12 +511,11 @@ void ir_generate_statement(IR_Generator* generator, AST_Statement* statement)
             array_push(generator->instructions, instruction);
             
             // Exit Label
-            instruction = instruction_label(label_exit);
+            instruction = instruction_label(generator->current_context->_while.exit_label);
             array_push(generator->instructions, instruction);
 
-            // TODO(timo): Quick hacky hack solution for break statements. There might be a better way.
-            // TODO(timo): But what if there is nested while loops?
-            generator->while_exit = NULL;
+            // Pop context
+            ir_context_pop(generator);
 
             free(label_condition);
             free(label_exit);
@@ -471,15 +523,21 @@ void ir_generate_statement(IR_Generator* generator, AST_Statement* statement)
         }
         case STATEMENT_IF:
         {
+            Instruction* instruction;
+
+            // Local labels
+            char* label_exit = label(generator);
+            char* condition = ir_generate_expression(generator, statement->_if.condition);
+
+            // Push context
+            if (generator->current_context == NULL || generator->current_context->kind != IR_CONTEXT_IF)
+                ir_context_push(generator, ir_context(IR_CONTEXT_IF, label_exit));
+
             if (statement->_if._else != NULL) // if-then-else
             {
-                Instruction* instruction;
-
-                // Local labels
+                // Else label
                 char* label_else = label(generator);
-                char* label_exit = label(generator);
-                char* condition = ir_generate_expression(generator, statement->_if.condition);
-                
+
                 // Condition
                 instruction = instruction_goto_if_false(condition, label_else);
                 array_push(generator->instructions, instruction);
@@ -488,7 +546,7 @@ void ir_generate_statement(IR_Generator* generator, AST_Statement* statement)
                 ir_generate_statement(generator, statement->_if.then);
                 
                 // Goto exit
-                instruction = instruction_goto(label_exit);
+                instruction = instruction_goto(generator->current_context->_if.exit_label);
                 array_push(generator->instructions, instruction);
 
                 // Else label
@@ -496,33 +554,28 @@ void ir_generate_statement(IR_Generator* generator, AST_Statement* statement)
                 array_push(generator->instructions, instruction);
 
                 ir_generate_statement(generator, statement->_if._else);
-                
-                // Exit label
-                instruction = instruction_label(label_exit);
-                array_push(generator->instructions, instruction);
 
                 free(label_else);
-                free(label_exit);
             }
             else // if-then
             {
-                Instruction* instruction;
-
-                // Local labels
-                char* label_exit = label(generator);
-                char* condition = ir_generate_expression(generator, statement->_if.condition);
-                
                 // Condition
-                instruction = instruction_goto_if_false(condition, label_exit);
+                instruction = instruction_goto_if_false(condition, generator->current_context->_if.exit_label);
                 array_push(generator->instructions, instruction);
 
                 // Generate the body
                 ir_generate_statement(generator, statement->_if.then);
-                
-                // Exit label
-                instruction = instruction_label(label_exit);
-                array_push(generator->instructions, instruction);
+            }
 
+            // TODO(timo): This doesn't work when we get nested things
+            if (generator->current_context != NULL)
+            {
+                // Exit label
+                Instruction* instruction = instruction_label(generator->current_context->_if.exit_label);
+                array_push(generator->instructions, instruction);
+                
+                // Pop context
+                ir_context_pop(generator);
                 free(label_exit);
             }
             break;
@@ -537,7 +590,7 @@ void ir_generate_statement(IR_Generator* generator, AST_Statement* statement)
         }
         case STATEMENT_BREAK:
         {
-            Instruction* instruction = instruction_goto(generator->while_exit);
+            Instruction* instruction = instruction_goto(generator->current_context->_while.exit_label);
             array_push(generator->instructions, instruction);
             break;
         }

@@ -13,6 +13,7 @@
 #include "stringbuilder.h"  // for my stringbuilder
 #include "hashtable.h"  // for my hashtable implementation
 #include "memory.h"     // for custom x-allocators
+#include "common.h"
 
 
 /*
@@ -29,6 +30,9 @@ typedef struct AST_Expression AST_Expression;
 
 /*
  *  Options
+ *
+ *  Fields
+ *      program:
  */
 typedef struct Options
 {
@@ -42,6 +46,12 @@ typedef struct Options
  *
  *  Since for now we will only support compiling of single file, there is no need to add the
  *  file attribute for the position at this stage. Maybe later.
+ *
+ *  Fields
+ *      line_start:
+ *      column_start:
+ *      line_end:
+ *      column_end:
  */
 struct Position
 {
@@ -56,6 +66,8 @@ struct Position
  *  Diagnostics
  *
  *  File(s): diagnostics.c
+ *
+ *
  */
 typedef enum Diagnostic_Kind
 {
@@ -631,15 +643,28 @@ typedef enum Operation
     OP_DEREFERENCE,
 } Operation;
 
-typedef struct Instruction Instruction;
 
-// NOTE(timo): Address can be a name, a constant or a compiler generated temporary
-// These are pretty much the operands used in some literature
-//
-// name:        program name, pointer to the names symbol table entry where 
-//              all the information of the name is kept
-// constant:    constant value but seems like it can be a variable too?
-// label:       just label
+/*
+ *  Returns a string representation of Operation
+ *
+ *  Arguments
+ *      operation: Operation
+ */
+const char* operation_str(Operation operation);
+
+
+/*
+ *  NOTE(timo): Address can be a name, a constant or a compiler generated temporary
+ *  These are pretty much the operands used in some literature
+ *
+ *  TODO(timo): Addresses are not used in Instructions for now
+ *
+ *  Fields
+ *      name:       program name, pointer to the names symbol table entry where 
+ *                  all the information of the name is kept
+ *      constant:   constant value but seems like it can be a variable too?
+ *      label:      just label
+ */
 typedef struct Address
 {
     // TODO(timo): I think we don't need this abstraction, since the goal is
@@ -653,7 +678,18 @@ typedef struct Address
 } Address;
 
 
-struct Instruction 
+/*
+ *  Represents a single instruction of the intermediate reperesentation
+ *
+ *  Fields
+ *      operation:
+ *      arg1:
+ *      arg2:
+ *      result:
+ *      size:
+ *      label:
+ */
+typedef struct Instruction 
 {
     Operation operation;
 
@@ -664,7 +700,7 @@ struct Instruction
 
     int size; // this is used to compute sizes, alignments etc. info like that
     const char* label;
-};
+} Instruction;
 
 
 Instruction* instruction_copy(char* arg, char* result);
@@ -692,15 +728,43 @@ Instruction* instruction_label(char* label);
 Instruction* instruction_goto(char* label);
 Instruction* instruction_goto_if_false(char* arg, char* label);
 Instruction* instruction_dereference(char* arg, char* result, int offset);
+
+
+/*
+ * Frees the memory allocated for instruction
+ *
+ * Arguments
+ *      instruction: Instruction to be freed
+ */
 void instruction_free(Instruction* instruction);
+
+
+/*
+ * Prints the instruction to terminal/console
+ *
+ * Arguments
+ *      instruction: Instruction to be printed
+ */
 void dump_instruction(Instruction* instruction);
+
+
+/*
+ * Prints all instructions from array to terminal/console
+ *
+ * Arguments
+ *      instructions: Array of instructions to be printed
+ */
 void dump_instructions(array* instructions);
-const char* operation_str(Operation operation);
+
+
+
 
 /*
  *  Code in basic block has only one entry point and one exit point, meaning
  *  there is no jump destinations inside the block and that only last instruction
  *  can start executing next block
+ *
+ *  TODO(timo): Basic blocks are not implemented for now.
  *
  */
 typedef struct Basic_Block
@@ -709,6 +773,30 @@ typedef struct Basic_Block
     // leader?
     array* instructions;
 } Basic_Block;
+
+
+// TODO(timo): Basically all of this context stuff could be put into ir generator file
+typedef enum IR_Context_Kind
+{
+    IR_CONTEXT_NONE,
+    IR_CONTEXT_WHILE,
+    IR_CONTEXT_IF,
+} IR_Context_Kind;
+
+
+typedef struct IR_Context
+{
+    IR_Context_Kind kind;
+
+    union {
+        struct {
+            char* exit_label;
+        } _while;
+        struct {
+            char* exit_label;
+        } _if;
+    };
+} IR_Context;
 
 
 typedef struct IR_Generator
@@ -722,9 +810,8 @@ typedef struct IR_Generator
     Scope* global;
     Scope* local;
 
-    // Context
-    char* while_exit;
-    // TODO(timo): Could we use if exit here as well to get rid of extra exit labels?
+    array* contexts;
+    IR_Context* current_context;
 } IR_Generator;
 
 
@@ -734,12 +821,18 @@ void ir_generate(IR_Generator* generator, array* declarations);
 char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression);
 void ir_generate_statement(IR_Generator* generator, AST_Statement* statement);
 void ir_generate_declaration(IR_Generator* generator, AST_Declaration* declaration);
-
 void dump_instructions(array* instructions);
 
 
 /*
  *  Code generation
+ *
+ *  Fields
+ *      output:
+ *      instructions:
+ *      diagnostics:
+ *      global:
+ *      local:
  */
 typedef struct Code_Generator
 {

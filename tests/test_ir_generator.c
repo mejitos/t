@@ -47,7 +47,7 @@ static void test_generate_literal_expression(Test_Runner* runner)
 }
 
 
-static void test_generate_unary_expression(Test_Runner* runner)
+static void test_generate_unary_expression_minus(Test_Runner* runner)
 {
     Lexer lexer;
     Parser parser;
@@ -56,7 +56,6 @@ static void test_generate_unary_expression(Test_Runner* runner)
     IR_Generator generator;
     AST_Expression* expression;
 
-    // minus
     lexer_init(&lexer, "-42");
     lex(&lexer);
 
@@ -74,34 +73,6 @@ static void test_generate_unary_expression(Test_Runner* runner)
         "Invalid number of instructions: %d, expected 2", generator.instructions->length);
     assert_instruction(runner, generator.instructions->items[0], OP_COPY);
     assert_instruction(runner, generator.instructions->items[1], OP_MINUS);
-
-    // dump_instructions(generator.instructions);
-
-    expression_free(expression);
-    ir_generator_free(&generator);
-    resolver_free(&resolver);
-    type_table_free(type_table);
-    parser_free(&parser);
-    lexer_free(&lexer);
-
-    // not
-    lexer_init(&lexer, "not false");
-    lex(&lexer);
-
-    parser_init(&parser, lexer.tokens);
-    expression = parse_expression(&parser);
-    
-    type_table = type_table_init();
-    resolver_init(&resolver, type_table);
-    resolve_expression(&resolver, expression);
-    
-    ir_generator_init(&generator, resolver.global);
-    ir_generate_expression(&generator, expression);
-
-    assert_base(runner, generator.instructions->length == 2,
-        "Invalid number of instructions: %d, expected 2", generator.instructions->length);
-    assert_instruction(runner, generator.instructions->items[0], OP_COPY);
-    assert_instruction(runner, generator.instructions->items[1], OP_NOT);
 
     // dump_instructions(generator.instructions);
 
@@ -172,7 +143,7 @@ static void test_generate_binary_expression_arithmetic(Test_Runner* runner)
 }
 
 
-static void test_generate_binary_expression_comparison(Test_Runner* runner)
+static void test_generate_binary_expression_relational(Test_Runner* runner)
 {
     const char* tests[] =
     {
@@ -233,8 +204,56 @@ static void test_generate_binary_expression_comparison(Test_Runner* runner)
     }
 }
 
+static void test_generate_logical_expression_not(Test_Runner* runner)
+{
+    const char* tests[] =
+    {
+        "not true",
+        "not false",
+    };
 
-static void test_generate_logical_expression(Test_Runner* runner)
+    Operation expected[] = {OP_COPY, OP_NOT};
+
+    Lexer lexer;
+    Parser parser;
+    hashtable* type_table;
+    Resolver resolver;
+    IR_Generator generator;
+    AST_Expression* expression;
+
+    for (int i = 0; i < sizeof (tests) / sizeof (*tests); i++)
+    {
+        lexer_init(&lexer, tests[i]);
+        lex(&lexer);
+
+        parser_init(&parser, lexer.tokens);
+        expression = parse_expression(&parser);
+        
+        type_table = type_table_init();
+        resolver_init(&resolver, type_table);
+        resolve_expression(&resolver, expression);
+        
+        ir_generator_init(&generator, resolver.global);
+        ir_generate_expression(&generator, expression);
+
+        assert_base(runner, generator.instructions->length == 2,
+            "Invalid number of instructions: %d, expected 2", generator.instructions->length);
+
+        for (int j = 0; j < generator.instructions->length; j++)
+            assert_instruction(runner, generator.instructions->items[j], expected[j]);
+
+        // dump_instructions(generator.instructions);
+        
+        expression_free(expression);
+        ir_generator_free(&generator);
+        resolver_free(&resolver);
+        type_table_free(type_table);
+        parser_free(&parser);
+        lexer_free(&lexer);
+    }
+}
+
+static void test_generate_logical_expression_and(Test_Runner* runner)
 {
     const char* tests[] =
     {
@@ -242,22 +261,21 @@ static void test_generate_logical_expression(Test_Runner* runner)
         "true and false",
         "false and true",
         "false and false",
-        "true or true",
-        "true or false",
-        "false or true",
-        "false or false"
     };
 
-    Operation results[][3] = 
+    Operation expected[] = 
     {
-        {OP_COPY, OP_COPY, OP_AND},
-        {OP_COPY, OP_COPY, OP_AND},
-        {OP_COPY, OP_COPY, OP_AND},
-        {OP_COPY, OP_COPY, OP_AND},
-        {OP_COPY, OP_COPY, OP_OR},
-        {OP_COPY, OP_COPY, OP_OR},
-        {OP_COPY, OP_COPY, OP_OR},
-        {OP_COPY, OP_COPY, OP_OR}
+        OP_COPY,
+        OP_COPY,
+        OP_GOTO_IF_FALSE,
+        OP_GOTO_IF_FALSE,
+        OP_COPY,
+        OP_GOTO,
+        OP_LABEL,
+        OP_COPY,
+        OP_LABEL,
+        OP_COPY,
+        OP_AND
     };
 
     Lexer lexer;
@@ -282,11 +300,79 @@ static void test_generate_logical_expression(Test_Runner* runner)
         ir_generator_init(&generator, resolver.global);
         ir_generate_expression(&generator, expression);
 
-        assert_base(runner, generator.instructions->length == 3,
-            "Invalid number of instructions: %d, expected 3", generator.instructions->length);
+        assert_base(runner, generator.instructions->length == 11,
+            "Invalid number of instructions: %d, expected 11", generator.instructions->length);
 
         for (int j = 0; j < generator.instructions->length; j++)
-            assert_instruction(runner, generator.instructions->items[j], results[i][j]);
+            assert_instruction(runner, generator.instructions->items[j], expected[j]);
+
+        // dump_instructions(generator.instructions);
+        
+        expression_free(expression);
+        ir_generator_free(&generator);
+        resolver_free(&resolver);
+        type_table_free(type_table);
+        parser_free(&parser);
+        lexer_free(&lexer);
+    }
+}
+
+
+static void test_generate_logical_expression_or(Test_Runner* runner)
+{
+    const char* tests[] =
+    {
+        "true or true",
+        "true or false",
+        "false or true",
+        "false or false"
+    };
+
+    Operation expected[] = 
+    {
+        OP_COPY,
+        OP_COPY,
+        OP_GOTO_IF_FALSE,
+        OP_GOTO,
+        OP_LABEL,
+        OP_GOTO_IF_FALSE,
+        OP_LABEL,
+        OP_COPY,
+        OP_GOTO,
+        OP_LABEL,
+        OP_COPY,
+        OP_LABEL,
+        OP_COPY,
+        OP_AND
+    };
+
+    Lexer lexer;
+    Parser parser;
+    hashtable* type_table;
+    Resolver resolver;
+    IR_Generator generator;
+    AST_Expression* expression;
+
+    for (int i = 0; i < sizeof (tests) / sizeof (*tests); i++)
+    {
+        lexer_init(&lexer, tests[i]);
+        lex(&lexer);
+
+        parser_init(&parser, lexer.tokens);
+        expression = parse_expression(&parser);
+        
+        type_table = type_table_init();
+        resolver_init(&resolver, type_table);
+        resolve_expression(&resolver, expression);
+        
+        ir_generator_init(&generator, resolver.global);
+        ir_generate_expression(&generator, expression);
+
+        assert_base(runner, generator.instructions->length == 14,
+            "Invalid number of instructions: %d, expected 14", generator.instructions->length);
+
+        for (int j = 0; j < generator.instructions->length; j++)
+            assert_instruction(runner, generator.instructions->items[j], expected[j]);
 
         // dump_instructions(generator.instructions);
         
@@ -703,16 +789,27 @@ static void test_generate_call_expression(Test_Runner* runner)
 
 static void test_generate_if_statement_1(Test_Runner* runner)
 {
+    const char* source = "if 1 >= 0 then 1 + 1;";
+
+    Operation expected[] = 
+    {
+        OP_COPY,
+        OP_COPY,
+        OP_GTE,
+        OP_GOTO_IF_FALSE,
+        OP_COPY,
+        OP_COPY,
+        OP_ADD,
+        OP_LABEL
+    };
+
     Lexer lexer;
     Parser parser;
     hashtable* type_table;
     Resolver resolver;
     IR_Generator generator;
     AST_Statement* statement;
-    char* source;
     
-    // if-then
-    source = "if 1 >= 0 then 1 + 1;";
     lexer_init(&lexer, source); 
     lex(&lexer);
 
@@ -726,16 +823,14 @@ static void test_generate_if_statement_1(Test_Runner* runner)
     ir_generator_init(&generator, resolver.global);
     ir_generate_statement(&generator, statement);
 
-    assert_base(runner, generator.instructions->length == 8,
-        "Invalid number of instructions: %d, expected 8", generator.instructions->length);
-    assert_instruction(runner, generator.instructions->items[0], OP_COPY);
-    assert_instruction(runner, generator.instructions->items[1], OP_COPY);
-    assert_instruction(runner, generator.instructions->items[2], OP_GTE);
-    assert_instruction(runner, generator.instructions->items[3], OP_GOTO_IF_FALSE);
-    assert_instruction(runner, generator.instructions->items[4], OP_COPY);
-    assert_instruction(runner, generator.instructions->items[5], OP_COPY);
-    assert_instruction(runner, generator.instructions->items[6], OP_ADD);
-    assert_instruction(runner, generator.instructions->items[7], OP_LABEL);
+    int actual_length = generator.instructions->length;
+    int expected_length = sizeof (expected) / sizeof (*expected);
+    
+    assert_base(runner, actual_length == expected_length,
+        "Invalid number of instructions: %d, expected %d", actual_length, expected_length);
+
+    for (int i = 0; actual_length == expected_length && i < expected_length; i++)
+        assert_instruction(runner, generator.instructions->items[i], expected[i]);
 
     // dump_instructions(generator.instructions);
 
@@ -750,16 +845,32 @@ static void test_generate_if_statement_1(Test_Runner* runner)
 
 static void test_generate_if_statement_2(Test_Runner* runner)
 {
+    const char* source = "if 0 < 1 then { 1 + 2; } else { 5 * 6; }";
+
+    Operation expected[] =
+    {
+        OP_COPY,
+        OP_COPY,
+        OP_LT,
+        OP_GOTO_IF_FALSE,
+        OP_COPY,
+        OP_COPY,
+        OP_ADD,
+        OP_GOTO,
+        OP_LABEL,
+        OP_COPY,
+        OP_COPY,
+        OP_MUL,
+        OP_LABEL
+    };
+
     Lexer lexer;
     Parser parser;
     hashtable* type_table;
     Resolver resolver;
     IR_Generator generator;
     AST_Statement* statement;
-    char* source;
     
-    // if-then-else
-    source = "if 0 < 1 then { 1 + 2; } else { 5 * 6; }";
     lexer_init(&lexer, source);
     lex(&lexer);
 
@@ -773,21 +884,14 @@ static void test_generate_if_statement_2(Test_Runner* runner)
     ir_generator_init(&generator, resolver.global);
     ir_generate_statement(&generator, statement);
 
-    assert_base(runner, generator.instructions->length == 13,
-        "Invalid number of instructions: %d, expected 13", generator.instructions->length);
-    assert_instruction(runner, generator.instructions->items[0], OP_COPY);
-    assert_instruction(runner, generator.instructions->items[1], OP_COPY);
-    assert_instruction(runner, generator.instructions->items[2], OP_LT);
-    assert_instruction(runner, generator.instructions->items[3], OP_GOTO_IF_FALSE);
-    assert_instruction(runner, generator.instructions->items[4], OP_COPY);
-    assert_instruction(runner, generator.instructions->items[5], OP_COPY);
-    assert_instruction(runner, generator.instructions->items[6], OP_ADD);
-    assert_instruction(runner, generator.instructions->items[7], OP_GOTO);
-    assert_instruction(runner, generator.instructions->items[8], OP_LABEL);
-    assert_instruction(runner, generator.instructions->items[9], OP_COPY);
-    assert_instruction(runner, generator.instructions->items[10], OP_COPY);
-    assert_instruction(runner, generator.instructions->items[11], OP_MUL);
-    assert_instruction(runner, generator.instructions->items[12], OP_LABEL);
+    int actual_length = generator.instructions->length;
+    int expected_length = sizeof (expected) / sizeof (*expected);
+    
+    assert_base(runner, actual_length == expected_length,
+        "Invalid number of instructions: %d, expected %d", actual_length, expected_length);
+
+    for (int i = 0; actual_length == expected_length && i < expected_length; i++)
+        assert_instruction(runner, generator.instructions->items[i], expected[i]);
 
     // dump_instructions(generator.instructions);
 
@@ -802,22 +906,46 @@ static void test_generate_if_statement_2(Test_Runner* runner)
 
 static void test_generate_if_statement_3(Test_Runner* runner)
 {
+    const char* source = "if 1 < 0 then {\n"
+                         "    1 + 2;\n"
+                         "} else if 1 == 0 then {\n"
+                         "    3 - 4;\n"
+                         "} else {\n"
+                         "    5 * 6;\n"
+                         "}";
+
+    Operation expected[] =
+    {
+        OP_COPY,
+        OP_COPY,
+        OP_LT,
+        OP_GOTO_IF_FALSE,
+        OP_COPY,
+        OP_COPY,
+        OP_ADD,
+        OP_GOTO,
+        OP_LABEL,
+        OP_COPY,
+        OP_COPY,
+        OP_EQ,
+        OP_GOTO_IF_FALSE,
+        OP_COPY,
+        OP_COPY,
+        OP_SUB,
+        OP_GOTO,
+        OP_LABEL,
+        OP_COPY,
+        OP_COPY,
+        OP_MUL,
+        OP_LABEL
+    };
+
     Lexer lexer;
     Parser parser;
     hashtable* type_table;
     Resolver resolver;
     IR_Generator generator;
     AST_Statement* statement;
-    char* source;
-    
-    // if-then-else if-then-else
-    source = "if 1 < 0 then {\n"
-             "    1 + 2;\n"
-             "} else if 1 == 0 then {\n"
-             "    3 - 4;\n"
-             "} else {\n"
-             "    5 * 6;\n"
-             "}";
 
     lexer_init(&lexer, source);
     lex(&lexer);
@@ -832,8 +960,14 @@ static void test_generate_if_statement_3(Test_Runner* runner)
     ir_generator_init(&generator, resolver.global);
     ir_generate_statement(&generator, statement);
 
-    // TODO(timo): asserts
-    runner->error = true;
+    int actual_length = generator.instructions->length;
+    int expected_length = sizeof (expected) / sizeof (*expected);
+    
+    assert_base(runner, actual_length == expected_length,
+        "Invalid number of instructions: %d, expected %d", actual_length, expected_length);
+
+    for (int i = 0; actual_length == expected_length && i < expected_length; i++)
+        assert_instruction(runner, generator.instructions->items[i], expected[i]);
 
     // dump_instructions(generator.instructions);
 
@@ -848,25 +982,58 @@ static void test_generate_if_statement_3(Test_Runner* runner)
 
 static void test_generate_if_statement_4(Test_Runner* runner)
 {
+    const char* source = "if 1 < 0 then {\n"
+                         "    1 + 2;\n"
+                         "} else if 1 == 0 then {\n"
+                         "    3 - 4;\n"
+                         "} else if 1 != 0 then {\n"
+                         "    5 * 6;\n"
+                         "} else {\n"
+                         "    7 / 8;\n"
+                         "}";
+
+    Operation expected[] = 
+    {
+        OP_COPY,
+        OP_COPY,
+        OP_LT,
+        OP_GOTO_IF_FALSE,
+        OP_COPY,
+        OP_COPY,
+        OP_ADD,
+        OP_GOTO,
+        OP_LABEL,
+        OP_COPY,
+        OP_COPY,
+        OP_EQ,
+        OP_GOTO_IF_FALSE,
+        OP_COPY,
+        OP_COPY,
+        OP_SUB,
+        OP_GOTO,
+        OP_LABEL,
+        OP_COPY,
+        OP_COPY,
+        OP_NEQ,
+        OP_GOTO_IF_FALSE,
+        OP_COPY,
+        OP_COPY,
+        OP_MUL,
+        OP_GOTO,
+        OP_LABEL,
+        OP_COPY,
+        OP_COPY,
+        OP_DIV,
+        OP_LABEL
+    };
+
     Lexer lexer;
     Parser parser;
     hashtable* type_table;
     Resolver resolver;
     IR_Generator generator;
     AST_Statement* statement;
-    char* source;
     
-    // if-then-else if-then-else
-    source = "if 1 < 0 then {\n"
-             "    1 + 2;\n"
-             "} else if 1 == 0 then {\n"
-             "    3 - 4;\n"
-             "} else if 1 != 0 then {\n"
-             "    5 * 6;\n"
-             "} else {\n"
-             "    7 / 8;\n"
-             "}";
-
     lexer_init(&lexer, source);
     lex(&lexer);
 
@@ -880,8 +1047,14 @@ static void test_generate_if_statement_4(Test_Runner* runner)
     ir_generator_init(&generator, resolver.global);
     ir_generate_statement(&generator, statement);
 
-    // TODO(timo): asserts
-    runner->error = true;
+    int actual_length = generator.instructions->length;
+    int expected_length = sizeof (expected) / sizeof (*expected);
+    
+    assert_base(runner, actual_length == expected_length,
+        "Invalid number of instructions: %d, expected %d", actual_length, expected_length);
+
+    for (int i = 0; actual_length == expected_length && i < expected_length; i++)
+        assert_instruction(runner, generator.instructions->items[i], expected[i]);
 
     // dump_instructions(generator.instructions);
 
@@ -896,6 +1069,28 @@ static void test_generate_if_statement_4(Test_Runner* runner)
 
 static void test_generate_while_statement(Test_Runner* runner)
 {
+    const char* source = "while 0 < 1 do {\n"
+                         "    1 + 2;\n"
+                         "    3 - 4;\n"
+                         "}";
+
+    Operation expected[] =
+    {
+        OP_LABEL,
+        OP_COPY,
+        OP_COPY,
+        OP_LT,
+        OP_GOTO_IF_FALSE,
+        OP_COPY,
+        OP_COPY,
+        OP_ADD,
+        OP_COPY,
+        OP_COPY,
+        OP_SUB,
+        OP_GOTO,
+        OP_LABEL
+    };
+
     Lexer lexer;
     Parser parser;
     hashtable* type_table;
@@ -903,7 +1098,7 @@ static void test_generate_while_statement(Test_Runner* runner)
     IR_Generator generator;
     AST_Statement* statement;
 
-    lexer_init(&lexer, "while 0 < 1 do { 1 + 2; 3 - 4; }");
+    lexer_init(&lexer, source);
     lex(&lexer);
 
     parser_init(&parser, lexer.tokens);
@@ -916,24 +1111,390 @@ static void test_generate_while_statement(Test_Runner* runner)
     ir_generator_init(&generator, resolver.global);
     ir_generate_statement(&generator, statement);
 
-    assert_base(runner, generator.instructions->length == 13,
-        "Invalid number of instructions: %d, expected 13", generator.instructions->length);
-    assert_instruction(runner, generator.instructions->items[0], OP_LABEL);
-    assert_instruction(runner, generator.instructions->items[1], OP_COPY);
-    assert_instruction(runner, generator.instructions->items[2], OP_COPY);
-    assert_instruction(runner, generator.instructions->items[3], OP_LT);
-    assert_instruction(runner, generator.instructions->items[4], OP_GOTO_IF_FALSE);
-    assert_instruction(runner, generator.instructions->items[5], OP_COPY);
-    assert_instruction(runner, generator.instructions->items[6], OP_COPY);
-    assert_instruction(runner, generator.instructions->items[7], OP_ADD);
-    assert_instruction(runner, generator.instructions->items[8], OP_COPY);
-    assert_instruction(runner, generator.instructions->items[9], OP_COPY);
-    assert_instruction(runner, generator.instructions->items[10], OP_SUB);
-    assert_instruction(runner, generator.instructions->items[11], OP_GOTO);
-    assert_instruction(runner, generator.instructions->items[12], OP_LABEL);
+    int actual_length = generator.instructions->length;
+    int expected_length = sizeof (expected) / sizeof (*expected);
+    
+    assert_base(runner, actual_length == expected_length,
+        "Invalid number of instructions: %d, expected %d", actual_length, expected_length);
+
+    for (int i = 0; actual_length == expected_length && i < expected_length; i++)
+        assert_instruction(runner, generator.instructions->items[i], expected[i]);
 
     // dump_instructions(generator.instructions);
 
+    statement_free(statement);
+    ir_generator_free(&generator);
+    resolver_free(&resolver);
+    type_table_free(type_table);
+    parser_free(&parser);
+    lexer_free(&lexer);
+}
+
+
+static void test_generate_while_statement_with_break(Test_Runner* runner)
+{
+    const char* source = "{\n"
+                         "    i: int = 0;\n"
+                         "    while true do {\n"
+                         "        if i >= 10 then break;\n"
+                         "        i := i + i;\n"
+                         "    }\n"
+                         "}";
+
+    Operation expected[] =
+    {
+        OP_COPY,
+        OP_COPY,
+        OP_LABEL,
+        OP_COPY,
+        OP_GOTO_IF_FALSE,
+        OP_COPY,
+        OP_COPY,
+        OP_GTE,
+        OP_GOTO_IF_FALSE,
+        OP_GOTO,
+        OP_LABEL,
+        OP_COPY,
+        OP_COPY,
+        OP_ADD,
+        OP_COPY,
+        OP_GOTO,
+        OP_LABEL
+    };
+
+    Lexer lexer;
+    Parser parser;
+    hashtable* type_table;
+    Resolver resolver;
+    IR_Generator generator;
+    AST_Statement* statement;
+
+    lexer_init(&lexer, source);
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    statement = parse_statement(&parser);
+
+    type_table = type_table_init();
+    resolver_init(&resolver, type_table);
+
+    // We need to have local scope for this to work correctly
+    Scope* local = scope_init(resolver.global, "local");
+    resolver.local = local;
+    resolve_statement(&resolver, statement);
+    
+    ir_generator_init(&generator, resolver.global);
+    generator.local = local;
+    ir_generate_statement(&generator, statement);
+
+    int actual_length = generator.instructions->length;
+    int expected_length = sizeof (expected) / sizeof (*expected);
+    
+    assert_base(runner, actual_length == expected_length,
+        "Invalid number of instructions: %d, expected %d", actual_length, expected_length);
+
+    for (int i = 0; actual_length == expected_length && i < expected_length; i++)
+        assert_instruction(runner, generator.instructions->items[i], expected[i]);
+
+    // dump_instructions(generator.instructions);
+
+    scope_free(local);
+    statement_free(statement);
+    ir_generator_free(&generator);
+    resolver_free(&resolver);
+    type_table_free(type_table);
+    parser_free(&parser);
+    lexer_free(&lexer);
+}
+
+
+static void test_generate_while_statement_nested(Test_Runner* runner)
+{
+    const char* source = "while 0 < 1 do {\n"
+                         "    1 + 2;\n"
+                         "    while 1 > 0 do {\n"
+                         "        3 - 4;\n"
+                         "    }\n"
+                         "}";
+
+    Operation expected[] =
+    {
+        // first loop
+        OP_LABEL,
+        OP_COPY,
+        OP_COPY,
+        OP_LT,
+        OP_GOTO_IF_FALSE,
+        OP_COPY,
+        OP_COPY,
+        OP_ADD,
+        // second loop
+        OP_LABEL,
+        OP_COPY,
+        OP_COPY,
+        OP_GT,
+        OP_GOTO_IF_FALSE,
+        OP_COPY,
+        OP_COPY,
+        OP_SUB,
+        // end of second loop
+        OP_GOTO,
+        OP_LABEL,
+        // end of first loop
+        OP_GOTO,
+        OP_LABEL,
+    };
+
+    Lexer lexer;
+    Parser parser;
+    hashtable* type_table;
+    Resolver resolver;
+    IR_Generator generator;
+    AST_Statement* statement;
+
+    lexer_init(&lexer, source);
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    statement = parse_statement(&parser);
+
+    type_table = type_table_init();
+    resolver_init(&resolver, type_table);
+    resolve_statement(&resolver, statement);
+    
+    ir_generator_init(&generator, resolver.global);
+    ir_generate_statement(&generator, statement);
+
+    int actual_length = generator.instructions->length;
+    int expected_length = sizeof (expected) / sizeof (*expected);
+    
+    assert_base(runner, actual_length == expected_length,
+        "Invalid number of instructions: %d, expected %d", actual_length, expected_length);
+
+    for (int i = 0; actual_length == expected_length && i < expected_length; i++)
+        assert_instruction(runner, generator.instructions->items[i], expected[i]);
+
+    // dump_instructions(generator.instructions);
+
+    statement_free(statement);
+    ir_generator_free(&generator);
+    resolver_free(&resolver);
+    type_table_free(type_table);
+    parser_free(&parser);
+    lexer_free(&lexer);
+}
+
+
+static void test_generate_while_statement_nested_with_break(Test_Runner* runner)
+{
+    const char* source = "{\n"
+                         "    i: int = 0;\n"
+                         "    j: int = 0;\n"
+                         "    while i < 100 do {\n"
+                         "        while true do {\n"
+                         "            if j == 7 then break;\n"
+                         "            j := j + i;\n"
+                         "        }\n"
+                         "        i := i + i;\n"
+                         "    }\n"
+                         "}";
+
+    Operation expected[] =
+    {
+        OP_COPY,
+        OP_COPY,
+        OP_COPY,
+        OP_COPY,
+
+        // start of first loop
+        OP_LABEL,
+        OP_COPY,
+        OP_COPY,
+        OP_LT,
+        OP_GOTO_IF_FALSE,
+
+        // start of second loop
+        OP_LABEL,
+        OP_COPY,
+        OP_GOTO_IF_FALSE,
+        OP_COPY,
+        OP_COPY,
+        OP_EQ,
+
+        // break of inner loop
+        OP_GOTO_IF_FALSE,
+        OP_GOTO,
+        
+        OP_LABEL,
+        OP_COPY,
+        OP_COPY,
+        OP_ADD,
+        OP_COPY,
+        OP_GOTO, // end of inner loop
+
+        OP_LABEL,
+        OP_COPY,
+        OP_COPY,
+        OP_ADD,
+        OP_COPY,
+        OP_GOTO, // end of outer loop
+
+        OP_LABEL, // exit label
+    };
+
+    Lexer lexer;
+    Parser parser;
+    hashtable* type_table;
+    Resolver resolver;
+    IR_Generator generator;
+    AST_Statement* statement;
+
+    lexer_init(&lexer, source);
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    statement = parse_statement(&parser);
+
+    type_table = type_table_init();
+    resolver_init(&resolver, type_table);
+
+    // We need to have local scope for this to work correctly
+    Scope* local = scope_init(resolver.global, "local");
+    resolver.local = local;
+    resolve_statement(&resolver, statement);
+    
+    ir_generator_init(&generator, resolver.global);
+    generator.local = local;
+    ir_generate_statement(&generator, statement);
+
+    int actual_length = generator.instructions->length;
+    int expected_length = sizeof (expected) / sizeof (*expected);
+    
+    assert_base(runner, actual_length == expected_length,
+        "Invalid number of instructions: %d, expected %d", actual_length, expected_length);
+
+    for (int i = 0; actual_length == expected_length && i < expected_length; i++)
+        assert_instruction(runner, generator.instructions->items[i], expected[i]);
+
+    // dump_instructions(generator.instructions);
+
+    scope_free(local);
+    statement_free(statement);
+    ir_generator_free(&generator);
+    resolver_free(&resolver);
+    type_table_free(type_table);
+    parser_free(&parser);
+    lexer_free(&lexer);
+}
+
+
+static void test_generate_while_statement_nested_with_breaks(Test_Runner* runner)
+{
+    const char* source = "{\n"
+                         "    i: int = 0;\n"
+                         "    j: int = 0;\n"
+                         "    while true do {\n"
+                         "        while true do {\n"
+                         "            if j == 7 then break;\n"
+                         "            j := j + i;\n"
+                         "        }\n"
+                         "        if i >= 100 then break;\n"
+                         "        i := i + i;\n"
+                         "    }\n"
+                         "}";
+
+    Operation expected[] =
+    {
+        OP_COPY,
+        OP_COPY,
+        OP_COPY,
+        OP_COPY,
+
+        // start of first loop
+        OP_LABEL,
+        OP_COPY,
+        OP_GOTO_IF_FALSE,
+
+        // start of second loop
+        OP_LABEL,
+        OP_COPY,
+        OP_GOTO_IF_FALSE,
+
+        // first if
+        OP_COPY,
+        OP_COPY,
+        OP_EQ,
+
+        // break of inner loop
+        OP_GOTO_IF_FALSE,
+        OP_GOTO,
+       
+        // update j
+        OP_LABEL,
+        OP_COPY,
+        OP_COPY,
+        OP_ADD,
+        OP_COPY,
+        OP_GOTO, // end of inner loop
+
+        // second if
+        OP_LABEL,
+        OP_COPY,
+        OP_COPY,
+        OP_GTE,
+        
+        // break of outer loop
+        OP_GOTO_IF_FALSE,
+        OP_GOTO,
+
+        // update i
+        OP_LABEL,
+        OP_COPY,
+        OP_COPY,
+        OP_ADD,
+        OP_COPY,
+        OP_GOTO, // end of outer loop
+
+        OP_LABEL, // exit label
+    };
+
+    Lexer lexer;
+    Parser parser;
+    hashtable* type_table;
+    Resolver resolver;
+    IR_Generator generator;
+    AST_Statement* statement;
+
+    lexer_init(&lexer, source);
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    statement = parse_statement(&parser);
+
+    type_table = type_table_init();
+    resolver_init(&resolver, type_table);
+
+    // We need to have local scope for this to work correctly
+    Scope* local = scope_init(resolver.global, "local");
+    resolver.local = local;
+    resolve_statement(&resolver, statement);
+    
+    ir_generator_init(&generator, resolver.global);
+    generator.local = local;
+    ir_generate_statement(&generator, statement);
+
+    int actual_length = generator.instructions->length;
+    int expected_length = sizeof (expected) / sizeof (*expected);
+    
+    assert_base(runner, actual_length == expected_length,
+        "Invalid number of instructions: %d, expected %d", actual_length, expected_length);
+
+    for (int i = 0; actual_length == expected_length && i < expected_length; i++)
+        assert_instruction(runner, generator.instructions->items[i], expected[i]);
+
+    // dump_instructions(generator.instructions);
+
+    scope_free(local);
     statement_free(statement);
     ir_generator_free(&generator);
     resolver_free(&resolver);
@@ -1307,10 +1868,12 @@ Test_Set* ir_generator_test_set()
 
     // Expressions
     array_push(set->tests, test_case("Literal expression", test_generate_literal_expression));
-    array_push(set->tests, test_case("Unary expression", test_generate_unary_expression));
+    array_push(set->tests, test_case("Unary expression (minus)", test_generate_unary_expression_minus));
     array_push(set->tests, test_case("Binary expression (arithmetic)", test_generate_binary_expression_arithmetic));
-    array_push(set->tests, test_case("Binary expression (comparison)", test_generate_binary_expression_comparison));
-    array_push(set->tests, test_case("Logical expression", test_generate_logical_expression));
+    array_push(set->tests, test_case("Binary expression (relational)", test_generate_binary_expression_relational));
+    array_push(set->tests, test_case("Logical expression (not)", test_generate_logical_expression_not));
+    array_push(set->tests, test_case("Logical expression (and)", test_generate_logical_expression_and));
+    array_push(set->tests, test_case("Logical expression (or)", test_generate_logical_expression_or));
     array_push(set->tests, test_case("Variable expression", test_generate_variable_expression));
     array_push(set->tests, test_case("Assignment expression", test_generate_assignment_expression));
     array_push(set->tests, test_case("Assignment expression (complex)", test_generate_assignment_expression_complex));
@@ -1324,9 +1887,10 @@ Test_Set* ir_generator_test_set()
     array_push(set->tests, test_case("If statement (if then - else if then - else)", test_generate_if_statement_3));
     array_push(set->tests, test_case("If statement (arbitrary number of else if's)", test_generate_if_statement_4));
     array_push(set->tests, test_case("While statement", test_generate_while_statement));
-    // TODO(timo): array_push(set->tests, test_case("While statement with a break", test_generate_while_statement_with_break));
-    // TODO(timo): array_push(set->tests, test_case("Nested while statement", test_generate_nested_while_statement));
-    // TODO(timo): array_push(set->tests, test_case("Nested while statement witch break(s)", test_generate_nested_while_statement_with_break));
+    array_push(set->tests, test_case("While statement (with break)", test_generate_while_statement_with_break));
+    array_push(set->tests, test_case("While statement (nested)", test_generate_while_statement_nested));
+    array_push(set->tests, test_case("While statement (nested with break)", test_generate_while_statement_nested_with_break));
+    array_push(set->tests, test_case("While statement (nested with breaks)", test_generate_while_statement_nested_with_breaks));
     array_push(set->tests, test_case("Return statement", test_generate_return_statement));
     // TODO(timo): array_push(set->tests, test_case("Break statement", test_generate_break_statement));
 
