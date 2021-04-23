@@ -372,14 +372,9 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
             Symbol* arg = scope_lookup(generator->local, instruction->arg1);
             Symbol* result = scope_lookup(generator->local, instruction->result);
             
-            // NOTE(timo): Bitwise not is not the same as straight logical not, since
-            // bitwise not will flip all the bits, so there has to be and 1 afterwards
-            // TODO(timo): Actually xor 1 could make this a one instruction operation
-            // instead of two with not + and
             fprintf(generator->output,
                 "    mov    rax, [rbp-%d]           ; \n"
-                "    not    rax                     ; \n"
-                "    and    rax, 1                  ; \n"
+                "    xor    rax, 1                  ; \n"
                 "    mov    [rbp-%d], rax           ; \n", 
                 arg->offset, 
                 result->offset);

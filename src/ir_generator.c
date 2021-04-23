@@ -142,32 +142,120 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
                 case TOKEN_GREATER_THAN_EQUAL:
                     instruction = instruction_gte(left, right, temp);
                     break;
-                // TODO(timo): Should these have labels and jumps and stuff
-                // to get the short circuiting to work properly
-                // Yep. Thats why need more context when handling these things
-                // and thats why we really have to handle the condition expression
-                // in its own function
                 case TOKEN_AND:
-                    instruction = instruction_and(left, right, temp);
-                    // TODO(timo): The context here has to be condition of while/if?
-                    // evaluate left
-                    // if left false goto exit (condition := false)
-                    // evaluate right
-                    // if right false goto exit (condition := false)
-                    // continue (if/while body) (condition := true)
-                    // exit (if/while exit)
+                {
+                    char* temp_1 = temp_label(generator);
+                    char* temp_2 = temp_label(generator);
+                    char* label_false = label(generator);
+                    char* label_exit = label(generator);
+
+                    //      if left false goto false
+                    instruction = instruction_goto_if_false(left, label_false);
+                    array_push(generator->instructions, instruction);
+
+                    //      if right false goto false
+                    instruction = instruction_goto_if_false(right, label_false);
+                    array_push(generator->instructions, instruction);
+
+                    //      condition := true
+                    instruction = instruction_copy("true", temp_1); 
+                    array_push(generator->instructions, instruction);
+                    scope_declare(generator->local, symbol_temp(generator->local, instruction->result, expression->type));
+                    
+                    //      goto exit
+                    instruction = instruction_goto(label_exit);
+                    array_push(generator->instructions, instruction);
+
+                    // false:
+                    instruction = instruction_label(label_false);
+                    array_push(generator->instructions, instruction);
+                    
+                    //      condition := false
+                    instruction = instruction_copy("false", temp_1); 
+                    array_push(generator->instructions, instruction);
+
+                    // exit:
+                    instruction = instruction_label(label_exit);
+                    array_push(generator->instructions, instruction);
+                    
+                    //      and 1
+                    instruction = instruction_copy("true", temp_2);
+                    array_push(generator->instructions, instruction);
+                    scope_declare(generator->local, symbol_temp(generator->local, instruction->result, expression->type));
+                    
+                    instruction = instruction_and(temp_1, temp_2, temp);
+
+                    free(temp_1);
+                    free(temp_2);
+                    free(label_false);
+                    free(label_exit);
                     break;
+                }
                 case TOKEN_OR:
-                    instruction = instruction_or(left, right, temp);
-                    // TODO(timo): The context here has to be condition of while/if?
-                    // evaluate left
-                    // if left true goto continue (condition := true)
-                    // evaluate right
-                    // if right true goto continue (condition := true)
-                    // goto exit (condition := false)
-                    // continue (if/while body)
-                    // exit (if/while exit)
+                {
+                    char* temp_1 = temp_label(generator);
+                    char* temp_2 = temp_label(generator);
+                    char* label_next = label(generator);
+                    char* label_true = label(generator);
+                    char* label_false = label(generator);
+                    char* label_exit = label(generator);
+
+                    //      if left false goto next
+                    instruction = instruction_goto_if_false(left, label_next);
+                    array_push(generator->instructions, instruction);
+
+                    //      goto true
+                    instruction = instruction_goto(label_true);
+                    array_push(generator->instructions, instruction);
+
+                    // next:
+                    instruction = instruction_label(label_next);
+                    array_push(generator->instructions, instruction);
+
+                    //      if right false goto false
+                    instruction = instruction_goto_if_false(right, label_false);
+                    array_push(generator->instructions, instruction);
+
+                    // true:
+                    instruction = instruction_label(label_true);
+                    array_push(generator->instructions, instruction);
+
+                    //      condition := true
+                    instruction = instruction_copy("true", temp_1); 
+                    array_push(generator->instructions, instruction);
+                    scope_declare(generator->local, symbol_temp(generator->local, instruction->result, expression->type));
+
+                    //      goto exit
+                    instruction = instruction_goto(label_exit);
+                    array_push(generator->instructions, instruction);
+
+                    // false:
+                    instruction = instruction_label(label_false);
+                    array_push(generator->instructions, instruction);
+
+                    //      condition := false
+                    instruction = instruction_copy("false", temp_1); 
+                    array_push(generator->instructions, instruction);
+
+                    // exit:
+                    instruction = instruction_label(label_exit);
+                    array_push(generator->instructions, instruction);
+                    
+                    //      and 1
+                    instruction = instruction_copy("true", temp_2);
+                    array_push(generator->instructions, instruction);
+                    scope_declare(generator->local, symbol_temp(generator->local, instruction->result, expression->type));
+
+                    instruction = instruction_and(temp_1, temp_2, temp);
+
+                    free(temp_1);
+                    free(temp_2);
+                    free(label_next);
+                    free(label_true);
+                    free(label_false);
+                    free(label_exit);
                     break;
+                }
             }
             
             array_push(generator->instructions, instruction);
@@ -248,10 +336,6 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
         case EXPRESSION_FUNCTION:
         {
             Instruction* instruction;
-            // TODO(timo): Generate temp label where the return value is being put?
-            // That is the thing this function should return. That label is probably
-            // needed to have in the return statement so it can be set to the correct one?
-            // OR the return statement sets the return address.
             
             // Function prologue
 
@@ -277,6 +361,8 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
             
             instruction = instruction_function_end((char*)generator->local->name);
             array_push(generator->instructions, instruction);
+
+            // TODO(timo): This should probably return something, but what?
             break;
         }
         case EXPRESSION_CALL:
