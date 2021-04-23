@@ -311,6 +311,22 @@ static void test_example_logical_and_3(Test_Runner* runner)
 }
 
 
+static void test_example_logical_and_4(Test_Runner* runner)
+{
+    const char* program_name = "logical_and_4";
+    const char* file_path = "./examples/logical_and_4.t";
+    const char* result = "Program exited with the value false\n";
+    const char* args = NULL;
+
+    char* buffer = run_example(runner, program_name, file_path, result, args);
+    
+    assert_base(runner, strcmp(result, buffer) == 0,
+        "Invalid exit value '%s', expected '%s'", buffer, result);
+
+    free(buffer);
+}
+
+
 static void test_example_logical_or_1(Test_Runner* runner)
 {
     const char* program_name = "logical_or_1";
@@ -1019,6 +1035,7 @@ Test_Set* compiler_test_set()
     array_push(set->tests, test_case("Example file: logical_and_1.t", test_example_logical_and_1));
     array_push(set->tests, test_case("Example file: logical_and_2.t", test_example_logical_and_2));
     array_push(set->tests, test_case("Example file: logical_and_3.t", test_example_logical_and_3));
+    array_push(set->tests, test_case("Example file: logical_and_4.t", test_example_logical_and_4));
     array_push(set->tests, test_case("Example file: logical_or_1.t", test_example_logical_or_1));
     array_push(set->tests, test_case("Example file: logical_or_2.t", test_example_logical_or_2));
     array_push(set->tests, test_case("Example file: logical_or_3.t", test_example_logical_or_3));
