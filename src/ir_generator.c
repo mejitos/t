@@ -473,15 +473,21 @@ void ir_generate_statement(IR_Generator* generator, AST_Statement* statement)
     switch (statement->kind)
     {
         case STATEMENT_DECLARATION:
+        {
             ir_generate_declaration(generator, statement->declaration);
             break;
+        }
         case STATEMENT_EXPRESSION:
+        {
             ir_generate_expression(generator, statement->expression);
             break;
+        }
         case STATEMENT_BLOCK:
+        {
             for (int i = 0; i < statement->block.statements->length; i++)
                 ir_generate_statement(generator, (AST_Statement*)statement->block.statements->items[i]);
             break;
+        }
         case STATEMENT_WHILE:
         {
             Instruction* instruction;
@@ -578,6 +584,7 @@ void ir_generate_statement(IR_Generator* generator, AST_Statement* statement)
                 ir_context_pop(generator);
                 free(label_exit);
             }
+
             break;
         }
         case STATEMENT_RETURN:
@@ -590,8 +597,18 @@ void ir_generate_statement(IR_Generator* generator, AST_Statement* statement)
         }
         case STATEMENT_BREAK:
         {
-            Instruction* instruction = instruction_goto(generator->current_context->_while.exit_label);
-            array_push(generator->instructions, instruction);
+            for (int i = generator->contexts->length - 1; i >= 0; i--)
+            {
+                IR_Context* context = generator->contexts->items[i];
+
+                if (context->kind == IR_CONTEXT_WHILE)
+                {
+                    Instruction* instruction = instruction_goto(context->_while.exit_label);
+                    array_push(generator->instructions, instruction);
+                    break;
+                }
+            }
+
             break;
         }
         default:

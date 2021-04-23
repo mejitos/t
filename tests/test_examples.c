@@ -1072,6 +1072,8 @@ Test_Set* compiler_test_set()
     // With simple boolean value as condition
     array_push(set->tests, test_case("Example file: if_10.t", test_example_if_10));
     array_push(set->tests, test_case("Example file: if_11.t", test_example_if_11));
+    // TODO(timo): if then - else if then - else
+    // TODO(timo): arbitrary number of else if's
 
     // While statements
     array_push(set->tests, test_case("Example file: while_loop_1.t", test_example_while_1));
@@ -1079,7 +1081,11 @@ Test_Set* compiler_test_set()
     // With break
     array_push(set->tests, test_case("Example file: while_loop_3.t", test_example_while_3));
     // Basic "while true" -loop
-    array_push(set->tests, test_case("Example file: while_loop_4.t", test_example_while_3));
+    array_push(set->tests, test_case("Example file: while_loop_4.t", test_example_while_4));
+    // TODO(timo): Nested while loops
+    // TODO(timo): Nested while loops with breaks
+    
+    // TODO(timo): Nested if + while statements (testing for contexts)
 
     // Functions
     array_push(set->tests, test_case("Example file: function_1.t", test_example_function_1));
@@ -1100,6 +1106,7 @@ Test_Set* compiler_test_set()
     array_push(set->tests, test_case("Example file: factorial.t", test_example_factorial));
     array_push(set->tests, test_case("Example file: fibonacci.t", test_example_fibonacci));
     array_push(set->tests, test_case("Example file: prime_number.t", test_example_prime_number));
+    // TODO(timo): array_push(set->tests, test_case("Example file: largest.t", test_example_largest));
 
     set->length = set->tests->length;
 
