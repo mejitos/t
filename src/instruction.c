@@ -1,29 +1,6 @@
 #include "t.h"
 
 
-bool str_starts_with(char* string, char* start)
-{
-    if (string == NULL || start == NULL) return false;
-
-    for (int i = 0; i < strlen(start); i++)
-        if (start[i] != string[i]) return false;
-    
-    return true;
-}
-
-
-// void str_copy(char* what, char* where)
-char* str_copy(char* what)
-{
-    size_t length = strlen(what);
-    char* buffer = xmalloc(sizeof (char) * (length + 1));
-    memcpy(buffer, what, length);
-    buffer[length] = 0;
-    
-    return buffer;
-}
-
-
 void instruction_free(Instruction* instruction)
 {
     if (instruction->arg1)

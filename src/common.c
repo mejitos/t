@@ -1,4 +1,5 @@
 #include "common.h"
+#include "memory.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -53,4 +54,26 @@ char* shift(int* argc, char*** argv)
 bool str_equals(char* string1, char* string2)
 {
     return strcmp(string1, string2) == 0;
+}
+
+
+bool str_starts_with(char* string, char* start)
+{
+    if (string == NULL || start == NULL) return false;
+
+    for (int i = 0; i < strlen(start); i++)
+        if (start[i] != string[i]) return false;
+    
+    return true;
+}
+
+
+char* str_copy(char* what)
+{
+    size_t length = strlen(what);
+    char* buffer = xmalloc(sizeof (char) * (length + 1));
+    memcpy(buffer, what, length);
+    buffer[length] = 0;
+    
+    return buffer;
 }
