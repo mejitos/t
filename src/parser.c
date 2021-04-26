@@ -267,9 +267,7 @@ AST_Statement* parse_statement(Parser* parser)
         case TOKEN_IDENTIFIER:
             // NOTE(timo): This check is needed to distinguish between declaration
             // and expression statements since we don't have keywords for declaration.
-            if (peek(parser)->kind != TOKEN_COLON_ASSIGN && 
-                peek(parser)->kind != TOKEN_SEMICOLON && 
-                peek(parser)->kind != TOKEN_LEFT_PARENTHESIS)
+            if (peek(parser)->kind == TOKEN_COLON)
                 return parse_declaration_statement(parser);
         default:
             return parse_expression_statement(parser);
@@ -306,9 +304,10 @@ static AST_Expression* primary(Parser* parser)
             break;
         }
         case TOKEN_LEFT_PARENTHESIS:
+        {
             advance(parser);
 
-            if (parser->current_token->kind == TOKEN_IDENTIFIER)
+            if (parser->current_token->kind == TOKEN_IDENTIFIER && peek(parser)->kind == TOKEN_COLON)
             {
                 array* parameters = array_init(sizeof (Parameter*));
                 
@@ -334,12 +333,14 @@ static AST_Expression* primary(Parser* parser)
                 AST_Statement* body = parse_statement(parser);
                 expression = function_expression(NULL, 0, body);
             }
-            else
+            else // Normal parenthesized epxression
             {
                 expression = parse_expression(parser);
                 expect_token(parser, TOKEN_RIGHT_PARENTHESIS, ")", true);
             }
+
             break;
+        }
         default:
         {
             Diagnostic* _diagnostic = diagnostic(

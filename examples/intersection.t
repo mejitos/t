@@ -21,7 +21,10 @@ same_axis_intersections: bool = (line1_coef_a: int, line1_coef_b: int, line1_coe
 
 _y_intersect: int = (line1_coef_a: int, line1_coef_b: int, line1_coef_c: int, line2_coef_a: int, line2_coef_b: int, line2_coef_c: int) => {
     # TODO(timo): For some reason I can't just return this monstrosity
-    result: int = (line1_coef_a * line2_coef_c - line2_coef_a * line1_coef_c) / (line1_coef_b * line2_coef_2 - line2_coef_b * line1_coef_a);
+    # NOTE(timo): Typo here created correct error in resolver (trying to reference non declared variable) but then
+    # there was like 15 errors from binary operators because one of the operators was type none
+    # ==> probably we should just remove the none type stuff
+    result: int = (line1_coef_a * line2_coef_c - line2_coef_a * line1_coef_c) / (line1_coef_b * line2_coef_c - line2_coef_b * line1_coef_a);
     return result;
 };
 

@@ -815,6 +815,7 @@ void resolve_variable_declaration(Resolver* resolver, AST_Declaration* declarati
 {
     // NOTE(timo): So this type will be the type of the value assigned to the variable 
     // or if the declaration is function, this will be the type of the return value.
+    // printf("type specifier of variable: %s\n", );
     Type* expected_type = resolve_type_specifier(resolver, declaration->specifier);
     Type* actual_type = resolve_expression(resolver, declaration->initializer);
 
@@ -826,7 +827,8 @@ void resolve_variable_declaration(Resolver* resolver, AST_Declaration* declarati
         AST_Expression* initializer = declaration->initializer;
         printf("Conflicting types when declaring variable '%s'\n", declaration->identifier->lexeme);
         printf("Line %d, column %d\n", initializer->position.line_start, initializer->position.column_start);
-        exit(1);
+        printf("Actual type: %s, expected %s\n", type_as_string(actual_type->kind), type_as_string(expected_type->kind));
+        // exit(1);
     }
 
     // Declare the symbol into the current scope
