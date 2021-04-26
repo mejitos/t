@@ -794,6 +794,8 @@ typedef struct IR_Context
         } _while;
         struct {
             char* exit_label;
+            bool exit_not_generated;
+            bool new_context;
         } _if;
     };
 } IR_Context;

@@ -823,7 +823,9 @@ void resolve_variable_declaration(Resolver* resolver, AST_Declaration* declarati
     if (expected_type->kind != actual_type->kind)
     {
         // TODO(timo): Error
+        AST_Expression* initializer = declaration->initializer;
         printf("Conflicting types when declaring variable '%s'\n", declaration->identifier->lexeme);
+        printf("Line %d, column %d\n", initializer->position.line_start, initializer->position.column_start);
         exit(1);
     }
 

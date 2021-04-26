@@ -1067,6 +1067,9 @@ static void test_generate_if_statement_4(Test_Runner* runner)
 }
 
 
+// TODO(timo): Nested if
+
+
 static void test_generate_while_statement(Test_Runner* runner)
 {
     const char* source = "while 0 < 1 do {\n"
@@ -1129,6 +1132,9 @@ static void test_generate_while_statement(Test_Runner* runner)
     parser_free(&parser);
     lexer_free(&lexer);
 }
+
+
+// TODO(timo): Test for while loop with straight up break in the end, no if's
 
 
 static void test_generate_while_statement_with_break(Test_Runner* runner)
@@ -1502,6 +1508,10 @@ static void test_generate_while_statement_nested_with_breaks(Test_Runner* runner
     parser_free(&parser);
     lexer_free(&lexer);
 }
+
+
+// TODO(timo): while if nested
+// TODO(timo): while if nested 2
 
 
 static void test_generate_return_statement(Test_Runner* runner)

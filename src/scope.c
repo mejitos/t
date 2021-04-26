@@ -19,7 +19,7 @@ void scope_free(Scope* scope)
     for (int i = 0; i < scope->symbols->capacity; i++)
     {
         Symbol* symbol = scope->symbols->entries[i].value;
-        if (symbol) symbol_free(symbol);
+        if (symbol != NULL) symbol_free(symbol);
     }
 
     hashtable_free(scope->symbols);

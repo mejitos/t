@@ -37,6 +37,7 @@ void ir_generator_free(IR_Generator* generator)
 
     array_free(generator->instructions);
 
+    // Free contexts. Length of the contexts should be 0 at this point.
     array_free(generator->contexts);
 
     // NOTE(timo): The global scope will be freed by the resolver
@@ -46,19 +47,26 @@ void ir_generator_free(IR_Generator* generator)
 }
 
 
-IR_Context* ir_context(IR_Context_Kind kind, char* exit_label)
+IR_Context* ir_context_if(char* exit_label)
 {
     IR_Context* context = xmalloc(sizeof (IR_Context));
-    context->kind = kind;
-
-    if (kind == IR_CONTEXT_WHILE)
-        context->_while.exit_label = str_copy(exit_label);
-    else if (kind == IR_CONTEXT_IF)
-        context->_if.exit_label = str_copy(exit_label);
+    context->kind = IR_CONTEXT_IF;
+    context->_if.exit_label = str_copy(exit_label);
+    context->_if.exit_not_generated = true;
+    context->_if.new_context = true;
 
     return context;
 }
 
+
+IR_Context* ir_context_while(char* exit_label)
+{
+    IR_Context* context = xmalloc(sizeof (IR_Context));
+    context->kind = IR_CONTEXT_WHILE;
+    context->_while.exit_label = str_copy(exit_label);
+
+    return context;
+}
 
 
 void ir_context_push(IR_Generator* generator, IR_Context* context)
@@ -70,6 +78,8 @@ void ir_context_push(IR_Generator* generator, IR_Context* context)
 
 void ir_context_pop(IR_Generator* generator)
 {
+    assert(generator->contexts->length > 0);
+
     IR_Context* context = generator->contexts->items[generator->contexts->length - 1];
     
     if (context->kind == IR_CONTEXT_WHILE)
@@ -348,10 +358,11 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
             Instruction* instruction;
             char* temp;
 
-            // Generate the total offset for the accessed element
+            // Generate the total offset for the accessed element by multiplying the 
+            // width (=size) of the type with the value of the subscript
+            // NOTE(timo): All types are 8 bytes wide for now
             char* subscript = ir_generate_expression(generator, expression->index.value);
             char* element_size = temp_label(generator); 
-            // NOTE(timo): All types are 8 bytes wide for now
             instruction = instruction_copy("8", element_size);
 
             array_push(generator->instructions, instruction);
@@ -497,7 +508,7 @@ void ir_generate_statement(IR_Generator* generator, AST_Statement* statement)
             char* label_exit = label(generator); // exit
 
             // Push context
-            ir_context_push(generator, ir_context(IR_CONTEXT_WHILE, label_exit));
+            ir_context_push(generator, ir_context_while(label_exit));
             
             // Start of the loop
             instruction = instruction_label(label_condition);
@@ -536,8 +547,17 @@ void ir_generate_statement(IR_Generator* generator, AST_Statement* statement)
             char* condition = ir_generate_expression(generator, statement->_if.condition);
 
             // Push context
-            if (generator->current_context == NULL || generator->current_context->kind != IR_CONTEXT_IF)
-                ir_context_push(generator, ir_context(IR_CONTEXT_IF, label_exit));
+            // NOTE(timo): We can start new if context IF
+            //      - there is no current context
+            //      - there is context, which is not if (=we cannot access the _if part of the union)
+            //      - context is if-context and new context is allowed
+            // TODO(timo): It would probably be a better idea to let the generator itself maintain
+            // the permission for creating new context. Then we would need just one check, which 
+            // could even happen inside the function ir_context_push() and this code would be cleaner
+            if (generator->current_context == NULL || 
+                generator->current_context->kind != IR_CONTEXT_IF || 
+                generator->current_context->_if.new_context)
+                    ir_context_push(generator, ir_context_if(label_exit));
 
             if (statement->_if._else != NULL) // if-then-else
             {
@@ -559,6 +579,9 @@ void ir_generate_statement(IR_Generator* generator, AST_Statement* statement)
                 instruction = instruction_label(label_else);
                 array_push(generator->instructions, instruction);
 
+                // New contexts are not allowed since we are in else block of the current context
+                generator->current_context->_if.new_context = false;
+
                 ir_generate_statement(generator, statement->_if._else);
 
                 free(label_else);
@@ -573,18 +596,23 @@ void ir_generate_statement(IR_Generator* generator, AST_Statement* statement)
                 ir_generate_statement(generator, statement->_if.then);
             }
 
-            // TODO(timo): This doesn't work when we get nested things
-            if (generator->current_context != NULL)
+            // We should create the exit label and pop the context IF
+            //      - the current context is not null
+            //      - current context is last else block OR then block with no else
+            //      - exit label is not generated
+            if (generator->current_context != NULL && 
+                generator->current_context->_if.exit_not_generated)
             {
                 // Exit label
                 Instruction* instruction = instruction_label(generator->current_context->_if.exit_label);
                 array_push(generator->instructions, instruction);
-                
+                generator->current_context->_if.exit_not_generated = false;
+
                 // Pop context
                 ir_context_pop(generator);
-                free(label_exit);
             }
 
+            free(label_exit);
             break;
         }
         case STATEMENT_RETURN:
