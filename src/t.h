@@ -633,12 +633,14 @@ hashtable* type_table_init();
 void type_table_free(hashtable* table);
 
 
-//  Operand
-//
-//  Used to tie the type and the value together when resolving expressions
-//  and having most use when doing constant folding.
+// Used to tie the type and the value together when resolving expressions
+// and having most use when doing constant folding.
 //  
-//  HOX! Not used for anything at the moment!
+// HOX! NOT IN USE AT THE MOMENT.
+//
+// Fields
+//      type: Type of the operand.
+//      value: Value of the operand.
 typedef struct Operand
 {
     Type* type;
@@ -646,10 +648,8 @@ typedef struct Operand
 } Operand;
 
 
-//
-//  Symbol stuff
-//
-
+// Enumeration of different symbol kinds to separate different kind of symbols 
+// from each other.
 typedef enum Symbol_Kind
 {
     SYMBOL_NONE,
@@ -660,9 +660,11 @@ typedef enum Symbol_Kind
 } Symbol_Kind;
 
 
+// Symbols state of resolving. This is used if symbols are being resolved
+// out of declaration order or if the symbols are being resolved in multiple
+// passes.
 //
-//  Symbol state is not in use at the moment.
-
+// NOT IN USE AT THE MOMENT
 typedef enum Symbol_State
 {
     STATE_UNRESOLVED,
@@ -671,11 +673,19 @@ typedef enum Symbol_State
 } Symbol_State;
 
 
+// Represents symbols in the symbol table.
 //
-//  - identifier comes from AST nodes and it is being free'd when AST nodes are freed
-//  - the type is free'd by type table if it is primitive type, else symbol has the
-//  responsibility of freeing the type
-
+// Fields
+//      kind: Symbol kind.
+//      state: Resolving state of the symbol. NOT USED AT THE MOMENT.
+//      scope: Scope which the symbols belongs to.
+//      identifier: Identifier/name for the symbol.
+//      type: Type of the symbol.
+//      value: Value of the symbol.
+//
+//      offset: Stack offset from the stack frame base.
+//      _register: Register where the symbol is allocated. If no register
+//                 is allocated, value will be -1.
 typedef struct Symbol
 {
     Symbol_Kind kind;
@@ -688,22 +698,52 @@ typedef struct Symbol
     // Register stuff
     int offset;
     int _register;
-    // const char* _register;
 } Symbol;
 
 
+// Constructor functions for all the used symbols.
+//
+// File(s): symbol.c
+//
+// Arguments
+//      scope: Pointer to the scope which the symbol belongs to.
+//      identifier: Identifier or the name for the symbol.
+//      type: Type of the symbol.
+// Returns
+//      Pointer to the newly created Symbol structure.
 Symbol* symbol_variable(Scope* scope, const char* identifier, Type* type);
 Symbol* symbol_temp(Scope* scope, const char* identifier, Type* type);
 Symbol* symbol_parameter(Scope* scope, const char* identifier, Type* type);
 Symbol* symbol_function(Scope* scope, const char* identifier, Type* type);
+
+
+// Frees the memory allocated for the symbol.
+//
+// The identifier comes from the AST nodes and is also freed when they are freed.
+// The type is free'd by type table if it is primitive type, else symbol has the
+// responsibility of freeing the type of the symbol.
+//
+// File(s): symbol.c
+//
+// Arguments
+//      symbol: Symbol to be freed.
 void symbol_free(Symbol* symbol);
 
 
+// Structure representing scopes in the language. At the moment there is only
+// two different scopes in use: global scope and local scopes for functions.
 //
-//  Scope
+// File(s): scope.c
 //
-//  File: scope.c
-
+// Fields
+//      name: Name of the scope.
+//      offset: Total offset for the scope. Used to reserve memory from the
+//              stack for all the local variables.
+//      offset_parameter: Total offset for parameters in the scope. Separate
+//                        offset is used because parameters live in the other
+//                        side of the stack frame than local variables.
+//      enclosing: Enclosing scope.
+//      symbols: Symbol table containing the symbols in the scope.
 struct Scope
 {
     const char* name;
@@ -714,19 +754,78 @@ struct Scope
 };
 
 
+// Initializes new scope structure.
+//
+// File(s): scope.c
+//
+// Arguments
+//      enclosing: Pointer to the enclosing scope.
+//      name: Name of the scope.
+// Returns
+//      Pointer to the newly created Scope structure.
 Scope* scope_init(Scope* enclosing, const char* name); 
+
+
+// Frees the memory allocated for a scope.
+//
+// File(s): scope.c
+//
+// Arguments
+//      scope: Scope to be freed.
 void scope_free(Scope* scope);
-Symbol* scope_lookup(Scope* scope, const char* identifier);
+
+
+// Finds symbol from the current scope or one of its enclosing scopes.
+//
+// File(s): scope.c
+//
+// Arguments
+//      scope: The first scope where the symbol will be looked up from.
+//      identifier: Identifier of the symbol to be looked from the scope.
+// Returns
+//      Pointer to the symbol if it is found, otherwise NULL.
+Symbol* scope_lookup(const Scope* scope, const char* identifier);
+
+
+// Declares new symbol into scope.
+//
+// File(s): scope.c
+//
+// Arguments
+//      scope: Scope where the symbol will be declared.
+//      symbol: Symbol to be declared.
 void scope_declare(Scope* scope, Symbol* symbol);
-bool scope_contains(Scope* scope, const char* identifier);
-void dump_scope(Scope* scope, int indentation);
+
+
+// Checks if the scope contains a symbol in its symbol table. The lookup
+// will be made based on the identifier of the symbol.
+//
+// File(s): scope.c
+//
+// Arguments
+//      scope: Scope where the key will be looked up from.
+//      identifier: Identifier of the symbol to be looked from the scope.
+// Returns
+//      Value true if the symbol is found from the scope, otherwise false.
+const bool scope_contains(const Scope* scope, const char* identifier);
+
+
+// Prints the scope info and its symbols. In case of functions there will be
+// a recursive function call to print the local scope of the function.
+//
+// File(s): scope.c
+//
+// Arguments
+//      scope: Pointer to the Scope to be printed.
+//      indentation: Starting indentation level. Level will be incremented
+//                   by one on every recursive call.
+void dump_scope(const Scope* scope, int indentation);
 
 
 //
 //  Resolver
 //  
 //  File: resolver.c
-
 typedef struct Resolver
 {
     array* diagnostics;

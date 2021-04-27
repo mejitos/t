@@ -1,3 +1,7 @@
+//
+// TODO(timo): Filedocstring
+//
+
 #include "t.h"
 
 
@@ -29,7 +33,7 @@ void scope_free(Scope* scope)
 }
 
 
-static Symbol* scope_get(Scope* scope, const char* identifier)
+static Symbol* scope_get(const Scope* scope, const char* identifier)
 {
     return hashtable_get(scope->symbols, identifier);
 }
@@ -44,7 +48,7 @@ static void scope_put(Scope* scope, Symbol* symbol)
 }
 
 
-Symbol* scope_lookup(Scope* scope, const char* identifier)
+Symbol* scope_lookup(const Scope* scope, const char* identifier)
 {
     Symbol* symbol = scope_get(scope, identifier);
 
@@ -109,7 +113,7 @@ void scope_declare(Scope* scope, Symbol* symbol)
 }
 
 
-bool scope_contains(Scope* scope, const char* identifier)
+const bool scope_contains(const Scope* scope, const char* identifier)
 {
     Symbol* symbol = scope_get(scope, identifier);
 
@@ -117,7 +121,7 @@ bool scope_contains(Scope* scope, const char* identifier)
 }
 
 
-array* scope_symbols(Scope* scope)
+const array* scope_symbols(const Scope* scope)
 {
     array* symbols = array_init(sizeof (Symbol*));
 
@@ -132,7 +136,7 @@ array* scope_symbols(Scope* scope)
 }
 
 
-void dump_scope(Scope* scope, int indentation)
+void dump_scope(const Scope* scope, int indentation)
 {
     for (int i = 0; i < indentation; i++)
         printf("\t");

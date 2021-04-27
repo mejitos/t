@@ -1,10 +1,13 @@
+//
+// TODO(timo): Filedocstring
+//
+
 #include "t.h"
 
 
 Symbol* symbol_variable(Scope* scope, const char* identifier, Type* type)
 {
     Symbol* symbol = xcalloc(1, sizeof (Symbol));
-    symbol->state = STATE_UNRESOLVED;
     symbol->kind = SYMBOL_VARIABLE;
     symbol->scope = scope;
     symbol->identifier = identifier;
@@ -18,7 +21,6 @@ Symbol* symbol_variable(Scope* scope, const char* identifier, Type* type)
 Symbol* symbol_function(Scope* scope, const char* identifier, Type* type)
 {
     Symbol* symbol = xcalloc(1, sizeof (Symbol));
-    symbol->state = STATE_UNRESOLVED;
     symbol->kind = SYMBOL_FUNCTION;
     symbol->scope = scope;
     symbol->identifier = identifier;
@@ -32,7 +34,6 @@ Symbol* symbol_function(Scope* scope, const char* identifier, Type* type)
 Symbol* symbol_parameter(Scope* scope, const char* identifier, Type* type)
 {
     Symbol* symbol = xcalloc(1, sizeof (Symbol));
-    symbol->state = STATE_RESOLVED;
     symbol->kind = SYMBOL_PARAMETER;
     symbol->scope = scope;
     symbol->identifier = identifier;
@@ -46,7 +47,6 @@ Symbol* symbol_parameter(Scope* scope, const char* identifier, Type* type)
 Symbol* symbol_temp(Scope* scope, const char* identifier, Type* type)
 {
     Symbol* symbol = xcalloc(1, sizeof (Symbol));
-    symbol->state = STATE_RESOLVED;
     symbol->kind = SYMBOL_TEMP;
     symbol->scope = scope;
     symbol->identifier = identifier;
