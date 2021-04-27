@@ -85,7 +85,6 @@ typedef struct Position
 //  File(s): diagnostics.c
 //
 //
-
 typedef enum Diagnostic_Kind
 {
     DIAGNOSTIC_ERROR,
@@ -111,14 +110,11 @@ void print_diagnostic(Diagnostic* diagnostic);
 //  The main routine of the compiler called from the entry point main.c
 //
 //  File: t.c
-
 void compile(const char* source, Options options);
 void compile_from_file(const char* path, Options options);
 
 
-//
-//  Token related stuff
-
+// Enumeration of the classification of the lexeme.
 typedef enum Token_Kind
 {
     TOKEN_EOF,
@@ -157,10 +153,13 @@ typedef enum Token_Kind
 } Token_Kind;
 
 
+// Represents the analyzed lexeme and its attributes from the source file.
 //
-//  Represents the analyzed lexeme and its attributes from the source file
-//
-
+// Fields
+//      kind: Classification of the lexeme.
+//      position: Position of the lexeme in the source file.
+//      lexeme: The lexeme itself.
+//      lexeme_length: Length of the lexeme.
 typedef struct Token 
 {
     Token_Kind kind;
@@ -170,17 +169,22 @@ typedef struct Token
 } Token;
 
 
+// Constructor for the token.
 //
-//  Allocator for basic token
+// File(s): token.c
 //
-//  File: token.c
-
+// Arguments
+//      kind: Classification of the lexeme.
+//      lexeme: Scanned lexeme.
+//      lexeme_length: Length of the lexeme.
+//      position: Position of the lexeme in the source file.
+// Returns
+//      Pointer to the newly created Token.
 Token* token(Token_Kind kind, const char* lexeme, int lexeme_length, Position position);
 
 
 //
 //  Lexer stuff
-
 typedef struct Lexer
 {
     const char* stream;
@@ -192,7 +196,6 @@ typedef struct Lexer
 
 //
 //  File: lexer.c
-
 void lexer_init(Lexer* lexer, const char* source);
 void lexer_free(Lexer* lexer);
 void lex(Lexer* lexer);
