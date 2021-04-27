@@ -1,23 +1,43 @@
+//
+// TODO(timo): Filedocstring
+//
+
 #ifndef T_HASHTABLE_H 
 #define T_HASHTABLE_H 
 
-#include <string.h> // for memory comparisons and strlen
-#include <stdlib.h> // for memory allocation
-#include <assert.h> // for assertions
-#include <stdint.h> // for int32_t
-#include <stdbool.h>
+#include "memory.h"     // for x-allocators
+#include <string.h>     // for memory comparisons and strlen
+#include <stdlib.h>     // for memory allocation
+#include <assert.h>     // for assertions
+#include <stdint.h>     // for int32_t
+#include <stdbool.h>    // for bool type
 
 #define LOAD_FACTOR 0.75
 #define GROWTH_FACTOR 2
-#define INITIAL_CAPACITY 1024
+#define INITIAL_CAPACITY 128
 
 
+// Structure for hashtable entry which is represents key-value pairs saved
+// into the hash table.
+//
+// Fields
+//      key: Pointer to the key for the value.
+//      value: Pointer to the saved value.
 typedef struct hashtable_entry {
     char* key;
     void* value;
 } hashtable_entry;
 
 
+// Hash table/map to save key-value pairs. 
+//
+// Keys are strings but the values can be any type of pointer.
+//
+// Fields
+//      capacity: Maximum capacity of the hash table.
+//      count: Current number of the symbols in the hash table.
+//      threshold: Count after which the table will be resized.
+//      entries: Pointer to the start of the symbol table entries.
 typedef struct hashtable
 {
     int capacity;
@@ -28,11 +48,50 @@ typedef struct hashtable
 } hashtable;
 
 
+// Initializes new hashtable with initial capacity.
+//
+// If the passed initial capacity is less than INITIAL_CAPACITY, the initial
+// capacity will be INITIAL_CAPACITY.
+//
+// Arguments
+//      capacity: The initial capacity.
+// Returns
+//      Pointer to the new hash table
 hashtable* hashtable_init(int capacity);
+
+
+// Frees all the memory allocated for a hash table.
+//
+// Arguments
+//      table: Hash table to be freed.
 void hashtable_free(hashtable* table);
-void* hashtable_get(hashtable* table, const char* key);
+
+
+// Get the value accompanied with the key in the hash table.
+//
+// Arguments
+//      table: Hash table where the value is being queried from.
+//      key: Key accompanied with the value.
+void* hashtable_get(const hashtable* table, const char* key);
+
+
+// Creates a new entry and puts it to the hash table.
+//
+// Arguments
+//      table: Hash table where the new entry is being created.
+//      key: Key accompanied with the value.
+//      value: Pointer to the value accomapnied with the key.
 void hashtable_put(hashtable* table, const char* key, void* value);
-bool hashtable_contains(hashtable* table, const char* key);
+
+
+// Checks if the given key is found from the hash table.
+//
+// Arguments
+//      table: Hash table where the key is being searched from.
+//      key: Key being searched from the hash table.
+// Returns
+//      Value true if the key is found from the hash table, otherwise false.
+const bool hashtable_contains(const hashtable* table, const char* key);
 
 
 #ifdef T_HASHTABLE_IMPLEMENTATION
@@ -40,8 +99,7 @@ bool hashtable_contains(hashtable* table, const char* key);
 
 hashtable* hashtable_init(int capacity)
 {
-    // TODO(timo): Check for alloc failure or use xmalloc
-    hashtable* table = malloc(sizeof (hashtable));
+    hashtable* table = xmalloc(sizeof (hashtable));
 
     if (capacity < INITIAL_CAPACITY)
         capacity = INITIAL_CAPACITY;
@@ -50,8 +108,7 @@ hashtable* hashtable_init(int capacity)
     table->threshold = capacity * LOAD_FACTOR;
     table->count = 0;
 
-    // TODO(timo): Check for alloc failure or use xmalloc
-    table->entries = malloc(capacity * sizeof (hashtable_entry));
+    table->entries = xmalloc(capacity * sizeof (hashtable_entry));
     memset(table->entries, 0, capacity * sizeof (hashtable_entry));
 
     return table;
@@ -103,7 +160,7 @@ static void hashtable_resize(hashtable* table)
     table->capacity *= GROWTH_FACTOR;
     table->threshold = table->capacity * LOAD_FACTOR;
     table->count = 0;
-    table->entries = malloc(table->capacity * sizeof (hashtable_entry));
+    table->entries = xmalloc(table->capacity * sizeof (hashtable_entry));
     memset(table->entries, 0, table->capacity * sizeof (hashtable_entry));
     
     for (int i = 0; i < old_capacity; i++)
@@ -121,7 +178,7 @@ static void hashtable_resize(hashtable* table)
 }
 
 
-void* hashtable_get(hashtable* table, const char* key)            
+void* hashtable_get(const hashtable* table, const char* key)            
 {
     size_t key_length = strlen(key);
     uint32_t hash = fnv1a_hash(key);
@@ -159,8 +216,7 @@ void hashtable_put(hashtable* table, const char* key, void* value)
         }
         if (entry->key == NULL)
         {
-            // TODO(timo): Check for failed allocation
-            entry->key = malloc(key_length * sizeof (char) + 1);
+            entry->key = xmalloc(key_length * sizeof (char) + 1);
             memcpy(entry->key, key, key_length); 
             entry->key[key_length] = 0;
             entry->value = value;
@@ -173,7 +229,7 @@ void hashtable_put(hashtable* table, const char* key, void* value)
 }
 
 
-bool hashtable_contains(hashtable* table, const char* key)
+const bool hashtable_contains(const hashtable* table, const char* key)
 {
     size_t key_length = strlen(key);
     uint32_t hash = fnv1a_hash(key);
