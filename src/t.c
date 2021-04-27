@@ -281,8 +281,6 @@ void compile(const char* source, struct Options options)
     if (options.show_summary)
         printf("OK\n");
 
-    // TODO(timo): IR runner could run/interpret the created IR code if there is option set for that
-
     if (options.show_asm)
     {
         // Cat the created assembly file

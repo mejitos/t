@@ -93,14 +93,21 @@ void print_diagnostics(array* diagnostic);
 void print_diagnostic(Diagnostic* diagnostic);
 
 
-//  Options
+// Struture for compiler options which are parsed at the beginning of the
+// program and will be passed to the compilation functions.
 //
-//  Fields
-//      program:
-//      show_summary:
-//      show_symbols:
-//      show_ir:
-//      show_asm:
+// Fields
+//      program: Pointer to the name of the program.
+//      source_file: Pointer to the source file path.
+//      interpret: If the source file will be interpreted instead of being 
+//                 compiled.
+//      interpret_ast: If the tree walker interpreter is used.
+//      interpret_ir: If the IR runner/interpreter is used. NOT IMPLEMENTED.
+//      show_summary: If the summary of the compilation is printed at the end.
+//      show_symbols: If the symbols of the symbol table are printed after 
+//                    resolving stage.
+//      show_ir: If the IR instructions are printed after generating them.
+//      show_asm: If the generated assembly file is printed.
 struct Options
 {
     const char* program;
@@ -117,29 +124,34 @@ struct Options
 };
 
 
-//
-//
-//
-void parse_options(struct Options* options, int* argc, char*** argv);
-
-
-//
+// Parses command line arguments and creates options for compiler.
 //
 // File(s): t.c
 //
 // Arguments
-//      source:
-//      options:
+//      options: Pointer to Options structure.
+//      argc: Pointer to the argument count.
+//      argv: Pointer to the argument vector.
+void parse_options(struct Options* options, int* argc, char*** argv);
+
+
+// Compiles the program from a source string.
+//
+// File(s): t.c
+//
+// Arguments
+//      source: Pointer to the source string to be compiled.
+//      options: Options structure as compiler options.
 void compile(const char* source, struct Options options);
 
 
-//
+// Compiles the program from a source file.
 //
 // File(s): t.c
 //
 // Arguments
 //      path:
-//      options:
+//      options: Options structure as compiler options.
 void compile_from_file(const char* path, struct Options options);
 
 
