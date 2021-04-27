@@ -13,6 +13,18 @@ const bool value_is_integer(const Value value)
 }
 
 
+const bool value_is_not_boolean(const Value value)
+{
+    return value.type != VALUE_BOOLEAN;
+}
+
+
+const bool value_is_not_integer(const Value value)
+{
+    return value.type != VALUE_INTEGER;
+}
+
+
 const char* value_str(const Value_Type type)
 {
     switch (type)
