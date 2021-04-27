@@ -153,7 +153,7 @@ void type_free(Type* type)
             // NOTE(timo): Return types are primitive types at this point so there 
             // is no need to explicitly remove them as they point to type table
             // NOTE(timo): The parameter list is a list of pointers to symbols
-            // which are being freed elsewhere
+            // which are being freed with the scope.
             array_free(type->function.parameters);
             break;
         case TYPE_ARRAY:
