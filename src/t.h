@@ -1,39 +1,57 @@
+//
+// TODO(timo): Filedocstring
+//
+// File(s):
+//      ast.c
+//      code_generator.c
+//      diagnostics.c
+//      intruction.c
+//      interpreter.c
+//      ir_generator.c
+//      ir_runner.c
+//      lexer.c
+//      parser.c
+//      resolver.c
+//      scope.c
+//      symbol.c
+//      token.c
+//      type.c
+//      value.c
+
 #ifndef t_header
 #define t_header
 
-#include <stdio.h>      // for printing and stuff
-#include <stdlib.h>     // for allocs, exit
-#include <assert.h>     // for assertions
-#include <stdbool.h>    // for bool data type
-#include <limits.h>     // for integer overflow check
-#include <string.h>     // for memcpy, memcmp etc
-#include <stdarg.h>     // for varargs
-
-#include "array.h"      // for my dynamic arrays
+#include "array.h"          // for dynamic array implementation
 #include "stringbuilder.h"  // for my stringbuilder
-#include "hashtable.h"  // for my hashtable implementation
-#include "memory.h"     // for custom x-allocators
-#include "common.h"
+#include "hashtable.h"      // for hashtable implementation
+#include "memory.h"         // for custom x-allocators
+#include "common.h"         // for general utility functions
+
+#include <stdio.h>          // for printing and stuff
+#include <stdlib.h>         // for allocs, exit
+#include <assert.h>         // for assertions
+#include <stdbool.h>        // for bool data type
+#include <limits.h>         // for integer overflow check
+#include <string.h>         // for memcpy, memcmp etc
+#include <stdarg.h>         // for varargs
 
 
-/*
- *  Type definitions
- */
-typedef struct Position Position;
+// Type definitions
+//
+// List of type definitions forward declared just so they can be used everywhere.
 typedef struct Type Type;
-typedef struct Value Value;
 typedef struct Scope Scope;
 typedef struct AST_Declaration AST_Declaration;
 typedef struct AST_Statement AST_Statement;
 typedef struct AST_Expression AST_Expression;
 
 
-/*
- *  Options
- *
- *  Fields
- *      program:
- */
+//
+//  Options
+//
+//  Fields
+//      program:
+
 typedef struct Options
 {
     bool flag_verbose;
@@ -41,34 +59,34 @@ typedef struct Options
 } Options;
 
 
-/*
- *  General position struct for everyone to use
- *
- *  Since for now we will only support compiling of single file, there is no need to add the
- *  file attribute for the position at this stage. Maybe later.
- *
- *  Fields
- *      line_start:
- *      column_start:
- *      line_end:
- *      column_end:
- */
-struct Position
+//
+//  General position struct for everyone to use
+//
+//  Since for now we will only support compiling of single file, there is no need to add the
+//  file attribute for the position at this stage. Maybe later.
+//
+//  Fields
+//      line_start:
+//      column_start:
+//      line_end:
+//      column_end:
+
+typedef struct Position
 {
     int line_start;
     int column_start;
     int line_end;
     int column_end;
-};
+} Position;
 
 
-/*
- *  Diagnostics
- *
- *  File(s): diagnostics.c
- *
- *
- */
+//
+//  Diagnostics
+//
+//  File(s): diagnostics.c
+//
+//
+
 typedef enum Diagnostic_Kind
 {
     DIAGNOSTIC_ERROR,
@@ -90,18 +108,18 @@ void print_diagnostics(array* diagnostic);
 void print_diagnostic(Diagnostic* diagnostic);
 
 
-/*
- *  The main routine of the compiler called from the entry point main.c
- *
- *  File: t.c
- */
+//
+//  The main routine of the compiler called from the entry point main.c
+//
+//  File: t.c
+
 void compile(const char* source, Options options);
 void compile_from_file(const char* path, Options options);
 
 
-/*
- *  Token related stuff
- */
+//
+//  Token related stuff
+
 typedef enum Token_Kind
 {
     TOKEN_EOF,
@@ -140,10 +158,10 @@ typedef enum Token_Kind
 } Token_Kind;
 
 
-/*
- *  Represents the analyzed lexeme and its attributes from the source file
- *
- */
+//
+//  Represents the analyzed lexeme and its attributes from the source file
+//
+
 typedef struct Token 
 {
     Token_Kind kind;
@@ -153,17 +171,17 @@ typedef struct Token
 } Token;
 
 
-/*
- *  Allocator for basic token
- *
- *  File: token.c
- */
+//
+//  Allocator for basic token
+//
+//  File: token.c
+
 Token* token(Token_Kind kind, const char* lexeme, int lexeme_length, Position position);
 
 
-/*
- *  Lexer stuff
- */
+//
+//  Lexer stuff
+
 typedef struct Lexer
 {
     const char* stream;
@@ -173,19 +191,18 @@ typedef struct Lexer
 } Lexer;
 
 
-/*
- *  File: lexer.c
- */
+//
+//  File: lexer.c
+
 void lexer_init(Lexer* lexer, const char* source);
 void lexer_free(Lexer* lexer);
 void lex(Lexer* lexer);
 
 
-/*
- *  Value
- *
- *  File: value.c
- */
+// Enumeration of different value types to separate different kind of Value
+// structures from each other.
+//
+// VALUE_NONE is not used for anything right now.
 typedef enum Value_Type
 {
     VALUE_NONE,
@@ -194,38 +211,60 @@ typedef enum Value_Type
 } Value_Type;
 
 
-struct Value
+// Returns the string representation of the Value_Type.
+//
+// File(s): value.c
+//
+// Arguments
+//      type: Value_Type to be represented as string.
+const char* value_str(const Value_Type type);
+
+
+// Value represents values of primitive datatypes boolean and integer. Values
+// are separated from each other with the Value_Type enumeration. This
+// structure is used for easier evaluation of the values and passing them 
+// around.
+//
+// Fields
+//      type: Type of the value.
+//      integer: The actual integer value if the value is type of integer.
+//      boolean: The actual boolean value if the value is type of boolean.
+typedef struct Value
 {
     Value_Type type;
     union {
         int64_t integer;
         bool boolean;
     };
-};
-
-/*
-bool is_type(Value value, Value_Type type);
-bool is_int(Value value);
-bool is_bool(Value value);
-*/
-bool value_as_boolean(Value value);
-bool value_as_integer(Value value);
-const char* value_str(Value_Type type);
+} Value;
 
 
-/*
- *  AST stuff
- *
- *  File: ast.c
- */
-typedef enum Declaration_Kind
-{
-    DECLARATION_NONE,
-    DECLARATION_VARIABLE,
-    DECLARATION_FUNCTION,
-} Declaration_Kind;
+// Checks whether the value is certain type or not.
+//
+// File(s): value.c
+//
+// Arguments
+//      value: Value structure to be checked.
+// Returns
+//      Value true if the Value is the correct type, otherwise false.
+const bool value_is_int(const Value value);
+const bool value_is_bool(const Value value);
 
 
+//
+//  AST stuff
+//
+//  File: ast.c
+
+// Enumeration reperesenting type specifiers used with declarations.
+// 
+// Type specifier is just a enum even though it could also have a struct
+// representation for more complex type like arrays for example. But since
+// we only have two type specifiers and the only compound type we have, is
+// array of integers used in the argument vector, we can use this simple
+// enumeration representation of type specifiers.
+//
+// TYPE_SPECIFIER_NONE is not used for anything right now.
 typedef enum Type_Specifier
 {
     TYPE_SPECIFIER_NONE,
@@ -235,6 +274,21 @@ typedef enum Type_Specifier
 } Type_Specifier;
 
 
+//
+//
+//
+typedef enum Declaration_Kind
+{
+    DECLARATION_NONE,
+    DECLARATION_VARIABLE,
+    DECLARATION_FUNCTION,
+} Declaration_Kind;
+
+
+//
+//
+//
+//
 struct AST_Declaration
 {
     Declaration_Kind kind;
@@ -377,11 +431,11 @@ void statement_free(AST_Statement* statement);
 void expression_free(AST_Expression* expression);
 
 
-/*
- *  Parser
- *  
- *  File: parser.c
- */
+//
+//  Parser
+//  
+//  File: parser.c
+
 typedef struct Parser
 {
     array* diagnostics;
@@ -404,10 +458,10 @@ AST_Statement* parse_statement(Parser* parser);
 AST_Declaration* parse_declaration(Parser* parser);
 
 
-/*
- *  Type
- *
- */
+//
+//  Type
+//
+
 typedef enum Type_Kind
 {
     TYPE_NONE,
@@ -452,14 +506,14 @@ const char* type_as_string(Type_Kind kind);
 void type_table_free(hashtable* table);
 
 
-/*
- *  Operand
- *
- *  Used to tie the type and the value together when resolving expressions
- *  and having most use when doing constant folding.
- *  
- *  HOX! Not used for anything at the moment!
- */
+//
+//  Operand
+//
+//  Used to tie the type and the value together when resolving expressions
+//  and having most use when doing constant folding.
+//  
+//  HOX! Not used for anything at the moment!
+
 typedef struct Operand
 {
     Type* type;
@@ -467,10 +521,10 @@ typedef struct Operand
 } Operand;
 
 
-/*
- *  Symbol stuff
- *
- */
+//
+//  Symbol stuff
+//
+
 typedef enum Symbol_Kind
 {
     SYMBOL_NONE,
@@ -481,9 +535,9 @@ typedef enum Symbol_Kind
 } Symbol_Kind;
 
 
-/*
- *  Symbol state is not in use at the moment.
- */
+//
+//  Symbol state is not in use at the moment.
+
 typedef enum Symbol_State
 {
     STATE_UNRESOLVED,
@@ -492,11 +546,11 @@ typedef enum Symbol_State
 } Symbol_State;
 
 
-/*
- *  - identifier comes from AST nodes and it is being free'd when AST nodes are freed
- *  - the type is free'd by type table if it is primitive type, else symbol has the
- *  responsibility of freeing the type
- */
+//
+//  - identifier comes from AST nodes and it is being free'd when AST nodes are freed
+//  - the type is free'd by type table if it is primitive type, else symbol has the
+//  responsibility of freeing the type
+
 typedef struct Symbol
 {
     Symbol_Kind kind;
@@ -520,11 +574,11 @@ Symbol* symbol_function(Scope* scope, const char* identifier, Type* type);
 void symbol_free(Symbol* symbol);
 
 
-/*
- *  Scope
- *
- *  File: scope.c
- */
+//
+//  Scope
+//
+//  File: scope.c
+
 struct Scope
 {
     const char* name;
@@ -543,11 +597,11 @@ bool scope_contains(Scope* scope, const char* identifier);
 void dump_scope(Scope* scope, int indentation);
 
 
-/*
- *  Resolver
- *  
- *  File: resolver.c
- */
+//
+//  Resolver
+//  
+//  File: resolver.c
+
 typedef struct Resolver
 {
     array* diagnostics;
@@ -572,11 +626,11 @@ Type* resolve_type_specifier(Resolver* resolver, Type_Specifier specifier);
 void resolve(Resolver* resolver, array* declarations);
 
 
-/*
- *  Interpreter
- *
- *  File: interpreter.c
- */
+//
+//  Interpreter
+//
+//  File: interpreter.c
+
 typedef struct Interpreter
 {
     // array* declarations;
@@ -600,12 +654,12 @@ Value interpret(const char* source);
 Value interpret_from_file(const char* path);
 
 
-/*
- *  Intermediate representation
- *
- *  File(s): ir_generator.c
- *           ir_runner.c
- */
+//
+//  Intermediate representation
+//
+//  File(s): ir_generator.c
+//           ir_runner.c
+
 typedef enum Operation
 {
     OP_NOOP,
@@ -644,27 +698,27 @@ typedef enum Operation
 } Operation;
 
 
-/*
- *  Returns a string representation of Operation
- *
- *  Arguments
- *      operation: Operation
- */
+//
+//  Returns a string representation of Operation
+//
+//  Arguments
+//      operation: Operation
+
 const char* operation_str(Operation operation);
 
 
-/*
- *  NOTE(timo): Address can be a name, a constant or a compiler generated temporary
- *  These are pretty much the operands used in some literature
- *
- *  TODO(timo): Addresses are not used in Instructions for now
- *
- *  Fields
- *      name:       program name, pointer to the names symbol table entry where 
- *                  all the information of the name is kept
- *      constant:   constant value but seems like it can be a variable too?
- *      label:      just label
- */
+//
+//  NOTE(timo): Address can be a name, a constant or a compiler generated temporary
+//  These are pretty much the operands used in some literature
+//
+//  TODO(timo): Addresses are not used in Instructions for now
+//
+//  Fields
+//      name:       program name, pointer to the names symbol table entry where 
+//                  all the information of the name is kept
+//      constant:   constant value but seems like it can be a variable too?
+//      label:      just label
+
 typedef struct Address
 {
     // TODO(timo): I think we don't need this abstraction, since the goal is
@@ -678,17 +732,17 @@ typedef struct Address
 } Address;
 
 
-/*
- *  Represents a single instruction of the intermediate reperesentation
- *
- *  Fields
- *      operation:
- *      arg1:
- *      arg2:
- *      result:
- *      size:
- *      label:
- */
+//
+//  Represents a single instruction of the intermediate reperesentation
+//
+//  Fields
+//      operation:
+//      arg1:
+//      arg2:
+//      result:
+//      size:
+//      label:
+
 typedef struct Instruction 
 {
     Operation operation;
@@ -730,43 +784,43 @@ Instruction* instruction_goto_if_false(char* arg, char* label);
 Instruction* instruction_dereference(char* arg, char* result, int offset);
 
 
-/*
- * Frees the memory allocated for instruction
- *
- * Arguments
- *      instruction: Instruction to be freed
- */
+//
+// Frees the memory allocated for instruction
+//
+// Arguments
+//      instruction: Instruction to be freed
+
 void instruction_free(Instruction* instruction);
 
 
-/*
- * Prints the instruction to terminal/console
- *
- * Arguments
- *      instruction: Instruction to be printed
- */
+//
+// Prints the instruction to terminal/console
+//
+// Arguments
+//      instruction: Instruction to be printed
+
 void dump_instruction(Instruction* instruction);
 
 
-/*
- * Prints all instructions from array to terminal/console
- *
- * Arguments
- *      instructions: Array of instructions to be printed
- */
+//
+// Prints all instructions from array to terminal/console
+//
+// Arguments
+//      instructions: Array of instructions to be printed
+
 void dump_instructions(array* instructions);
 
 
 
 
-/*
- *  Code in basic block has only one entry point and one exit point, meaning
- *  there is no jump destinations inside the block and that only last instruction
- *  can start executing next block
- *
- *  TODO(timo): Basic blocks are not implemented for now.
- *
- */
+//
+//  Code in basic block has only one entry point and one exit point, meaning
+//  there is no jump destinations inside the block and that only last instruction
+//  can start executing next block
+//
+//  TODO(timo): Basic blocks are not implemented for now.
+//
+
 typedef struct Basic_Block
 {
     // start, end?
@@ -826,16 +880,16 @@ void ir_generate_declaration(IR_Generator* generator, AST_Declaration* declarati
 void dump_instructions(array* instructions);
 
 
-/*
- *  Code generation
- *
- *  Fields
- *      output:
- *      instructions:
- *      diagnostics:
- *      global:
- *      local:
- */
+//
+//  Code generation
+//
+//  Fields
+//      output:
+//      instructions:
+//      diagnostics:
+//      global:
+//      local:
+
 typedef struct Code_Generator
 {
     FILE* output;
