@@ -56,8 +56,10 @@ static inline void enter_scope(Resolver* resolver, const char* name)
 
 static inline void leave_scope(Resolver* resolver)
 {
-    // resolver->local = resolver->global;
     resolver->local = resolver->local->enclosing;
+
+    // TODO(timo): This should be removed after more flexible scoping is added
+    assert(resolver->local == resolver->global);
 }
 
 
@@ -91,8 +93,6 @@ static Type* resolve_literal_expression(Resolver* resolver, AST_Expression* expr
                         DIAGNOSTIC_ERROR, expression->position,
                         ":RESOLVER - OverflowError: Integer overflow in integer literal. Maximum integer value is abs(2147483647)");
                     array_push(resolver->diagnostics, _diagnostic);
-
-                    // TODO(timo): Return none type?
                     break;
                 }
 
@@ -116,7 +116,7 @@ static Type* resolve_literal_expression(Resolver* resolver, AST_Expression* expr
 
             type = hashtable_get(resolver->type_table, "bool");
             value = (Value){ .type = VALUE_BOOLEAN,
-                              .boolean = boolean_value };
+                             .boolean = boolean_value };
             break;
         }
         default:
@@ -151,16 +151,13 @@ static Type* resolve_unary_expression(Resolver* resolver, AST_Expression* expres
     {
         case TOKEN_PLUS:
         {
-            if (operand_type->kind != TYPE_INTEGER)
+            if (type_is_not_integer(operand_type))
             {
                 Diagnostic* _diagnostic = diagnostic(
                     DIAGNOSTIC_ERROR, expression->position,
                     ":RESOLVER - TypeError: Unsupported operand type '%s' for unary '+'",
                     type_as_string(operand_type->kind));
                 array_push(resolver->diagnostics, _diagnostic);
-
-                // TODO(timo): Return none type?
-                break;
             }
             /*
             if (operand->kind == EXPRESSION_LITERAL && operand->value.integer > INTEGER_MAX)
@@ -179,16 +176,13 @@ static Type* resolve_unary_expression(Resolver* resolver, AST_Expression* expres
         }
         case TOKEN_MINUS:
         {
-            if (operand_type->kind != TYPE_INTEGER)
+            if (type_is_not_integer(operand_type))
             {
                 Diagnostic* _diagnostic = diagnostic(
                     DIAGNOSTIC_ERROR, expression->position,
                     ":RESOLVER - TypeError: Unsupported operand type '%s' for unary '-'",
                     type_as_string(operand_type->kind));
                 array_push(resolver->diagnostics, _diagnostic);
-
-                // TODO(timo): Return none type?
-                break;
             }
             /*
             if (operand->kind == EXPRESSION_LITERAL && operand->value.integer > INTEGER_MIN)
@@ -207,15 +201,13 @@ static Type* resolve_unary_expression(Resolver* resolver, AST_Expression* expres
         }
         case TOKEN_NOT:
         {
-            if (operand_type->kind != TYPE_BOOLEAN)
+            if (type_is_not_boolean(operand_type))
             {
                 Diagnostic* _diagnostic = diagnostic(
                     DIAGNOSTIC_ERROR, expression->position,
                     ":RESOLVER - TypeError: Unsupported operand type '%s' for unary 'not'",
                     type_as_string(operand_type->kind));
                 array_push(resolver->diagnostics, _diagnostic);
-
-                // TODO(timo): Return none type?
             }
             // TODO(timo): Do we need values to every expression or do we just keep them in literal and unary?
             expression->value = operand->value;
@@ -229,8 +221,6 @@ static Type* resolve_unary_expression(Resolver* resolver, AST_Expression* expres
                 ":RESOLVER - Unreachable: Invalid unary operator '%s'",
                 _operator->lexeme);
             array_push(resolver->diagnostics, _diagnostic);
-
-            // TODO(timo): Return none type?
             break;
         }
     }
@@ -256,7 +246,7 @@ static Type* resolve_binary_expression(Resolver* resolver, AST_Expression* expre
         case TOKEN_MULTIPLY:
         case TOKEN_DIVIDE:
         {
-            if (type_left->kind != TYPE_INTEGER || type_right->kind != TYPE_INTEGER)
+            if (type_is_not_integer(type_left) || type_is_not_integer(type_right))
             {
                 Diagnostic* _diagnostic = diagnostic(
                     DIAGNOSTIC_ERROR, expression->position,
@@ -264,6 +254,8 @@ static Type* resolve_binary_expression(Resolver* resolver, AST_Expression* expre
                     type_as_string(type_left->kind), type_as_string(type_right->kind), _operator->lexeme);
                 array_push(resolver->diagnostics, _diagnostic);
 
+                // TODO(timo): These none types create a lot of useless error messages in error situations
+                // so consider just removing them
                 type = hashtable_get(resolver->type_table, "none");
             }
             else
@@ -274,8 +266,8 @@ static Type* resolve_binary_expression(Resolver* resolver, AST_Expression* expre
         case TOKEN_IS_EQUAL:
         case TOKEN_NOT_EQUAL:
         {
-            if ((type_left->kind == TYPE_INTEGER && type_right->kind != TYPE_INTEGER) || 
-                (type_left->kind == TYPE_BOOLEAN && type_right->kind != TYPE_BOOLEAN))
+            if ((type_is_integer(type_left) && type_is_not_integer(type_right)) ||
+                (type_is_boolean(type_left) && type_is_not_boolean(type_right)))
             {
                 Diagnostic* _diagnostic = diagnostic(
                     DIAGNOSTIC_ERROR, expression->position,
@@ -283,6 +275,8 @@ static Type* resolve_binary_expression(Resolver* resolver, AST_Expression* expre
                     type_as_string(type_left->kind), type_as_string(type_right->kind), _operator->lexeme);
                 array_push(resolver->diagnostics, _diagnostic);
 
+                // TODO(timo): These none types create a lot of useless error messages in error situations
+                // so consider just removing them
                 type = hashtable_get(resolver->type_table, "none");
             }
             else
@@ -295,9 +289,9 @@ static Type* resolve_binary_expression(Resolver* resolver, AST_Expression* expre
         case TOKEN_GREATER_THAN:
         case TOKEN_GREATER_THAN_EQUAL:
         {
-            // TODO(timo): Operand/values has to be scalar types e.g. integers
-            // in this case for the ordering expression
-            if (type_left->kind != TYPE_INTEGER || type_right->kind != TYPE_INTEGER)
+            // Operand/values has to be scalar types e.g. integers in this 
+            // case for the relational expression
+            if (type_is_not_integer(type_left) || type_is_not_integer(type_right))
             {
                 Diagnostic* _diagnostic = diagnostic(
                     DIAGNOSTIC_ERROR, expression->position,
@@ -305,6 +299,8 @@ static Type* resolve_binary_expression(Resolver* resolver, AST_Expression* expre
                     type_as_string(type_left->kind), type_as_string(type_right->kind), _operator->lexeme);
                 array_push(resolver->diagnostics, _diagnostic);
 
+                // TODO(timo): These none types create a lot of useless error messages in error situations
+                // so consider just removing them
                 type = hashtable_get(resolver->type_table, "none");
             }
             else
@@ -315,7 +311,7 @@ static Type* resolve_binary_expression(Resolver* resolver, AST_Expression* expre
         case TOKEN_AND:
         case TOKEN_OR:
         {
-            if (type_left->kind != TYPE_BOOLEAN || type_right->kind != TYPE_BOOLEAN)
+            if (type_is_not_boolean(type_left) || type_is_not_boolean(type_right))
             {
                 Diagnostic* _diagnostic = diagnostic(
                     DIAGNOSTIC_ERROR, expression->position,
@@ -323,6 +319,8 @@ static Type* resolve_binary_expression(Resolver* resolver, AST_Expression* expre
                     type_as_string(type_left->kind), type_as_string(type_right->kind), _operator->lexeme);
                 array_push(resolver->diagnostics, _diagnostic);
 
+                // TODO(timo): These none types create a lot of useless error messages in error situations
+                // so consider just removing them
                 type = hashtable_get(resolver->type_table, "none");
             }
             else
@@ -338,6 +336,8 @@ static Type* resolve_binary_expression(Resolver* resolver, AST_Expression* expre
                 _operator->lexeme);
             array_push(resolver->diagnostics, _diagnostic);
 
+            // TODO(timo): These none types create a lot of useless error messages in error situations
+            // so consider just removing them
             type = hashtable_get(resolver->type_table, "none");
             break;
         }
@@ -362,6 +362,8 @@ static Type* resolve_variable_expression(Resolver* resolver, AST_Expression* exp
             expression->identifier->lexeme);
         array_push(resolver->diagnostics, _diagnostic);
         
+        // TODO(timo): These none types create a lot of useless error messages in error situations
+        // so consider just removing them
         type = hashtable_get(resolver->type_table, "none");
     }
     else
@@ -379,7 +381,7 @@ static Type* resolve_assignment_expression(Resolver* resolver, AST_Expression* e
     Type* variable_type = resolve_expression(resolver, expression->assignment.variable);
     Type* value_type = resolve_expression(resolver, expression->assignment.value);
     
-    if (variable_type->kind != value_type->kind)
+    if (types_not_equal(variable_type, value_type))
     {
         Diagnostic* _diagnostic = diagnostic(
             DIAGNOSTIC_ERROR, expression->position,
@@ -387,6 +389,8 @@ static Type* resolve_assignment_expression(Resolver* resolver, AST_Expression* e
             type_as_string(variable_type->kind), type_as_string(value_type->kind));
         array_push(resolver->diagnostics, _diagnostic);
 
+        // TODO(timo): These none types create a lot of useless error messages in error situations
+        // so consider just removing them
         type = hashtable_get(resolver->type_table, "none");
     }
     else
@@ -410,7 +414,7 @@ static Type* resolve_index_expression(Resolver* resolver, AST_Expression* expres
     Symbol* symbol = scope_lookup(resolver->local, variable->identifier->lexeme);
 
     // Make sure the subscript target is an array type
-    if (variable_type->kind != TYPE_ARRAY)
+    if (type_is_not_array(variable_type))
     {
         // NOTE(timo): There is possibility that the variable is a whole lot of other things
         // than just a variable. It can be literal, function etc. so we cannot print just the 
@@ -421,19 +425,25 @@ static Type* resolve_index_expression(Resolver* resolver, AST_Expression* expres
             type_as_string(variable_type->kind));
         array_push(resolver->diagnostics, _diagnostic);
 
+        // TODO(timo): These none types create a lot of useless error messages in error situations
+        // so consider just removing them
         type = hashtable_get(resolver->type_table, "none");
         goto end;
     }
 
     // TODO(timo): These checks for the argv and main are only for this stage of the 
     // compiler/language where we have arrays only for the argv of the main program
-    if ((symbol != NULL && strcmp(symbol->identifier, "argv") != 0) || strcmp(resolver->local->name, "main") != 0)
+    // TODO(timo): Create str_not_equal() function
+    // TODO(timo): str_equal is also a better name
+    if ((symbol != NULL && ! str_equals(symbol->identifier, "argv")) || ! str_equals(resolver->local->name, "main"))
     {
         Diagnostic* _diagnostic = diagnostic(
             DIAGNOSTIC_ERROR, expression->position,
             ":RESOLVER - Error: You cannot use index expressions with other values than argv of the main function");
         array_push(resolver->diagnostics, _diagnostic);
 
+        // TODO(timo): These none types create a lot of useless error messages in error situations
+        // so consider just removing them
         type = hashtable_get(resolver->type_table, "none");
         goto end;
     }
@@ -441,7 +451,7 @@ static Type* resolve_index_expression(Resolver* resolver, AST_Expression* expres
     // Make sure that the type of the expression is integer
     Type* index_type = resolve_expression(resolver, expression->index.value);
     
-    if (index_type->kind != TYPE_INTEGER)
+    if (type_is_not_integer(index_type))
     {
         Diagnostic* _diagnostic = diagnostic(
             DIAGNOSTIC_ERROR, expression->position,
@@ -449,6 +459,8 @@ static Type* resolve_index_expression(Resolver* resolver, AST_Expression* expres
             variable->identifier->lexeme);
         array_push(resolver->diagnostics, _diagnostic);
 
+        // TODO(timo): These none types create a lot of useless error messages in error situations
+        // so consider just removing them
         type = hashtable_get(resolver->type_table, "none");
         goto end;
     }
@@ -466,6 +478,8 @@ static Type* resolve_index_expression(Resolver* resolver, AST_Expression* expres
             variable->identifier->lexeme);
         array_push(resolver->diagnostics, _diagnostic);
 
+        // TODO(timo): These none types create a lot of useless error messages in error situations
+        // so consider just removing them
         type = hashtable_get(resolver->type_table, "none");
         goto end;
     }
@@ -554,7 +568,7 @@ static Type* resolve_call_expression(Resolver* resolver, AST_Expression* express
     Symbol* symbol = scope_lookup(resolver->local, expression->call.variable->identifier->lexeme);
 
     // Make sure the called variable is actually callable - a function in our case
-    if (type->kind == TYPE_FUNCTION)
+    if (type_is_function(type))
     {
         // Number of arguments == arity of the called function
         if (symbol->type->function.arity != arguments->length)
@@ -576,7 +590,7 @@ static Type* resolve_call_expression(Resolver* resolver, AST_Expression* express
             Type* argument_type = resolve_expression(resolver, argument);
             Type* parameter_type = parameter->type;
 
-            if (argument_type->kind != parameter_type->kind)
+            if (types_not_equal(argument_type, parameter_type))
             {
                 Diagnostic* _diagnostic = diagnostic(
                     DIAGNOSTIC_ERROR, expression->position,
@@ -668,7 +682,7 @@ void resolve_if_statement(Resolver* resolver, AST_Statement* statement)
 {
     Type* condition = resolve_expression(resolver, statement->_if.condition);
 
-    if (condition->kind != TYPE_BOOLEAN)
+    if (type_is_not_boolean(condition))
     {
         printf("Conditional expression must produce boolean value\n");
         exit(1);
@@ -685,7 +699,7 @@ void resolve_while_statement(Resolver* resolver, AST_Statement* statement)
 {
     Type* condition = resolve_expression(resolver, statement->_while.condition);
 
-    if (condition->kind != TYPE_BOOLEAN)
+    if (type_is_not_boolean(condition))
     {
         printf("Conditional expression must produce boolean value\n");
         exit(1);
@@ -821,7 +835,7 @@ void resolve_variable_declaration(Resolver* resolver, AST_Declaration* declarati
 
     // TODO(timo): If the resolved type is a function, we have to compare the type
     // to the return type of the function
-    if (expected_type->kind != actual_type->kind)
+    if (types_not_equal(actual_type, expected_type))
     {
         // TODO(timo): Error
         AST_Expression* initializer = declaration->initializer;
@@ -836,7 +850,7 @@ void resolve_variable_declaration(Resolver* resolver, AST_Declaration* declarati
     
     // TODO(timo): Set value for a global variable, but this solution kinda sucks
     // just a hacky solution to get things going for now
-    if (strcmp(resolver->local->name, "global") == 0)
+    if (str_equals(resolver->local->name, "global"))
         symbol->value = declaration->initializer->value;
     
     // TODO(timo): Should we take the responsibility of declaring errors of
@@ -864,7 +878,7 @@ void resolve_function_declaration(Resolver* resolver, AST_Declaration* declarati
     Type* actual_type = resolve_expression(resolver, declaration->initializer);
    
     // The type has to be a function type
-    if (actual_type->kind != TYPE_FUNCTION)
+    if (type_is_not_function(actual_type))
     {
         printf("Expected function type, got something else\n");
         exit(1);
@@ -875,7 +889,8 @@ void resolve_function_declaration(Resolver* resolver, AST_Declaration* declarati
     // the function should return something and it should be the correct type so
     // this kind of disregarding the "none" type is probably not good. For now it will
     // be just a resolving-stage type only so this is somewhat justified
-    if (expected_type->kind != actual_type->function.return_type->kind && actual_type->function.return_type->kind != TYPE_NONE)
+    if (types_not_equal(actual_type->function.return_type, expected_type) && 
+        type_is_not_none(actual_type->function.return_type))
     {
         // TODO(timo): Error
         printf("Conflicting types in function declaration\n");
@@ -918,11 +933,6 @@ void resolve_declaration(Resolver* resolver, AST_Declaration* declaration)
 
 void resolve(Resolver* resolver, array* declarations)
 {
-    // TODO(timo): We probably should create a abstraction for the program itself
-    // The program is probably not needed, but we still should handle the program
-    // arguments somehow and it is probably best done in here
     for (int i = 0; i < declarations->length; i++)
-    {
         resolve_declaration(resolver, declarations->items[i]);
-    }
 }
