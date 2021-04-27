@@ -51,7 +51,6 @@ typedef struct AST_Expression AST_Expression;
 //
 //  Fields
 //      program:
-
 typedef struct Options
 {
     bool flag_verbose;
@@ -241,14 +240,20 @@ typedef struct Value
 
 // Checks whether the value is certain type or not.
 //
+// There is functions for both true and false situations, just because it reads
+// a lot more nicely instead of using the discrete and ugly !-operator.
+//
 // File(s): value.c
 //
 // Arguments
 //      value: Value structure to be checked.
 // Returns
-//      Value true if the Value is the correct type, otherwise false.
-const bool value_is_int(const Value value);
-const bool value_is_bool(const Value value);
+//      Value true if the Value is the correct type according to the function, 
+//      otherwise false.
+const bool value_is_integer(const Value value);
+const bool value_is_boolean(const Value value);
+const bool value_is_not_boolean(const Value value);
+const bool value_is_not_integer(const Value value);
 
 
 //
@@ -458,10 +463,7 @@ AST_Statement* parse_statement(Parser* parser);
 AST_Declaration* parse_declaration(Parser* parser);
 
 
-//
-//  Type
-//
-
+// Enumeration of different types to separate types from each other
 typedef enum Type_Kind
 {
     TYPE_NONE,
@@ -472,11 +474,39 @@ typedef enum Type_Kind
 } Type_Kind;
 
 
+// Returns the string representation of the Type_Kind.
+//
+// File(s): type.c
+//
+// Arguments
+//      kind: Type_Kind to be represented as string.
+const char* type_as_string(const Type_Kind kind);
+
+
+// Structure representing types and their sizes, alignments etc. necessary
+// info used later for type checking and for allocating and aligning the 
+// memory correctly.
+//
+// Fields
+//      kind: Kind of the type
+//      size: Size of the type. At this point every type is 8 bytes to make
+//            things more simple.
+//      alignment: Alignment of the type. At this point everything is aligned
+//                 to 8 bytes to make things more simple.
+//      function:
+//          return_type: Type of the value returned by the function.
+//          arity: How many arguments the function takes.
+//          parameters: Parameters of the function if there is any.
+//          scope: Functions local scope.
+//      array:
+//          element_type: Type of the elements in the array.
+//          length: Length/size of the array. Not in any use at this point
+//                  because there is no general arrays in the language. The
+//                  only usable array argv will be set at runtime.
 struct Type
 {
     Type_Kind kind;
     size_t size;
-    // int offset; // alignment?
     int alignment;
 
     union {
@@ -486,8 +516,6 @@ struct Type
             array* parameters; // array of pointers to parameter symbols
             Scope* scope;
         } function;
-        // NOTE(timo): Even though the only array we have for now is the argv,
-        // it is probably best idea to try to implement it "properly"
         struct {
             Type* element_type;
             int length;
@@ -495,25 +523,78 @@ struct Type
     };
 };
 
+
+// Constructors for different kind of types.
+//
+// File(s): type.c
+//
+// Arguments
+//      element_type: Type of the element in the array. Only used with arrays.
+// Returns
+//      Pointer to the newly created type.
 Type* type_none();
 Type* type_integer();
 Type* type_boolean();
 Type* type_function();
 Type* type_array(Type* element_type);
+
+
+// Functions to check and compare types.
+//
+// File(s): type.c
+//
+// Arguments
+//      Either one or two Type structures, depending on what is wanted to
+//      check or compare.
+// Returns
+//      Value true if the check is true, otherwise false.
+const bool type_is_none(const Type* type);
+const bool type_is_not_none(const Type* type);
+const bool type_is_boolean(const Type* type);
+const bool type_is_not_boolean(const Type* type);
+const bool type_is_integer(const Type* type);
+const bool type_is_not_integer(const Type* type);
+const bool type_is_array(const Type* type);
+const bool type_is_not_array(const Type* type);
+const bool type_is_function(const Type* type);
+const bool type_is_not_function(const Type* type);
+const bool types_equal(const Type* type1, const Type* type2);
+const bool types_not_equal(const Type* type1, const Type* type2);
+
+
+// Frees the memory allocated for the Type structure.
+//
+// File(s): type.c
+//
+// Arguments
+//      type: Type to be freed.
 void type_free(Type* type);
+
+
+// Initializes a new type table containing all the primitive types.
+//
+// File(s): type.c
+//
+// Returns
+//      Pointer to the newly created type table.
 hashtable* type_table_init();
-const char* type_as_string(Type_Kind kind);
+
+
+// Frees the memory allocated for the type table.
+//
+// File(s): type.c
+//
+// Arguments
+//      table: Type table to be freed.
 void type_table_free(hashtable* table);
 
 
-//
 //  Operand
 //
 //  Used to tie the type and the value together when resolving expressions
 //  and having most use when doing constant folding.
 //  
 //  HOX! Not used for anything at the moment!
-
 typedef struct Operand
 {
     Type* type;
