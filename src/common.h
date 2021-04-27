@@ -27,7 +27,8 @@ const char* read_file(const char* path);
 //      argc: Pointer to argument count.
 //      argv: Pointer to argument vector.
 // Returns
-//      Pointer to the start of the current argument in the argument vector.
+//      Pointer to the start of the current argument in the argument vector
+//      before shifting everything to right.
 const char* shift(int* argc, char*** argv);
 
 

@@ -26,8 +26,14 @@ static char* run_example(Test_Runner* runner, const char* program_name, const ch
     buffer[buffer_length] = 0;
 
     // Compile the program
-    Options options = { .flag_verbose = false,
-                        .program = program_name };
+    struct Options options = 
+    {
+        .program = program_name,
+        .show_summary = false,
+        .show_symbols = false,
+        .show_ir = false,
+        .show_asm = false
+    };
 
     compile_from_file(file_path, options);
 

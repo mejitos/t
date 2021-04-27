@@ -47,18 +47,6 @@ typedef struct AST_Expression AST_Expression;
 
 
 //
-//  Options
-//
-//  Fields
-//      program:
-typedef struct Options
-{
-    bool flag_verbose;
-    const char* program;
-} Options;
-
-
-//
 //  General position struct for everyone to use
 //
 //  Since for now we will only support compiling of single file, there is no need to add the
@@ -69,7 +57,6 @@ typedef struct Options
 //      column_start:
 //      line_end:
 //      column_end:
-
 typedef struct Position
 {
     int line_start;
@@ -106,12 +93,54 @@ void print_diagnostics(array* diagnostic);
 void print_diagnostic(Diagnostic* diagnostic);
 
 
+//  Options
 //
-//  The main routine of the compiler called from the entry point main.c
+//  Fields
+//      program:
+//      show_summary:
+//      show_symbols:
+//      show_ir:
+//      show_asm:
+struct Options
+{
+    const char* program;
+    const char* source_file;
+
+    bool interpret;
+    bool interpret_ast;
+    bool interpret_ir;
+
+    bool show_summary;
+    bool show_symbols;
+    bool show_ir;
+    bool show_asm;
+};
+
+
 //
-//  File: t.c
-void compile(const char* source, Options options);
-void compile_from_file(const char* path, Options options);
+//
+//
+void parse_options(struct Options* options, int* argc, char*** argv);
+
+
+//
+//
+// File(s): t.c
+//
+// Arguments
+//      source:
+//      options:
+void compile(const char* source, struct Options options);
+
+
+//
+//
+// File(s): t.c
+//
+// Arguments
+//      path:
+//      options:
+void compile_from_file(const char* path, struct Options options);
 
 
 // Enumeration of the classification of the lexeme.

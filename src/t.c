@@ -1,294 +1,373 @@
+//
+// TODO(timo): Filedocstring
+//
+
 #include "t.h"
 #include <time.h>
 
 
-void compile(const char* source, Options options)
+static const char* usage = 
+    "Usage:\n"
+    "    t.sh source_file [options] [flags]\n"
+    "Options:\n"
+    "    -h, --help: Prints a help screen\n"
+    "    -o, --output: Name of the output/program without file extensions\n"
+    "    -i, --interpret: Interpret the program with ast tree walker or with IR runner\n"
+    "Flags:\n"
+    "    --show-summary: Prints a summary of the compilation at the end\n"
+    "    --show-symbols: Prints the contents of the symbol table after resolving stage\n"
+    "    --show-ir: Prints the instructions of the intermediate representation\n"
+    "    --show-asm: Prints the assembly file\n";
+
+
+void parse_options(struct Options* options, int* argc, char*** argv)
 {
-    if (! options.program)
+    shift(argc, argv); // skip the program name
+
+    if (*argc == 0)
     {
-        printf("Need to pass name of the program\n");
+        printf("Error: No source file given\n\n");
+        printf(usage);
         exit(1);
     }
+    
+    while (*argc > 0)
+    {
+        char* arg = (char*)**argv;
 
-    // Setup
-    Lexer lexer;
-    Parser parser;
-    hashtable* type_table;
-    Resolver resolver;
-    IR_Generator ir_generator;
-    Code_Generator code_generator;
+        if (str_equals(arg, "-h") || str_equals(arg, "--help"))
+        {
+            printf(usage);
+            exit(1);
+        }
+        else if (str_equals(arg, "-o") || str_equals(arg, "--output"))
+        {
+            shift(argc, argv);
+            arg = (char*)**argv;
+
+            if (arg)
+                options->program = arg;
+            else
+            {
+                printf("Error: Missing argument for '-o' or '--output'\n");
+                exit(1);
+            }
+        }
+        else if (str_equals(arg, "-i") || str_equals(arg, "--interpret"))
+        {
+            options->interpret = true;
+            shift(argc, argv);
+            arg = (char*)**argv;
+
+            if (arg && str_equals(arg, "ast"))
+                options->interpret_ast = true;
+            else if (arg && str_equals(arg, "ir"))
+            {
+                options->interpret_ir = true;
+                printf("Error: IR interpretation is not implemented at the moment\n");
+                exit(1);
+            }
+            else
+            {
+                printf("Error: Invalid argument for '-i' or '--interpret'\n");
+                exit(1);
+            }
+        }
+        else if (str_equals(arg, "--show-summary"))
+            options->show_summary = true;
+        else if (str_equals(arg, "--show-symbols"))
+            options->show_symbols = true;
+        else if (str_equals(arg, "--show-ir"))
+            options->show_ir = true;
+        else if (str_equals(arg, "--show-asm"))
+            options->show_asm = true;
+        // NOTE(timo): This has to be last option so if there are no flags or
+        // other arguments, we just assume it is a source file then
+        else if (options->source_file == NULL)
+            options->source_file = arg;
+
+        shift(argc, argv);
+    }
+}
+
+
+void compile(const char* source, struct Options options)
+{
+    if (options.show_summary)
+        printf("-----===== COMPILING =====-----\n");
 
     // Lexing
+    Lexer lexer;
+    clock_t lexing_start;
+    clock_t lexing_end;
+    double lexing_time;
+
+    if (options.show_summary)
+    {
+        printf("Lexing...");
+        lexing_start = clock();
+    }
+
     lexer_init(&lexer, source);
     lex(&lexer);
 
-    if (lexer.diagnostics->length > 0)
+    if (options.show_summary)
     {
-        print_diagnostics(lexer.diagnostics);
-        goto teardown_lexer;
+        lexing_end = clock();
+        lexing_time = (double)(lexing_end - lexing_start) * 1000 / (double)CLOCKS_PER_SEC;
     }
 
+    if (lexer.diagnostics->length > 0)
+    {
+        if (options.show_summary)
+            printf("FAILED\n");
+
+        print_diagnostics(lexer.diagnostics);
+        goto teardown_lexer;
+    } 
+
+    if (options.show_summary)
+        printf("OK\n");
+
+
     // Parsing
+    Parser parser;
+    clock_t parsing_start;
+    clock_t parsing_end;
+    double parsing_time;
+
+    if (options.show_summary)
+    {
+        printf("Parsing...");
+        parsing_start = clock();
+    }
+
     parser_init(&parser, lexer.tokens);
     parse(&parser);
 
+    if (options.show_summary)
+    {
+        parsing_end = clock();
+        parsing_time = (double)(parsing_end - parsing_start) * 1000 / (double)CLOCKS_PER_SEC;
+    }
+
     if (parser.diagnostics->length > 0)
     {
+        if (options.show_summary)
+            printf("FAILED\n");
+
         print_diagnostics(parser.diagnostics);
         goto teardown_parser;
     }
 
+    if (options.show_summary)
+        printf("OK\n");
+
+
     // Resolving
+    hashtable* type_table;
+    Resolver resolver;
+    clock_t resolving_start;
+    clock_t resolving_end;
+    double resolving_time;
+
+    if (options.show_summary)
+    {
+        printf("Resolving...");
+        resolving_start = clock();
+    }
+
     type_table = type_table_init();
     resolver_init(&resolver, type_table);
     resolve(&resolver, parser.declarations);
 
+    if (options.show_summary)
+    {
+        resolving_end = clock();
+        resolving_time = (double)(resolving_end - resolving_start) * 1000 / (double)CLOCKS_PER_SEC;
+    }
+
     if (resolver.diagnostics->length > 0)
     {
+        if (options.show_summary)
+            printf("FAILED\n");
+
         print_diagnostics(resolver.diagnostics);
         goto teardown_resolver;
     }
 
+    if (options.show_summary)
+        printf("OK\n");
+
+    if (options.show_symbols)
+    {
+        printf("-----===== SYMBOLS =====-----\n");
+        dump_scope(resolver.global, 0);
+        printf("-----===== ||||||| =====-----\n");
+    }
+
+
     // IR generation
+    IR_Generator ir_generator;
+    clock_t ir_generating_start;
+    clock_t ir_generating_end;
+    double ir_generating_time;
+
+    if (options.show_summary)
+    {
+        printf("IR Generating...");
+        ir_generating_start = clock();
+    }
+
     ir_generator_init(&ir_generator, resolver.global);
     ir_generate(&ir_generator, parser.declarations);
 
+    if (options.show_summary)
+    {
+        ir_generating_end = clock();
+        ir_generating_time = (double)(ir_generating_end - ir_generating_start) * 1000 / (double)CLOCKS_PER_SEC;
+    }
+
     if (ir_generator.diagnostics->length > 0)
     {
+        if (options.show_summary)
+            printf("FAILED\n");
+
         print_diagnostics(ir_generator.diagnostics);
         goto teardown_ir_generator;
     }
 
+    if (options.show_summary)
+        printf("OK\n");
+
+    if (options.show_ir)
+        dump_instructions(ir_generator.instructions);
+
+
     // Code generation
+    clock_t code_generating_start;
+    clock_t code_generating_end;
+    double code_generating_time;
+
+    if (options.show_summary)
+    {
+        printf("Code generating...");
+        code_generating_start = clock();
+    }
+
+    Code_Generator code_generator;
     code_generator_init(&code_generator, ir_generator.global, ir_generator.instructions);
-    
     // TODO(timo): ...do I really need this
     char asm_file[64];
     snprintf(asm_file, 64, "%s.asm", options.program);
     code_generator.asm_file = asm_file;
     code_generate(&code_generator);
 
+    if (options.show_summary)
+    {
+        code_generating_end = clock();
+        code_generating_time = (double)(code_generating_end - code_generating_start) * 1000 / (double)CLOCKS_PER_SEC;
+    }
+
     if (code_generator.diagnostics->length > 0)
     {
+        if (options.show_summary)
+            printf("FAILED\n");
+
         print_diagnostics(code_generator.diagnostics);
         goto teardown_code_generator;
     }
 
-    // Assembler
-    // char* assemble = "nasm -f elf64 -o main.o main.asm";
-    char assemble[128];
-    snprintf(assemble, 128, "nasm -f elf64 -o %s.o %s.asm", options.program, options.program);
-    int assemble_error;
-
-    if ((assemble_error = system(assemble)) != 0)
-    {
-        printf("Error code on command '%s': %d\n", assemble, assemble_error);
-    }
-
-    // Linker
-    // char* link = "gcc -no-pie -o main main.o";
-    char link[128];
-    snprintf(link, 128, "gcc -no-pie -o %s %s.o", options.program, options.program);
-    int link_error;
-
-    if ((link_error = system(link)) != 0)
-    {
-        printf("Error code on command '%s': %d\n", link, link_error);
-    }
-    
-    // Teardown
-teardown_code_generator:
-    code_generator_free(&code_generator);
-teardown_ir_generator:
-    ir_generator_free(&ir_generator);
-teardown_resolver:
-    resolver_free(&resolver);
-    type_table_free(type_table);
-teardown_parser:
-    parser_free(&parser);
-teardown_lexer:
-    lexer_free(&lexer);
-    
-    // Remove created files
-    // char* rm_files = "rm main.asm main.o";
-    char rm_files[128];
-    snprintf(rm_files, 128, "rm %s.asm %s.o", options.program, options.program);
-    int rm_files_error;
-    
-    if ((rm_files_error = system(rm_files)) != 0 )
-    {
-        printf("Error code on command '%s': %d\n", rm_files, rm_files_error);
-    }
-}
-
-
-// TODO(timo): This is not a smart way of handling different compilation options
-// so instead of creating different functions for different options, do something more senseful
-void compile_verbose(const char* source, Options options)
-{
-    Lexer lexer;
-    Parser parser;
-    hashtable* type_table;
-    Resolver resolver;
-    IR_Generator ir_generator;
-    Code_Generator code_generator;
-
-    // Lexing part
-    clock_t lexing_start = clock();
-
-    lexer_init(&lexer, source);
-    lex(&lexer);
-
-    clock_t lexing_end = clock();
-    double lexing_time = (double)(lexing_end - lexing_start) * 1000 / (double)CLOCKS_PER_SEC;
-
-    if (lexer.diagnostics->length > 0)
-    {
-        print_diagnostics(lexer.diagnostics);
-        goto teardown_lexer;
-    }
-
-    // Parsing part
-    clock_t parsing_start = clock();
-
-    parser_init(&parser, lexer.tokens);
-    parse(&parser);
-
-    clock_t parsing_end = clock();
-    double parsing_time = (double)(parsing_end - parsing_start) * 1000 / (double)CLOCKS_PER_SEC;
-
-    if (parser.diagnostics->length > 0)
-    {
-        print_diagnostics(parser.diagnostics);
-        goto teardown_parser;
-    }
-    
-    // Resolving part
-    clock_t resolving_start = clock();
-
-    type_table = type_table_init();
-    resolver_init(&resolver, type_table);
-    resolve(&resolver, parser.declarations);
-
-    clock_t resolving_end = clock();
-    double resolving_time = (double)(resolving_end - resolving_start) * 1000 / (double)CLOCKS_PER_SEC;
-
-    if (resolver.diagnostics->length > 0)
-    {
-        print_diagnostics(resolver.diagnostics);
-        goto teardown_resolver;
-    }
-    
-    // Dump symbol tables after resolving
-    printf("-----===== SCOPES / SYMBOLS =====-----\n");
-    dump_scope(resolver.global, 0);
-    printf("-----===== |||||||||| =====-----\n");
-
-    // IR generation
-    clock_t ir_generating_start = clock();
-
-    ir_generator_init(&ir_generator, resolver.global);
-    ir_generate(&ir_generator, parser.declarations);
-
-    clock_t ir_generating_end = clock();
-    double ir_generating_time = (double)(ir_generating_end - ir_generating_start) * 1000 / (double)CLOCKS_PER_SEC;
-
-    if (ir_generator.diagnostics->length > 0)
-    {
-        print_diagnostics(ir_generator.diagnostics);
-        goto teardown_ir_generator;
-    }
-
-    // Dump instructions
-    dump_instructions(ir_generator.instructions);
-
-    // Dump symbol tables after generating IR
-    printf("-----===== SCOPES / SYMBOLS =====-----\n");
-    dump_scope(resolver.global, 0);
-    printf("-----===== |||||||||| =====-----\n");
+    if (options.show_summary)
+        printf("OK\n");
 
     // TODO(timo): IR runner could run/interpret the created IR code if there is option set for that
 
-    // Code generation
-    clock_t code_generating_start = clock();
-    
-    code_generator_init(&code_generator, ir_generator.global, ir_generator.instructions);
-
-    // TODO(timo): ...do I really need this
-    char asm_file[64];
-    snprintf(asm_file, 64, "%s.asm", options.program);
-    code_generator.asm_file = asm_file;
-
-    code_generate(&code_generator);
-
-    clock_t code_generating_end = clock();
-    double code_generating_time = (double)(code_generating_end - code_generating_start) * 1000 / (double)CLOCKS_PER_SEC;
-
-    if (code_generator.diagnostics->length > 0)
+    if (options.show_asm)
     {
-        print_diagnostics(code_generator.diagnostics);
-        goto teardown_code_generator;
+        // Cat the created assembly file
+        printf("-----===== ASSEMBLY =====-----\n");
+
+        char cat[128];
+        snprintf(cat, 128, "cat %s.asm", options.program);
+        int cat_error;
+
+        if ((cat_error = system(cat)) != 0)
+        {
+            printf("Error code on command '%s': %d\n", cat, cat_error);
+            goto teardown;
+        }
+
+        printf("\n-----===== ||||||| =====-----\n");
     }
 
-    // Cat the created assembly file
-    printf("-----===== ASSEMBLY =====-----\n");
-    printf("\n");
-
-    char cat[128];
-    snprintf(cat, 128, "cat %s.asm", options.program);
-    int cat_error;
-
-    if ((cat_error = system(cat)) != 0)
-    {
-        printf("Error code on command '%s': %d\n", cat, cat_error);
-    }
-
-    printf("\n");
-    printf("-----===== ||||||| =====-----\n");
 
     // Assembling
-    printf("Assembling...");
-
-    clock_t assembly_start = clock();
+    clock_t assembly_start;
+    clock_t assembly_end;
+    double assembly_time;
 
     char assemble[128];
     snprintf(assemble, 128, "nasm -f elf64 -o %s.o %s.asm", options.program, options.program);
     int assemble_error;
 
+    if (options.show_summary)
+    {
+        printf("Assembling...");
+        assembly_start = clock();
+    }
+
     if ((assemble_error = system(assemble)) != 0)
     {
-        printf("FAILED\n");
-        printf("Error code on command '%s': %d\n", assemble, assemble_error);
-    }
-    else
-        printf("OK\n");
+        if (options.show_summary)
+            printf("FAILED\n");
 
-    clock_t assembly_end = clock();
-    double assembly_time = (double)(assembly_end - assembly_start) * 1000 / (double)CLOCKS_PER_SEC;
+        printf("Error code on command '%s': %d\n", assemble, assemble_error);
+        goto teardown;
+    }
+   
+    if (options.show_summary)
+    {
+        assembly_end = clock();
+        assembly_time = (double)(assembly_end - assembly_start) * 1000 / (double)CLOCKS_PER_SEC;
+        printf("OK\n");
+    }
+
 
     // Linking
-    printf("Linking...");
-
-    clock_t linker_start = clock();
+    clock_t linker_start;
+    clock_t linker_end;
+    double linker_time;
 
     char link[128];
     snprintf(link, 128, "gcc -no-pie -o %s %s.o", options.program, options.program);
     int link_error;
 
+    if (options.show_summary)
+    {
+        printf("Linking...");
+        linker_start = clock();
+    }
+
     if ((link_error = system(link)) != 0)
     {
-        printf("FAILED\n");
+        if (options.show_summary)
+            printf("FAILED\n");
+
         printf("Error code on command '%s': %d\n", link, link_error);
+        goto teardown;
     }
-    else
+
+    if (options.show_summary)
+    {
+        linker_end = clock();
+        linker_time = (double)(linker_end - linker_start) * 1000 / (double)CLOCKS_PER_SEC;
         printf("OK\n");
+    }
 
-    clock_t linker_end = clock();
-    double linker_time = (double)(linker_end - linker_start) * 1000 / (double)CLOCKS_PER_SEC;
-
-    // Teardown
-    printf("Teardown...");
    
+    // Teardown
+teardown:
 teardown_code_generator:
     code_generator_free(&code_generator);
 teardown_ir_generator:
@@ -300,74 +379,40 @@ teardown_parser:
     parser_free(&parser);
 teardown_lexer:
     lexer_free(&lexer);
-    
-    /*
+
+    // Remove created files
     char rm_files[128];
-    // char* rm_main_asm = "rm main.asm";
     snprintf(rm_files, 128, "rm %s.asm %s.o", options.program, options.program);
     int rm_files_error;
     
     if ((rm_files_error = system(rm_files)) != 0 )
-    {
-        printf("\n");
         printf("Error code on command '%s': %d\n", rm_files, rm_files_error);
+
+    if (options.show_summary)
+    {
+        // Compilation summary
+        double compilation_time = (lexing_time + parsing_time + resolving_time + ir_generating_time +
+                                   code_generating_time + assembly_time + linker_time);
+
+        printf("-----===== COMPILATION SUMMARY =====-----\n");
+        printf("Total compilation time: %f ms\n", compilation_time);
+        printf("    Lexing time:             %f ms\n", lexing_time);
+        printf("    Parsing time:            %f ms\n", parsing_time);
+        printf("    Resolving time:          %f ms\n", resolving_time);
+        printf("    IR generation time:      %f ms\n", ir_generating_time);
+        printf("    Code generation time:    %f ms\n", code_generating_time);
+        printf("    Assembly time:           %f ms\n", assembly_time);
+        printf("    Linking time:            %f ms\n", linker_time);
     }
-    */
 
-    printf("DONE\n");
-
-    // Compilation summary
-    double compilation_time = (lexing_time + parsing_time + resolving_time + ir_generating_time +
-                               code_generating_time + assembly_time + linker_time);
-
-    printf("-----===== COMPILATION SUMMARY =====-----\n");
-    printf("Total compilation time: %f ms\n", compilation_time);
-    printf("    Lexing time:             %f ms\n", lexing_time);
-    printf("    Parsing time:            %f ms\n", parsing_time);
-    printf("    Resolving time:          %f ms\n", resolving_time);
-    printf("    IR generation time:      %f ms\n", ir_generating_time);
-    printf("    Code generation time:    %f ms\n", code_generating_time);
-    printf("    Assembly time:           %f ms\n", assembly_time);
-    printf("    Linking time:            %f ms\n", linker_time);
 }
 
 
-void compile_from_file(const char* path, Options options)
+void compile_from_file(const char* path, struct Options options)
 {
-    FILE* file = fopen(path, "r");
+    const char* source = read_file(path);
 
-    if (file == NULL)
-    {
-        printf("Could not open file '%s'\n", path);
-        exit(1);
-    }
+    compile(source, options);
 
-    fseek(file, 0L, SEEK_END);
-    size_t file_size = ftell(file);
-    rewind(file);
-    char* buffer = malloc(file_size * sizeof (char) + 1);
-    
-    if (buffer == NULL)
-    {
-        printf("Malloc failed. Not enough memory to read file '%s'\n", path);
-        exit(1);
-    }
-
-    size_t bytes_read = fread(buffer, sizeof (char), file_size, file);
-
-    if (bytes_read < file_size)
-    {
-        printf("Could not read file '%s'\n", path);
-        exit(1);
-    }
-
-    buffer[bytes_read] = 0;
-    fclose(file);
-    
-    if (options.flag_verbose)
-        compile_verbose(buffer, options);
-    else
-        compile(buffer, options);
-
-    free(buffer);
+    free((char*)source);
 }
