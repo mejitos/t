@@ -5,7 +5,7 @@
 #ifndef t_common_h
 #define t_common_h
 
-#include <stdbool.h>
+#include <stdbool.h>        // for bool type
 
 
 // Reads file from given path and returns the contents of the file.

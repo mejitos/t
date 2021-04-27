@@ -3,10 +3,10 @@
 //
 
 #include "common.h"
-#include "memory.h"
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
+#include "memory.h"     // for x-allocators
+#include <stdlib.h>     // for malloc
+#include <stdio.h>      // for FILE, size_t, NULL
+#include <string.h>     // for strcmp, memcpy
 
 
 const char* read_file(const char* path)

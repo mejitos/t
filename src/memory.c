@@ -1,4 +1,10 @@
+//
+// TODO(timo): Filedocstring
+//
+
 #include "memory.h"
+#include <stdlib.h>     // for allocs, exit
+#include <stdio.h>      // for printing
 
 
 void* xmalloc(size_t bytes)
