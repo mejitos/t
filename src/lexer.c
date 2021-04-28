@@ -51,6 +51,12 @@ void lexer_free(Lexer* lexer)
 }
 
 
+// Advances the current position in the source stream and updates the position
+// of the current lexeme.
+//
+// Arguments
+//      lexer: Pointer to initialized Lexer.
+//      n: How many characters/steps is being advanced.
 static inline void advance(Lexer* lexer, int n)
 {
     if (*lexer->stream == '\n')
@@ -67,19 +73,52 @@ static inline void advance(Lexer* lexer, int n)
 }
 
 
-static inline bool is_whitespace(const char ch)
+// Checks the character in the stream without advancing the stream. Character
+// will be checked from a position in relation to the current position in the
+// character stream.
+//
+// Arguments
+//      lexer: Pointer to initialized Lexer.
+//      n: Position in relation to the current position.
+// Returns
+//      The character in the position.
+static inline const char peek(Lexer* lexer, int n)
+{
+    return *(lexer->stream + n);
+}
+
+
+// Checks if the character is whitespace.
+//
+// Arguments
+//      ch: Character to be checked.
+// Returns
+//      Value true if character is whitespace, otherwise false.
+static inline const bool is_whitespace(const char ch)
 {
     return ch == ' ' || ch == '\t' || ch == '\n';
 }
 
 
-static inline bool is_digit(const char ch)
+// Checks if the character is a digit.
+//
+// Arguments
+//      ch: Character to be checked.
+// Returns
+//      Value true if character is digit, otherwise false.
+static inline const bool is_digit(const char ch)
 {
     return '0' <= ch && ch <= '9';
 }
 
 
-static inline bool is_alpha(const char ch)
+// Checks if the character is in allowed alphabet.
+//
+// Arguments
+//      ch: Character to be checked.
+// Returns
+//      Value true if character is in the allowed alphabet, otherwise false.
+static inline const bool is_alpha(const char ch)
 {
     return ('a' <= ch && ch <= 'z') || ('A' <= ch && ch <= 'Z') || ch == '_';
 }
@@ -113,8 +152,9 @@ void lex(Lexer* lexer)
                 
                 int length = lexer->position.column_end - lexer->position.column_start;
 
-                // TODO(timo): The position goes one step too far when it comes to the
-                // lexeme of the number, so this is quick and dirty way to fix it for now. 
+                // TODO(timo): The position goes one step too far when it comes 
+                // to the lexeme of the number, so this is quick and dirty way 
+                // to fix it for now. 
                 lexer->position.column_end -= 1;
 
                 array_push(lexer->tokens, token(TOKEN_INTEGER_LITERAL, lexeme, length, lexer->position));
@@ -132,10 +172,14 @@ void lex(Lexer* lexer)
 
                 while (is_alpha(*lexer->stream) || is_digit(*lexer->stream)) advance(lexer, 1);
 
-                int length = lexer->position.column_end - lexer->position.column_start;
+                const int length = lexer->position.column_end - lexer->position.column_start;
 
                 Token_Kind kind = TOKEN_IDENTIFIER;
 
+                // Check if the scanned lexeme is one of the keywords/reserved 
+                // words. If it is not, then it must be a identifier/name. The 
+                // implementation is a bit dirty trie structure, but it is clear 
+                // and simple to understand.
                 switch (*lexeme)
                 {
                     case 'a':
@@ -216,8 +260,9 @@ void lex(Lexer* lexer)
                         break;
                 }
 
-                // TODO(timo): The position goes one step too far when it comes to the
-                // lexeme of the identifier, so this is quick and dirty way to fix it for now. 
+                // TODO(timo): The position goes one step too far when it comes 
+                // to the lexeme of the identifier, so this is quick and dirty 
+                // way to fix it for now. 
                 lexer->position.column_end -= 1;
 
                 array_push(lexer->tokens, token(kind, lexeme, length, lexer->position));
@@ -225,6 +270,11 @@ void lex(Lexer* lexer)
                 lexer->position.column_end += 1;
                 continue;
             }
+            // TODO(timo): There must be a better way to handle these operators, 
+            // punctuation etc. lexemes which are only couple of characters long.
+            // TODO(timo): Therefore there could be possibility to give better
+            // error messages in case of invalid operators etc. to give better
+            // hints and possible solutions to the users.
             case '+':
                 array_push(lexer->tokens, token(TOKEN_PLUS, "+", 1, lexer->position));
                 advance(lexer, 1);
@@ -274,7 +324,7 @@ void lex(Lexer* lexer)
                 advance(lexer, 1);
                 continue;
             case ':':
-                if (*(lexer->stream + 1) == '=')
+                if (peek(lexer, 1) == '=')
                 {
                     advance(lexer, 1);
                     array_push(lexer->tokens, token(TOKEN_COLON_ASSIGN, ":=", 2, lexer->position));
@@ -285,14 +335,14 @@ void lex(Lexer* lexer)
                 advance(lexer, 1);
                 continue;
             case '=':
-                if (*(lexer->stream + 1) == '=')
+                if (peek(lexer, 1) == '=')
                 {
                     advance(lexer, 1);
                     array_push(lexer->tokens, token(TOKEN_IS_EQUAL, "==", 2, lexer->position));
                     advance(lexer, 1);
                     continue;
                 }
-                if (*(lexer->stream + 1) == '>')
+                if (peek(lexer, 1) == '>')
                 {
                     advance(lexer, 1);
                     array_push(lexer->tokens, token(TOKEN_ARROW, "=>", 2, lexer->position));
@@ -302,19 +352,8 @@ void lex(Lexer* lexer)
                 array_push(lexer->tokens, token(TOKEN_EQUAL, "=", 1, lexer->position));
                 advance(lexer, 1);
                 continue;
-            case '!':
-                if (*(lexer->stream + 1) == '=')
-                {
-                    advance(lexer, 1);
-                    array_push(lexer->tokens, token(TOKEN_NOT_EQUAL, "!=", 2, lexer->position));
-                    advance(lexer, 1);
-                    continue;
-                }
-                advance(lexer, 1);
-                array_push(lexer->diagnostics, diagnostic(DIAGNOSTIC_ERROR, lexer->position, ":LEXER - SyntaxError: Invalid character '%c', expected '='", *lexer->stream));
-                continue;
             case '<':
-                if (*(lexer->stream + 1) == '=')
+                if (peek(lexer, 1) == '=')
                 {
                     advance(lexer, 1);
                     array_push(lexer->tokens, token(TOKEN_LESS_THAN_EQUAL, "<=", 2, lexer->position));
@@ -325,7 +364,7 @@ void lex(Lexer* lexer)
                 advance(lexer, 1);
                 continue;
             case '>':
-                if (*(lexer->stream + 1) == '=')
+                if (peek(lexer, 1) == '=')
                 {
                     advance(lexer, 1);
                     array_push(lexer->tokens, token(TOKEN_GREATER_THAN_EQUAL, ">=", 2, lexer->position));
@@ -335,10 +374,26 @@ void lex(Lexer* lexer)
                 array_push(lexer->tokens, token(TOKEN_GREATER_THAN, ">", 1, lexer->position));
                 advance(lexer, 1);
                 continue;
+            // NOTE(timo): This case has to be last, because there is only one
+            // kind of operator allowed with the exclamation point and if it is
+            // not the correct one, it will give a general error.
+            case '!':
+                if (peek(lexer, 1) == '=')
+                {
+                    advance(lexer, 1);
+                    array_push(lexer->tokens, token(TOKEN_NOT_EQUAL, "!=", 2, lexer->position));
+                    advance(lexer, 1);
+                    continue;
+                }
+                advance(lexer, 1);
             default:
-                array_push(lexer->diagnostics, diagnostic(DIAGNOSTIC_ERROR, lexer->position, ":LEXER - SyntaxError: Invalid character '%c'", *lexer->stream));
+            {
+                Diagnostic* _diagnostic = diagnostic(DIAGNOSTIC_ERROR, lexer->position, 
+                    ":LEXER - SyntaxError: Invalid character '%c'", *lexer->stream);
+                array_push(lexer->diagnostics, _diagnostic);
                 advance(lexer, 1);
                 continue;
+            }
         }
     }
     

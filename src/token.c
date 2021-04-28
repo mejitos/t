@@ -11,7 +11,7 @@
 // like this at least for now.
 // TODO(timo): Therefore later we should just use pointer
 // arithmetics with the pointer to the starting character
-Token* token(Token_Kind kind, const char* lexeme, int lexeme_length, Position position)
+Token* token(Token_Kind kind, const char* lexeme, const int lexeme_length, Position position)
 {
     Token* token = xcalloc(1, sizeof (Token));
     token->kind = kind;

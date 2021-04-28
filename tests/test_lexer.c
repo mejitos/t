@@ -416,7 +416,8 @@ static void test_diagnose_invalid_not_equal(Test_Runner* runner)
                 "Invalid number of diagnostics '%d' expected 1", lexer.diagnostics->length);
 
     Diagnostic* diagnostic = lexer.diagnostics->items[0];
-    char* message = ":LEXER - SyntaxError: Invalid character ' ', expected '='";
+    // char* message = ":LEXER - SyntaxError: Invalid character ' ', expected '='";
+    char* message = ":LEXER - SyntaxError: Invalid character ' '";
 
     assert_base(runner, strcmp(diagnostic->message, message) == 0,
                 "Invalid message '%s', expected '%s'", diagnostic->message, message);
@@ -432,7 +433,7 @@ static void test_multiple_diagnostics(Test_Runner* runner)
     char* message;
     Diagnostic* diagnostic;
 
-    lexer_init(&lexer, "foo.bar ! foo&baz");
+    lexer_init(&lexer, "foo.bar !foo&baz");
     lex(&lexer);
 
     assert_base(runner, lexer.tokens->length == 5,
@@ -447,7 +448,8 @@ static void test_multiple_diagnostics(Test_Runner* runner)
     assert_position(runner, diagnostic->position, 1, 4, 1, 4);
 
     diagnostic = lexer.diagnostics->items[1];
-    message = ":LEXER - SyntaxError: Invalid character ' ', expected '='";
+    // message = ":LEXER - SyntaxError: Invalid character ' ', expected '='";
+    message = ":LEXER - SyntaxError: Invalid character 'f'";
     assert_base(runner, strcmp(diagnostic->message, message) == 0,
                 "Invalid message '%s', expected '%s'", diagnostic->message, message);
     assert_position(runner, diagnostic->position, 1, 9, 1, 10);
@@ -456,7 +458,7 @@ static void test_multiple_diagnostics(Test_Runner* runner)
     message = ":LEXER - SyntaxError: Invalid character '&'";
     assert_base(runner, strcmp(diagnostic->message, message) == 0,
                 "Invalid message '%s', expected '%s'", diagnostic->message, message);
-    assert_position(runner, diagnostic->position, 1, 14, 1, 14);
+    assert_position(runner, diagnostic->position, 1, 13, 1, 13);
 
     lexer_free(&lexer);
 }
