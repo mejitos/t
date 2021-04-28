@@ -46,7 +46,6 @@ typedef struct AST_Statement AST_Statement;
 typedef struct AST_Expression AST_Expression;
 
 
-//
 //  General position struct for everyone to use
 //
 //  Since for now we will only support compiling of single file, there is no need to add the
@@ -66,7 +65,6 @@ typedef struct Position
 } Position;
 
 
-//
 //  Diagnostics
 //
 //  File(s): diagnostics.c
@@ -225,7 +223,12 @@ Token* token(Token_Kind kind, const char* lexeme, int lexeme_length, Position po
 
 
 //
-//  Lexer stuff
+//
+// Fields
+//      stream:
+//      diagnostics:
+//      tokens:
+//      position:
 typedef struct Lexer
 {
     const char* stream;
@@ -235,10 +238,25 @@ typedef struct Lexer
 } Lexer;
 
 
+// File(s): lexer.c
 //
-//  File: lexer.c
+// Arguments:
+//      lexer:
+//      source:
 void lexer_init(Lexer* lexer, const char* source);
+
+
+// File(s): lexer.c
+//
+// Arguments:
+//      lexer:
 void lexer_free(Lexer* lexer);
+
+
+// File(s): lexer.c
+//
+// Arguments:
+//      lexer:
 void lex(Lexer* lexer);
 
 
@@ -326,12 +344,25 @@ typedef enum Type_Specifier
 //
 //
 //
+char* type_specifier_str(Type_Specifier specifier);
+
+
+//
+//
+//
 typedef enum Declaration_Kind
 {
     DECLARATION_NONE,
     DECLARATION_VARIABLE,
     DECLARATION_FUNCTION,
 } Declaration_Kind;
+
+
+//
+//
+//
+//
+char* declaration_str(Declaration_Kind kind);
 
 
 //
@@ -361,6 +392,31 @@ typedef enum Statement_Kind
 } Statement_Kind;
 
 
+//
+//
+//
+char* statement_str(Statement_Kind kind);
+
+
+//
+//
+// Fields
+//      kind:
+//      position:
+//      expression:
+//      declaration:
+//      block:
+//          statements:
+//          statement_length:
+//      if:
+//          condition:
+//          then:
+//          else:
+//      while:
+//          condition:
+//          body:
+//      return:
+//          value:
 struct AST_Statement
 {
     Statement_Kind kind;
@@ -389,6 +445,12 @@ struct AST_Statement
 };
 
 
+//
+//
+// Fields
+//      position:
+//      identifier:
+//      specifier:
 typedef struct Parameter
 {
     Position position;
@@ -397,6 +459,7 @@ typedef struct Parameter
 } Parameter;
 
 
+//
 typedef enum Expression_Kind
 {
     EXPRESSION_NONE,
@@ -411,6 +474,45 @@ typedef enum Expression_Kind
 } Expression_Kind;
 
 
+//
+//
+//
+// Arguments
+//      kind:
+char* expression_str(Expression_Kind kind);
+
+
+//
+//
+//
+// Fields
+//      kind:
+//      position:
+//      type:
+//      value:
+//
+//      identifier:
+//      literal:
+//      unary:
+//          operator:
+//          operand:
+//      binary:
+//          operator:
+//          left:
+//          right:
+//      assignment:
+//          variable:
+//          value:
+//      index:
+//          variable:
+//          value:
+//      function:
+//          parameters: Array of function parameters.
+//          arity: How many arguments the function can take.
+//          body: Body of the function containing array of statements.
+//      call:
+//          variable: Name of the function or callable being called.
+//          arguments: Array of arguments passed to the function or callable.
 struct AST_Expression
 {
     Expression_Kind kind;
@@ -451,8 +553,19 @@ struct AST_Expression
 };
 
 
+//
+//
+// Arguments
+//      identifier:
+//      specifier:
+//      initializer:
 AST_Declaration* function_declaration(Token* identifier, Type_Specifier specifier, AST_Expression* initializer);
 AST_Declaration* variable_declaration(Token* identifier, Type_Specifier specifier, AST_Expression* initializer);
+
+
+//
+//
+//
 AST_Statement* expression_statement(AST_Expression* expression);
 AST_Statement* block_statement(array* statements, int statements_length);
 AST_Statement* if_statement(AST_Expression* condition, AST_Statement* then, AST_Statement* _else);
@@ -460,6 +573,12 @@ AST_Statement* while_statement(AST_Expression* condition, AST_Statement* body);
 AST_Statement* break_statement();
 AST_Statement* return_statement(AST_Expression* value);
 AST_Statement* declaration_statement(AST_Declaration* declaration);
+
+
+//
+//
+//
+//
 AST_Expression* literal_expression(Token* literal);
 AST_Expression* unary_expression(Token* _operator, AST_Expression* operand);
 AST_Expression* binary_expression(AST_Expression* left, Token* _operator, AST_Expression* right);
@@ -470,11 +589,19 @@ Parameter* function_parameter(Token* identifier, Type_Specifier specifier);
 AST_Expression* function_expression(array* parameters, int arity, AST_Statement* body);
 AST_Expression* call_expression(AST_Expression* variable, array* arguments);
 AST_Expression* error_expression();
-char* expression_str(Expression_Kind kind);
+
+
+//
+//
+//
 stringbuilder* expression_to_string(AST_Expression* expression, stringbuilder* sb);
-char* statement_str(Statement_Kind kind);
-char* declaration_str(Declaration_Kind kind);
-char* type_specifier_str(Type_Specifier specifier);
+
+
+
+//
+//
+//
+//
 void declaration_free(AST_Declaration* declaration);
 void statement_free(AST_Statement* statement);
 void expression_free(AST_Expression* expression);
@@ -822,39 +949,125 @@ const bool scope_contains(const Scope* scope, const char* identifier);
 void dump_scope(const Scope* scope, int indentation);
 
 
+// Resolver handles type checking of the variables and expressions, semantic 
+// analysis of the generated abstract syntax tree and creates the global scope 
+// with resolved symbols.
 //
-//  Resolver
+// At the moment the language has only two different scopes: global and local
+// scope of a function. Therefore the scopes are lexical at global level, and
+// dynamic at local level.
 //  
-//  File: resolver.c
+// File(s): resolver.c
+//
+// Fields
+//      diagnostics: Array of collected diagnostics.
+//      type_table: Type table with languages primitive data types.
+//      global: Global scope of the program.
+//      local: Current scope.
+//      context:
+//          current_function: The name of the current context/scope.
+//          not_int_loop: If loop structure is currently being resolved.
+//          not_in_function: If function is currently being resolved.
+//          returned: If function has already returned or not.
+//          return_type: Type of the resolved return value of a function.
 typedef struct Resolver
 {
     array* diagnostics;
     hashtable* type_table;
+    // TODO(timo): Separate the global scope as it's own variable in the top level
     Scope* global;
     Scope* local;
+
     struct {
+        // TODO(timo): Check if we can remove this current_function somehow
+        char* current_function; // TODO(timo): This could also be pointer to symbol
         bool not_in_loop;
         bool not_in_function;
         bool returned;
-        char* current_function; // TODO(timo): This could also be pointer to symbol
         Type* return_type;
     } context;
 } Resolver;
 
+
+// Factory function for initalizing new Resolver.
+//
+// File(s): resolver.c
+//
+// Arguments
+//      resolver: Pointer to Resolver structure.
+//      type_table: Pointer to already initialized type table.
 void resolver_init(Resolver* resolver, hashtable* type_table);
+
+
+// Frees the memory allocated for resolver.
+//
+// File(s): resolver.c
+//
+// Arguments
+//      resolver: Resolver to be freed.
 void resolver_free(Resolver* resolver);
+
+
+// The main interface for resolving expressions. Expressions will be resolved
+// based on their values of the field 'kind'.
+//
+// File(s): resolver.c
+//
+// Arguments
+//      resolver: Pointer to initialized Resolver.
+//      expression: Expression to be resolved.
+// Returns
+//      The type resolved for the expression.
 Type* resolve_expression(Resolver* resolver, AST_Expression* expression);
+
+
+// The main interface for resolving statements. Statements will be resolved
+// based on their values of the field 'kind'.
+//
+// File(s): resolver.c
+//
+// Arguments
+//      resolver: Pointer to initialized Resolver.
+//      statement: Statement to be resolved.
 void resolve_statement(Resolver* resolver, AST_Statement* statement);
+
+
+// The main interface for resolving declarations. Declarations will be resolved
+// based on their values of the field 'kind'.
+//
+// File(s): resolver.c
+//
+// Arguments
+//      resolver: Pointer to initialized Resolver.
+//      declaration: Declaration to be resolved.
 void resolve_declaration(Resolver* resolver, AST_Declaration* declaration);
+
+
+// The main interface for resolving type specifiers. Type specifiers will be 
+// resolved based on their value itself because the type specifiers are just
+// a simple enumeration at this point.
+//
+// File(s): resolver.c
+//
+// Arguments
+//      resolver: Pointer to initialized Resolver.
+//      specifier: Type specifier to be resolved.
+// Returns
+//      The resolved type for the type specifier.
 Type* resolve_type_specifier(Resolver* resolver, Type_Specifier specifier);
+
+
+// The main interface for resolving generated abstract syntax tree.
+//
+// File(s): resolver.c
+//
+// Arguments
+//      resolver: Pointer to initialized Resolver.
+//      declarations: Array of AST_Declarations to be resolved.
 void resolve(Resolver* resolver, array* declarations);
 
 
-//
 //  Interpreter
-//
-//  File: interpreter.c
-
 typedef struct Interpreter
 {
     // array* declarations;
@@ -866,24 +1079,81 @@ typedef struct Interpreter
     Value return_value;
 } Interpreter;
 
-// void interpreter_init(Interpreter* interpreter);
+
+// Factory function for creating interpreter.
+//
+// File(s): interpreter.c
+//
+// Arguments
+//      interpreter: Pointer to interpreter structure.
+//      global: Global scope with resolved symbols.
 void interpreter_init(Interpreter* interpreter, Scope* global);
+
+
+//
+//
+// File(s): interpreter.c
+//
+// Arguments
+//      interpreter:
 void interpreter_free(Interpreter* interpreter);
+
+
+//
+//
+// File(s): interpreter.c
+//
+// Arguments
+//      interpreter:
+//      expression:
+// Returns
+//      The value of the expression.
 Value evaluate_expression(Interpreter* interpreter, AST_Expression* expression);
+
+
+//
+//
+// File(s): interpreter.c
+//
+// Arguments
+//      interpreter:
+//      statement:
 void evaluate_statement(Interpreter* interpreter, AST_Statement* statement);
+
+
+//
+//
+// File(s): interpreter.c
+//
+// Arguments
+//      interpreter:
+//      declaration:
 void evaluate_declaration(Interpreter* interpreter, AST_Declaration* declaration);
-// void interpret(const char* source);
-Value interpret(const char* source);
-// void interpret_from_file(const char* path);
-Value interpret_from_file(const char* path);
 
 
 //
-//  Intermediate representation
 //
-//  File(s): ir_generator.c
-//           ir_runner.c
+// File(s): interpreter.c
+//
+// Arguments
+//      source:
+// Returns
+//      Value returned by the main program.
+const Value interpret(const char* source);
 
+
+//
+//
+// File(s): interpreter.c
+//
+// Arguments
+//      path:
+// Returns
+//      Value returned by the main program.
+const Value interpret_from_file(const char* path);
+
+
+//
 typedef enum Operation
 {
     OP_NOOP,
@@ -923,31 +1193,27 @@ typedef enum Operation
 
 
 //
-//  Returns a string representation of Operation
+// Returns a string representation of Operation
+// 
+// File(s): instruction.c
 //
-//  Arguments
+// Arguments
 //      operation: Operation
-
 const char* operation_str(Operation operation);
 
 
+// NOTE(timo): Address can be a name, a constant or a compiler generated temporary
+// These are pretty much the operands used in some literature
 //
-//  NOTE(timo): Address can be a name, a constant or a compiler generated temporary
-//  These are pretty much the operands used in some literature
+// TODO(timo): Addresses are not used in Instructions for now
 //
-//  TODO(timo): Addresses are not used in Instructions for now
-//
-//  Fields
+// Fields
 //      name:       program name, pointer to the names symbol table entry where 
 //                  all the information of the name is kept
 //      constant:   constant value but seems like it can be a variable too?
 //      label:      just label
-
 typedef struct Address
 {
-    // TODO(timo): I think we don't need this abstraction, since the goal is
-    // just to get everything into the symbol table. But we could keep this,
-    // in case of situation there is labels or something else than symbols
     union {
         Symbol* name;
         // Value constant; // These can be fetched from the symbol table?
@@ -956,17 +1222,15 @@ typedef struct Address
 } Address;
 
 
+// Represents a single instruction of the intermediate reperesentation
 //
-//  Represents a single instruction of the intermediate reperesentation
-//
-//  Fields
+// Fields
 //      operation:
 //      arg1:
 //      arg2:
 //      result:
 //      size:
 //      label:
-
 typedef struct Instruction 
 {
     Operation operation;
@@ -981,6 +1245,15 @@ typedef struct Instruction
 } Instruction;
 
 
+//
+//
+//
+// File(s): instruction.c
+//
+// Arguments
+//      
+// Returns
+//      Pointer to the newly created Instruction.
 Instruction* instruction_copy(char* arg, char* result);
 Instruction* instruction_add(char* arg1, char* arg2, char* result);
 Instruction* instruction_sub(char* arg1, char* arg2, char* result);
@@ -1008,43 +1281,41 @@ Instruction* instruction_goto_if_false(char* arg, char* label);
 Instruction* instruction_dereference(char* arg, char* result, int offset);
 
 
-//
 // Frees the memory allocated for instruction
+//
+// File(s): instruction.c
 //
 // Arguments
 //      instruction: Instruction to be freed
-
 void instruction_free(Instruction* instruction);
 
 
-//
 // Prints the instruction to terminal/console
+//
+// File(s): instruction.c
 //
 // Arguments
 //      instruction: Instruction to be printed
-
 void dump_instruction(Instruction* instruction);
 
 
-//
 // Prints all instructions from array to terminal/console
+//
+// File(s): instruction.c
 //
 // Arguments
 //      instructions: Array of instructions to be printed
-
 void dump_instructions(array* instructions);
 
 
-
-
-//
 //  Code in basic block has only one entry point and one exit point, meaning
 //  there is no jump destinations inside the block and that only last instruction
 //  can start executing next block
 //
 //  TODO(timo): Basic blocks are not implemented for now.
-//
-
+// 
+// Fields
+//      instructions:
 typedef struct Basic_Block
 {
     // start, end?
@@ -1053,7 +1324,7 @@ typedef struct Basic_Block
 } Basic_Block;
 
 
-// TODO(timo): Basically all of this context stuff could be put into ir generator file
+// 
 typedef enum IR_Context_Kind
 {
     IR_CONTEXT_NONE,
@@ -1062,6 +1333,16 @@ typedef enum IR_Context_Kind
 } IR_Context_Kind;
 
 
+//
+//
+// Fields
+//      kind:
+//      while:
+//          exit_label:
+//      if:
+//          exit_label:
+//          exit_not_generated: If the exit label is generated or not.
+//          new_context: If the new context if allowed or not.
 typedef struct IR_Context
 {
     IR_Context_Kind kind;
@@ -1079,6 +1360,19 @@ typedef struct IR_Context
 } IR_Context;
 
 
+//
+//
+//
+// Fields
+//      output_file:
+//      instructions:
+//      diagnostics:
+//      label:
+//      temp:
+//      gloal:
+//      local:
+//      contexts:
+//      current_context:
 typedef struct IR_Generator
 {
     FILE* output_file;
@@ -1095,16 +1389,72 @@ typedef struct IR_Generator
 } IR_Generator;
 
 
+//
+//
+// File(s): ir_generator.c
+//
+// Arguments
+//      generator:
+//      global:
 void ir_generator_init(IR_Generator* generator, Scope* global);
-void ir_generator_free(IR_Generator* generator);
-void ir_generate(IR_Generator* generator, array* declarations);
-char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression);
-void ir_generate_statement(IR_Generator* generator, AST_Statement* statement);
-void ir_generate_declaration(IR_Generator* generator, AST_Declaration* declaration);
-void dump_instructions(array* instructions);
 
 
 //
+//
+// File(s): ir_generator.c
+//
+// Arguments
+//      generator:
+void ir_generator_free(IR_Generator* generator);
+
+
+//
+//
+// File(s): ir_generator.c
+//
+// Arguments
+//      generator:
+//      declarations:
+void ir_generate(IR_Generator* generator, array* declarations);
+
+
+//
+//
+// File(s): ir_generator.c
+//
+// Arguments
+//      generator:
+//      expression:
+char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression);
+
+
+//
+//
+// File(s): ir_generator.c
+//
+// Arguments
+//      generator:
+//      statement:
+void ir_generate_statement(IR_Generator* generator, AST_Statement* statement);
+
+
+//
+//
+// File(s): ir_generator.c
+//
+// Arguments
+//      generator:
+//      declaration:
+void ir_generate_declaration(IR_Generator* generator, AST_Declaration* declaration);
+
+
+//
+//
+// Arguments
+//      instructions:
+void dump_instructions(array* instructions);
+
+
 //  Code generation
 //
 //  Fields
@@ -1113,7 +1463,11 @@ void dump_instructions(array* instructions);
 //      diagnostics:
 //      global:
 //      local:
-
+//
+//      asm_file:
+//
+//      destination:
+//      source:
 typedef struct Code_Generator
 {
     FILE* output;
@@ -1132,8 +1486,32 @@ typedef struct Code_Generator
 } Code_Generator;
 
 
+//
+//
+// File(s): code_generator.c
+//
+// Arguments
+//      generator:
+//      global:
+//      instructions:
 void code_generator_init(Code_Generator* generator, Scope* global, array* instructions);
+
+
+//
+//
+// File(s): code_generator.c
+//
+// Arguments
+//      generator:
 void code_generate(Code_Generator* generator);
+
+
+//
+//
+// File(s): code_generator.c
+//
+// Arguments
+//      generator:
 void code_generator_free(Code_Generator* generator);
 
 
