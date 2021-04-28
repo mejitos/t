@@ -266,27 +266,47 @@ const char* expression_to_string(const AST_Expression* expression)
     switch (expression->kind)
     {
         case EXPRESSION_LITERAL:
+        {
             sb_append(sb, expression->literal->lexeme);
             break;
+        }
         case EXPRESSION_BINARY:
+        {
             sb_append(sb, "(");
-            sb_append(sb, expression_to_string(expression->binary.left));
+
+            const char* left = expression_to_string(expression->binary.left);
+            sb_append(sb, left);
+            free((char*)left);
+
             sb_append(sb, expression->binary._operator->lexeme);
-            sb_append(sb, expression_to_string(expression->binary.right));
+
+            const char* right = expression_to_string(expression->binary.right);
+            sb_append(sb, right);
+            free((char*)right);
+
             sb_append(sb, ")");
             break;
+        }
         case EXPRESSION_UNARY:
+        {
             sb_append(sb, "(");
             sb_append(sb, expression->unary._operator->lexeme);
-            sb_append(sb, expression_to_string(expression->unary.operand));
+
+            const char* operand = expression_to_string(expression->unary.operand);
+            sb_append(sb, operand);
+            free((char*)operand);
+
             sb_append(sb, ")");
             break;
+        }
         default:
+        {
             printf("Error in expression_to_string()\n");
             exit(1);
+        }
     }
 
-    const char* result = sb_to_string(sb);
+    const char* result = str_copy(sb_to_string(sb));
     sb_free(sb);
 
     return result;

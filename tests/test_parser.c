@@ -600,9 +600,11 @@ static void test_order_of_arithmetic_operations(Test_Runner* runner)
 
     parser_init(&parser, lexer.tokens);
     expression = parse_expression(&parser);
+    const char* result_1 = expression_to_string(expression);
 
-    assert_expression_str(runner, expression_to_string(expression), "(1+(2*3))");
-
+    assert_expression_str(runner, result_1, "(1+(2*3))");
+    
+    free((char*)result_1);
     expression_free(expression);
     parser_free(&parser);
     lexer_free(&lexer);
@@ -613,9 +615,11 @@ static void test_order_of_arithmetic_operations(Test_Runner* runner)
 
     parser_init(&parser, lexer.tokens);
     expression = parse_expression(&parser);
+    const char* result_2 = expression_to_string(expression);
 
-    assert_expression_str(runner, expression_to_string(expression), "((1+2)*3)");
+    assert_expression_str(runner, result_2, "((1+2)*3)");
 
+    free((char*)result_2);
     expression_free(expression);
     parser_free(&parser);
     lexer_free(&lexer);
@@ -626,9 +630,11 @@ static void test_order_of_arithmetic_operations(Test_Runner* runner)
 
     parser_init(&parser, lexer.tokens);
     expression = parse_expression(&parser);
+    const char* result_3 = expression_to_string(expression);
 
-    assert_expression_str(runner, expression_to_string(expression), "(-(-(-(-7))))");
+    assert_expression_str(runner, result_3, "(-(-(-(-7))))");
 
+    free((char*)result_3);
     expression_free(expression);
     parser_free(&parser);
     lexer_free(&lexer);
@@ -639,9 +645,11 @@ static void test_order_of_arithmetic_operations(Test_Runner* runner)
 
     parser_init(&parser, lexer.tokens);
     expression = parse_expression(&parser);
+    const char* result_4 = expression_to_string(expression);
 
-    assert_expression_str(runner, expression_to_string(expression), "(10-(-7))");
+    assert_expression_str(runner, result_4, "(10-(-7))");
 
+    free((char*)result_4);
     expression_free(expression);
     parser_free(&parser);
     lexer_free(&lexer);
