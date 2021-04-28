@@ -14,7 +14,7 @@ void assert_position(Test_Runner* runner, Position position, int line_start, int
 // void assert_position_declaration(Test_Runner* runner, AST_Declaration* declaration, int line_start, int column_start, int line_end, int column_end);
 
 void assert_token(Test_Runner* runner, Token* token, Token_Kind kind, const char* lexeme);
-void assert_expression_str(Test_Runner* runner, char* result, const char* expected);
+void assert_expression_str(Test_Runner* runner, const char* result, const char* expected);
 void assert_expression(Test_Runner* runner, Expression_Kind actual, Expression_Kind expected);
 void assert_parameter(Test_Runner* runner, Parameter* parameter, const char* identifier, Type_Specifier specifier);
 void assert_statement(Test_Runner* runner, Statement_Kind actual, Statement_Kind expected);

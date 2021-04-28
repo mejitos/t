@@ -1,9 +1,13 @@
+//
+// TODO(timo): Filedocstring
+//
+
 #include "t.h"
 
 
 AST_Declaration* function_declaration(Token* identifier, Type_Specifier specifier, AST_Expression* initializer)
 {
-    AST_Declaration* declaration = xcalloc(1, sizeof (AST_Declaration));
+    AST_Declaration* declaration = xmalloc(sizeof (AST_Declaration));
     declaration->kind = DECLARATION_FUNCTION;
     declaration->position = (Position) { .line_start = identifier->position.line_start,
                                          .column_start = identifier->position.column_start,
@@ -19,7 +23,7 @@ AST_Declaration* function_declaration(Token* identifier, Type_Specifier specifie
 
 AST_Declaration* variable_declaration(Token* identifier, Type_Specifier specifier, AST_Expression* initializer)
 {
-    AST_Declaration* declaration = xcalloc(1, sizeof (AST_Declaration));
+    AST_Declaration* declaration = xmalloc(sizeof (AST_Declaration));
     declaration->kind = DECLARATION_VARIABLE;
     declaration->position = (Position) { .line_start = identifier->position.line_start,
                                          .column_start = identifier->position.column_start,
@@ -35,8 +39,9 @@ AST_Declaration* variable_declaration(Token* identifier, Type_Specifier specifie
 
 AST_Statement* expression_statement(AST_Expression* expression)
 {
-    AST_Statement* statement = xcalloc(1, sizeof (AST_Statement));
+    AST_Statement* statement = xmalloc(sizeof (AST_Statement));
     statement->kind = STATEMENT_EXPRESSION;
+    statement->position = (Position){0}; // TODO(timo)
     statement->expression = expression;
 
     return statement;
@@ -45,8 +50,9 @@ AST_Statement* expression_statement(AST_Expression* expression)
 
 AST_Statement* block_statement(array* statements, int statements_length)
 {
-    AST_Statement* statement = xcalloc(1, sizeof (AST_Statement));
+    AST_Statement* statement = xmalloc(sizeof (AST_Statement));
     statement->kind = STATEMENT_BLOCK;
+    statement->position = (Position){0}; // TODO(timo)
     statement->block.statements = statements;
     statement->block.statements_length = statements_length;
 
@@ -56,8 +62,9 @@ AST_Statement* block_statement(array* statements, int statements_length)
 
 AST_Statement* if_statement(AST_Expression* condition, AST_Statement* then, AST_Statement* _else)
 {
-    AST_Statement* statement = xcalloc(1, sizeof (AST_Statement));
+    AST_Statement* statement = xmalloc(sizeof (AST_Statement));
     statement->kind = STATEMENT_IF;
+    statement->position = (Position){0}; // TODO(timo)
     statement->_if.condition = condition;
     statement->_if.then = then;
     statement->_if._else = _else;
@@ -68,8 +75,9 @@ AST_Statement* if_statement(AST_Expression* condition, AST_Statement* then, AST_
 
 AST_Statement* while_statement(AST_Expression* condition, AST_Statement* body)
 {
-    AST_Statement* statement = xcalloc(1, sizeof (AST_Statement));
+    AST_Statement* statement = xmalloc(sizeof (AST_Statement));
     statement->kind = STATEMENT_WHILE;
+    statement->position = (Position){0}; // TODO(timo)
     statement->_while.condition = condition;
     statement->_while.body = body;
 
@@ -79,8 +87,19 @@ AST_Statement* while_statement(AST_Expression* condition, AST_Statement* body)
 
 AST_Statement* break_statement()
 {
-    AST_Statement* statement = xcalloc(1, sizeof (AST_Statement));
+    AST_Statement* statement = xmalloc(sizeof (AST_Statement));
+    statement->position = (Position){0}; // TODO(timo)
     statement->kind = STATEMENT_BREAK;
+
+    return statement;
+}
+
+
+AST_Statement* continue_statement()
+{
+    AST_Statement* statement = xmalloc(sizeof (AST_Statement));
+    statement->position = (Position){0}; // TODO(timo)
+    statement->kind = STATEMENT_CONTINUE;
 
     return statement;
 }
@@ -88,8 +107,9 @@ AST_Statement* break_statement()
 
 AST_Statement* return_statement(AST_Expression* value)
 {
-    AST_Statement* statement = xcalloc(1, sizeof (AST_Statement));
+    AST_Statement* statement = xmalloc(sizeof (AST_Statement));
     statement->kind = STATEMENT_RETURN;
+    statement->position = (Position){0}; // TODO(timo)
     statement->_return.value = value;
 
     return statement;
@@ -98,8 +118,9 @@ AST_Statement* return_statement(AST_Expression* value)
 
 AST_Statement* declaration_statement(AST_Declaration* declaration)
 {
-    AST_Statement* statement = xcalloc(1, sizeof (AST_Statement));
+    AST_Statement* statement = xmalloc(sizeof (AST_Statement));
     statement->kind = STATEMENT_DECLARATION;
+    statement->position = (Position){0}; // TODO(timo)
     statement->declaration = declaration;
 
     return statement;
@@ -228,19 +249,20 @@ AST_Expression* call_expression(AST_Expression* variable, array* arguments)
 }
 
 
-// TODO(timo): Should this get at least a position?
 AST_Expression* error_expression()
 {
     AST_Expression* expression = xmalloc(sizeof (AST_Expression));
     expression->kind = EXPRESSION_NONE;
-    // expression->type = NULL;
+    // TODO(timo): Should this get at least a position?
 
     return expression;
 }
 
 
-stringbuilder* expression_to_string(AST_Expression* expression, stringbuilder* sb)
+const char* expression_to_string(const AST_Expression* expression)
 {
+    stringbuilder* sb = sb_init();
+
     switch (expression->kind)
     {
         case EXPRESSION_LITERAL:
@@ -248,15 +270,15 @@ stringbuilder* expression_to_string(AST_Expression* expression, stringbuilder* s
             break;
         case EXPRESSION_BINARY:
             sb_append(sb, "(");
-            expression_to_string(expression->binary.left, sb);
+            sb_append(sb, expression_to_string(expression->binary.left));
             sb_append(sb, expression->binary._operator->lexeme);
-            expression_to_string(expression->binary.right, sb);
+            sb_append(sb, expression_to_string(expression->binary.right));
             sb_append(sb, ")");
             break;
         case EXPRESSION_UNARY:
             sb_append(sb, "(");
             sb_append(sb, expression->unary._operator->lexeme);
-            expression_to_string(expression->unary.operand, sb);
+            sb_append(sb, expression_to_string(expression->unary.operand));
             sb_append(sb, ")");
             break;
         default:
@@ -264,11 +286,14 @@ stringbuilder* expression_to_string(AST_Expression* expression, stringbuilder* s
             exit(1);
     }
 
-    return sb;
+    const char* result = sb_to_string(sb);
+    sb_free(sb);
+
+    return result;
 }
 
 
-char* expression_str(Expression_Kind kind)
+const char* expression_str(const Expression_Kind kind)
 {
     switch (kind)
     {
@@ -286,7 +311,7 @@ char* expression_str(Expression_Kind kind)
 }
 
 
-char* statement_str(Statement_Kind kind)
+const char* statement_str(const Statement_Kind kind)
 {
     switch (kind)
     {
@@ -303,7 +328,7 @@ char* statement_str(Statement_Kind kind)
 }
 
 
-char* declaration_str(Declaration_Kind kind)
+const char* declaration_str(const Declaration_Kind kind)
 {
     switch (kind)
     {
@@ -315,7 +340,7 @@ char* declaration_str(Declaration_Kind kind)
 }
 
 
-char* type_specifier_str(Type_Specifier specifier)
+const char* type_specifier_str(const Type_Specifier specifier)
 {
     switch (specifier)
     {
@@ -360,14 +385,13 @@ void expression_free(AST_Expression* expression)
             {
                 for (int i = 0; i < expression->function.parameters->length; i++)
                 {
-                    // NOTE(timo): These are the unresolved parameters which have no types etc.
-                    // so this free is enough
+                    // NOTE(timo): These are the unresolved parameters which 
+                    // have no types etc. so this free is enough
                     free(expression->function.parameters->items[i]);
                     expression->function.parameters->items[i] = NULL;
                 }
                 array_free(expression->function.parameters);
             }
-            // if (expression->type != NULL) type_free(expression->type);
             statement_free(expression->function.body);
             break; 
         case EXPRESSION_CALL:

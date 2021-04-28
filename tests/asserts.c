@@ -45,7 +45,7 @@ void assert_token(Test_Runner* runner, Token* token, Token_Kind kind, const char
 }
 
 
-void assert_expression_str(Test_Runner* runner, char* result, const char* expected)
+void assert_expression_str(Test_Runner* runner, const char* result, const char* expected)
 {
     assert_base(runner, strcmp(result, expected) == 0,
         "Invalid expression parse tree '%s', expected '%s'", result, expected);

@@ -192,7 +192,7 @@ typedef enum Token_Kind
 } Token_Kind;
 
 
-// Represents the analyzed lexeme and its attributes from the source file.
+// Represents the analyzed lexeme and its attributes from the source.
 //
 // Fields
 //      kind: Classification of the lexeme.
@@ -208,7 +208,7 @@ typedef struct Token
 } Token;
 
 
-// Constructor for the token.
+// Factory function for initializing a token.
 //
 // File(s): token.c
 //
@@ -219,16 +219,17 @@ typedef struct Token
 //      position: Position of the lexeme in the source file.
 // Returns
 //      Pointer to the newly created Token.
-Token* token(Token_Kind kind, const char* lexeme, int lexeme_length, Position position);
+Token* token(Token_Kind kind, const char* lexeme, const int lexeme_length, Position position);
 
 
-//
+// Lexer scans through the source (file or string), analyzes the scanned
+// lexemes and creates a stream of tokens from the lexemes.
 //
 // Fields
-//      stream:
-//      diagnostics:
-//      tokens:
-//      position:
+//      stream: Source stream of characters.
+//      diagnostics: Array of collected diagnostics.
+//      tokens: Array of collected tokens.
+//      position: Position of the current lexeme.
 typedef struct Lexer
 {
     const char* stream;
@@ -238,25 +239,33 @@ typedef struct Lexer
 } Lexer;
 
 
+// Factory function to initialize new Lexer.
+//
 // File(s): lexer.c
 //
 // Arguments:
-//      lexer:
-//      source:
+//      lexer: Pointer to Lexer structure.
+//      source: Source as a stream of characters.
 void lexer_init(Lexer* lexer, const char* source);
 
 
+// Frees the memory allocated for Lexer.
+//
 // File(s): lexer.c
 //
 // Arguments:
-//      lexer:
+//      lexer: Lexer to be freed.
 void lexer_free(Lexer* lexer);
 
 
+// Main function of the lexer which scans through the source and produces a
+// stream of tokens. Generated tokens can be accessed from the Lexers 'tokens'
+// which is an array.
+//
 // File(s): lexer.c
 //
 // Arguments:
-//      lexer:
+//      lexer: Pointer to already initialized Lexer.
 void lex(Lexer* lexer);
 
 
@@ -318,11 +327,6 @@ const bool value_is_not_boolean(const Value value);
 const bool value_is_not_integer(const Value value);
 
 
-//
-//  AST stuff
-//
-//  File: ast.c
-
 // Enumeration reperesenting type specifiers used with declarations.
 // 
 // Type specifier is just a enum even though it could also have a struct
@@ -341,15 +345,16 @@ typedef enum Type_Specifier
 } Type_Specifier;
 
 
+// Returns string presentation of a type specifier.
 //
+// File(s): ast.c
 //
-//
-char* type_specifier_str(Type_Specifier specifier);
+// Arguments
+//      specifier: Type specifier.
+const char* type_specifier_str(const Type_Specifier specifier);
 
 
-//
-//
-//
+// Enumeration of different declaration classifications.
 typedef enum Declaration_Kind
 {
     DECLARATION_NONE,
@@ -358,17 +363,23 @@ typedef enum Declaration_Kind
 } Declaration_Kind;
 
 
+// Returns a string representation of a declaration kind.
 //
+// File(s): ast.c
 //
-//
-//
-char* declaration_str(Declaration_Kind kind);
+// Arguments
+//      kind: Declaration kind.
+const char* declaration_str(const Declaration_Kind kind);
 
 
+// TODO(timo): 
 //
-//
-//
-//
+// Fields
+//      kind: Classification of the declaration.
+//      position: Position of the declaration.
+//      specifier: Type of the declaration.
+//      identifier: Name of the declaration.
+//      initializer: Value of the declaration.
 struct AST_Declaration
 {
     Declaration_Kind kind;
@@ -379,6 +390,31 @@ struct AST_Declaration
 };
 
 
+// Factory functions for initializing declarations.
+//
+// File(s): ast.c
+//
+// Arguments
+//      identifier: Name of the declaration.
+//      specifier: Intended type of the declaration.
+//      initializer: Value of the declaration.
+// Returns
+//      Pointer to newly created declaration.
+AST_Declaration* function_declaration(Token* identifier, Type_Specifier specifier, AST_Expression* initializer);
+AST_Declaration* variable_declaration(Token* identifier, Type_Specifier specifier, AST_Expression* initializer);
+
+
+// Frees the memory allocated for a declaration.
+//
+// File(s): ast.c
+//
+// Arguments
+//      declaration: Declaration to be freed.
+void declaration_free(AST_Declaration* declaration);
+
+
+
+// Enumeration of different statement classifications.
 typedef enum Statement_Kind
 {
     STATEMENT_NONE,
@@ -388,35 +424,40 @@ typedef enum Statement_Kind
     STATEMENT_WHILE,
     STATEMENT_RETURN,
     STATEMENT_BREAK,
+    STATEMENT_CONTINUE,
     STATEMENT_DECLARATION,
 } Statement_Kind;
 
 
+// Returns a string representation of a statement kind.
 //
+// File(s): ast.c
 //
-//
-char* statement_str(Statement_Kind kind);
+// Arguments
+//      kind: Statement kind.
+const char* statement_str(const Statement_Kind kind);
 
 
-//
+// TODO(timo):
 //
 // Fields
-//      kind:
-//      position:
-//      expression:
-//      declaration:
+//      kind: Classification of the statement.
+//      position: Position of the statement.
+//
+//      expression: Expression if the statement is a expression statement.
+//      declaration: Declaration if the statement is a declaration statement.
 //      block:
-//          statements:
-//          statement_length:
+//          statements: Array of statements.
+//          statements_length: Number of statements in the block.
 //      if:
-//          condition:
-//          then:
-//          else:
+//          condition: Condition/test part of the if statement.
+//          then: Statement to be run if the condition is true.
+//          else: Statement to be run if the condition is false.
 //      while:
-//          condition:
-//          body:
+//          condition: Condition/test part of the while statement.
+//          body: Statement to be run if the condition is true.
 //      return:
-//          value:
+//          value: Value to be returned with the return statement.
 struct AST_Statement
 {
     Statement_Kind kind;
@@ -445,12 +486,43 @@ struct AST_Statement
 };
 
 
+// Factory functions for initializing statements.
 //
+// File(s): ast.c
+//
+// Arguments
+//      Arguments depends on what kind of statement is desired. Each function
+//      will set the kind and position based on given arguments so the needed
+//      arguments are the ones in the union where arguments are given based
+//      on the statement.
+// Returns
+//      Pointer to the newly created statement.
+AST_Statement* expression_statement(AST_Expression* expression);
+AST_Statement* block_statement(array* statements, int statements_length);
+AST_Statement* if_statement(AST_Expression* condition, AST_Statement* then, AST_Statement* _else);
+AST_Statement* while_statement(AST_Expression* condition, AST_Statement* body);
+AST_Statement* break_statement();
+AST_Statement* continue_statement();
+AST_Statement* return_statement(AST_Expression* value);
+AST_Statement* declaration_statement(AST_Declaration* declaration);
+
+
+// Frees the memory allocated for a statement.
+//
+// File(s): ast.c
+//
+// Arguments
+//      statement: Statement to be freed.
+void statement_free(AST_Statement* statement);
+
+
+
+// Function parameter.
 //
 // Fields
-//      position:
-//      identifier:
-//      specifier:
+//      position: Position of the parameter.
+//      identifier: Name of the parameter.
+//      specifier: Type of the parameter.
 typedef struct Parameter
 {
     Position position;
@@ -459,7 +531,19 @@ typedef struct Parameter
 } Parameter;
 
 
+// Factory function to initialize new function parameter.
 //
+// File(s): ast.c
+//
+// Arguments
+//      identifier: Name of the parameter.
+//      specifier: Type of the parameter.
+// Returns
+//      Pointer to the newly created parameter.
+Parameter* function_parameter(Token* identifier, Type_Specifier specifier);
+
+
+// Enumeration of different expression classifications.
 typedef enum Expression_Kind
 {
     EXPRESSION_NONE,
@@ -474,38 +558,38 @@ typedef enum Expression_Kind
 } Expression_Kind;
 
 
+// Returns a string representation of a expression kind.
 //
-//
+// File(s): ast.c
 //
 // Arguments
-//      kind:
-char* expression_str(Expression_Kind kind);
+//      kind: Expression kind.
+const char* expression_str(const Expression_Kind kind);
 
 
-//
-//
+// TODO(timo):
 //
 // Fields
-//      kind:
-//      position:
-//      type:
-//      value:
+//      kind: Classification of the expression.
+//      position: Position of the expression. 
+//      type: Type of the expression.
+//      value: Value of the expression.
 //
-//      identifier:
-//      literal:
+//      identifier: Identifier token if the expression is a variable expression.
+//      literal: Literal value if the expression is a literal expression.
 //      unary:
-//          operator:
-//          operand:
+//          operator: Token of a unary operator.
+//          operand: Operand expression of unary expression.
 //      binary:
-//          operator:
-//          left:
-//          right:
+//          operator: Token of a binary operator.
+//          left: Left side expression of binary expression.
+//          right: Right side expression of binary expression.
 //      assignment:
-//          variable:
-//          value:
+//          variable: Variable to be assigned with value.
+//          value: Value to be assigned to the variable.
 //      index:
-//          variable:
-//          value:
+//          variable: Name of the subscriptable variable.
+//          value: Value of the subscript.
 //      function:
 //          parameters: Array of function parameters.
 //          arity: How many arguments the function can take.
@@ -553,65 +637,54 @@ struct AST_Expression
 };
 
 
+// Factory functions to initialize expressions.
 //
+// File(s): ast.c
 //
 // Arguments
-//      identifier:
-//      specifier:
-//      initializer:
-AST_Declaration* function_declaration(Token* identifier, Type_Specifier specifier, AST_Expression* initializer);
-AST_Declaration* variable_declaration(Token* identifier, Type_Specifier specifier, AST_Expression* initializer);
-
-
+//      Arguments depends on what kind of expression is desired. Each function
+//      will set the kind and position based on given arguments so the needed
+//      arguments are the ones in the union where arguments are given based
+//      on the statement.
 //
-//
-//
-AST_Statement* expression_statement(AST_Expression* expression);
-AST_Statement* block_statement(array* statements, int statements_length);
-AST_Statement* if_statement(AST_Expression* condition, AST_Statement* then, AST_Statement* _else);
-AST_Statement* while_statement(AST_Expression* condition, AST_Statement* body);
-AST_Statement* break_statement();
-AST_Statement* return_statement(AST_Expression* value);
-AST_Statement* declaration_statement(AST_Declaration* declaration);
-
-
-//
-//
-//
-//
+//      Type and Value of the expression will be set on later stages of the
+//      compilation.
+// Returns
+//      Pointer to the newly created expression.
 AST_Expression* literal_expression(Token* literal);
 AST_Expression* unary_expression(Token* _operator, AST_Expression* operand);
 AST_Expression* binary_expression(AST_Expression* left, Token* _operator, AST_Expression* right);
 AST_Expression* variable_expression(Token* identifier);
 AST_Expression* assignment_expression(AST_Expression* variable, AST_Expression* value);
 AST_Expression* index_expression(AST_Expression* variable, AST_Expression* value);
-Parameter* function_parameter(Token* identifier, Type_Specifier specifier);
 AST_Expression* function_expression(array* parameters, int arity, AST_Statement* body);
 AST_Expression* call_expression(AST_Expression* variable, array* arguments);
 AST_Expression* error_expression();
 
 
+// Frees the memory allocated for an expression.
 //
+// File(s): ast.c
 //
-//
-stringbuilder* expression_to_string(AST_Expression* expression, stringbuilder* sb);
-
-
-
-//
-//
-//
-//
-void declaration_free(AST_Declaration* declaration);
-void statement_free(AST_Statement* statement);
+// Arguments
+//      expression: Expression to freed.
 void expression_free(AST_Expression* expression);
 
 
+// Makes a string presentation of parse tree of a expression.
 //
+// File(s): ast.c
+//
+// Arguments
+//      expression: Expression to be turned into string.
+// Returns
+//      String presentation of parse tree of the expression.
+const char* expression_to_string(const AST_Expression* expression);
+
+
 //  Parser
 //  
 //  File: parser.c
-
 typedef struct Parser
 {
     array* diagnostics;
@@ -624,9 +697,23 @@ typedef struct Parser
 } Parser;
 
 
+//
+//
+//
 void parser_init(Parser* parser, array* tokens);
+
+
+//
+//
+//
 void parser_free(Parser* parser);
+
+
+//
+//
+//
 void parse(Parser* parser);
+
 
 Type_Specifier parse_type_specifier(Parser* parser);
 AST_Expression* parse_expression(Parser* parser);

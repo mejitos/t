@@ -592,10 +592,7 @@ static void test_order_of_arithmetic_operations(Test_Runner* runner)
 {
     Lexer lexer;
     Parser parser;
-    stringbuilder* sb;
     AST_Expression* expression;
-
-    sb = sb_init();
 
     // Base case
     lexer_init(&lexer, "1 + 2 * 3");
@@ -603,62 +600,48 @@ static void test_order_of_arithmetic_operations(Test_Runner* runner)
 
     parser_init(&parser, lexer.tokens);
     expression = parse_expression(&parser);
-    expression_to_string(expression, sb);
 
-    assert_expression_str(runner, sb_to_string(sb), "(1+(2*3))");
+    assert_expression_str(runner, expression_to_string(expression), "(1+(2*3))");
 
-    sb_free(sb);
     expression_free(expression);
     parser_free(&parser);
     lexer_free(&lexer);
     
     // Test for correct order of operations with parenthesized expressions
-    sb = sb_init();
-
     lexer_init(&lexer, "(1 + 2) * 3");
     lex(&lexer);
 
     parser_init(&parser, lexer.tokens);
     expression = parse_expression(&parser);
-    expression_to_string(expression, sb);
 
-    assert_expression_str(runner, sb_to_string(sb), "((1+2)*3)");
+    assert_expression_str(runner, expression_to_string(expression), "((1+2)*3)");
 
-    sb_free(sb);
     expression_free(expression);
     parser_free(&parser);
     lexer_free(&lexer);
 
     // Sequencial unary operators
-    sb = sb_init();
-
     lexer_init(&lexer, "----7");
     lex(&lexer);
 
     parser_init(&parser, lexer.tokens);
     expression = parse_expression(&parser);
-    expression_to_string(expression, sb);
 
-    assert_expression_str(runner, sb_to_string(sb), "(-(-(-(-7))))");
+    assert_expression_str(runner, expression_to_string(expression), "(-(-(-(-7))))");
 
-    sb_free(sb);
     expression_free(expression);
     parser_free(&parser);
     lexer_free(&lexer);
 
     // 10 - -7
-    sb = sb_init();
-
     lexer_init(&lexer, "10 - -7");
     lex(&lexer);
 
     parser_init(&parser, lexer.tokens);
     expression = parse_expression(&parser);
-    expression_to_string(expression, sb);
 
-    assert_expression_str(runner, sb_to_string(sb), "(10-(-7))");
+    assert_expression_str(runner, expression_to_string(expression), "(10-(-7))");
 
-    sb_free(sb);
     expression_free(expression);
     parser_free(&parser);
     lexer_free(&lexer);
