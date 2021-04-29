@@ -678,6 +678,84 @@ static void test_expression_statement(Test_Runner* runner)
 }
 
 
+static void test_expression_statement_variable(Test_Runner* runner)
+{
+    Lexer lexer;
+    Parser parser;
+    AST_Statement* statement;
+
+    lexer_init(&lexer, "foo;");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    statement = parse_statement(&parser);
+    
+    assert_statement(runner, statement->kind, STATEMENT_EXPRESSION);
+    assert_expression(runner, statement->expression->kind, EXPRESSION_VARIABLE);
+    
+    statement_free(statement);
+    parser_free(&parser);
+    lexer_free(&lexer);
+}
+
+
+static void test_expression_statement_assignment(Test_Runner* runner)
+{
+    Lexer lexer;
+    Parser parser;
+    AST_Statement* statement;
+
+    lexer_init(&lexer, "foo := 0;");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    statement = parse_statement(&parser);
+    
+    assert_statement(runner, statement->kind, STATEMENT_EXPRESSION);
+    assert_expression(runner, statement->expression->kind, EXPRESSION_ASSIGNMENT);
+    
+    statement_free(statement);
+    parser_free(&parser);
+    lexer_free(&lexer);
+}
+
+
+static void test_expression_statement_call(Test_Runner* runner)
+{
+    Lexer lexer;
+    Parser parser;
+    AST_Statement* statement;
+
+    // without arguments
+    lexer_init(&lexer, "foo();");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    statement = parse_statement(&parser);
+    
+    assert_statement(runner, statement->kind, STATEMENT_EXPRESSION);
+    assert_expression(runner, statement->expression->kind, EXPRESSION_CALL);
+    
+    statement_free(statement);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    // with arguments
+    lexer_init(&lexer, "foo(1, bar);");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    statement = parse_statement(&parser);
+    
+    assert_statement(runner, statement->kind, STATEMENT_EXPRESSION);
+    assert_expression(runner, statement->expression->kind, EXPRESSION_CALL);
+    
+    statement_free(statement);
+    parser_free(&parser);
+    lexer_free(&lexer);
+}
+
+
 static void test_block_statement(Test_Runner* runner)
 {
     Lexer lexer;
@@ -908,6 +986,26 @@ static void test_break_statement(Test_Runner* runner)
     statement = parse_statement(&parser);
 
     assert_statement(runner, statement->kind, STATEMENT_BREAK);
+
+    statement_free(statement);
+    parser_free(&parser);
+    lexer_free(&lexer);
+}
+
+
+static void test_continue_statement(Test_Runner* runner)
+{
+    Lexer lexer;
+    Parser parser;
+    AST_Statement* statement;
+
+    lexer_init(&lexer, "continue;");
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    statement = parse_statement(&parser);
+
+    assert_statement(runner, statement->kind, STATEMENT_CONTINUE);
 
     statement_free(statement);
     parser_free(&parser);
@@ -1622,23 +1720,26 @@ Test_Set* parser_test_set()
     Test_Set* set = test_set("Parser");
 
     // Expressions
-    array_push(set->tests, test_case("Literal expression integer", test_literal_expression_integer));
-    array_push(set->tests, test_case("Literal expression boolean", test_literal_expression_boolean));
-    array_push(set->tests, test_case("Unary expression plus", test_unary_expression_plus));
-    array_push(set->tests, test_case("Unary expression minus", test_unary_expression_minus));
-    array_push(set->tests, test_case("Binary expression plus", test_binary_expression_plus));
-    array_push(set->tests, test_case("Binary expression minus", test_binary_expression_minus));
-    array_push(set->tests, test_case("Binary expression multiply", test_binary_expression_multiply));
-    array_push(set->tests, test_case("Binary expression division", test_binary_expression_division));
-    array_push(set->tests, test_case("Binary expression equal", test_binary_expression_equal));
-    array_push(set->tests, test_case("Binary expression not equal", test_binary_expression_not_equal));
-    array_push(set->tests, test_case("Binary expression less than", test_binary_expression_less_than));
-    array_push(set->tests, test_case("Binary expression less than or equal", test_binary_expression_less_than_equal));
-    array_push(set->tests, test_case("Binary expression greater than", test_binary_expression_greater_than));
-    array_push(set->tests, test_case("Binary expression greater than or equal", test_binary_expression_greater_than_equal));
-    array_push(set->tests, test_case("Logical expression and", test_logical_expression_and));
-    array_push(set->tests, test_case("Logical expression or", test_logical_expression_or));
-    array_push(set->tests, test_case("Logical expression not", test_logical_expression_not));
+    array_push(set->tests, test_case("Literal expression (integer)", test_literal_expression_integer));
+    array_push(set->tests, test_case("Literal expression (boolean)", test_literal_expression_boolean));
+    // TODO(timo): All these expressions should be tested with all kind of values: literals, variables,
+    // function calls etc. since they do behave a bit differently and they are also parsed a bit
+    // differently. Already had a one big bug/problem because of not taking all of these into account.
+    array_push(set->tests, test_case("Unary expression (plus)", test_unary_expression_plus));
+    array_push(set->tests, test_case("Unary expression (minus)", test_unary_expression_minus));
+    array_push(set->tests, test_case("Binary expression (plus)", test_binary_expression_plus));
+    array_push(set->tests, test_case("Binary expression (minus)", test_binary_expression_minus));
+    array_push(set->tests, test_case("Binary expression (multiply)", test_binary_expression_multiply));
+    array_push(set->tests, test_case("Binary expression (division)", test_binary_expression_division));
+    array_push(set->tests, test_case("Binary expression (equal)", test_binary_expression_equal));
+    array_push(set->tests, test_case("Binary expression (not equal)", test_binary_expression_not_equal));
+    array_push(set->tests, test_case("Binary expression (less than)", test_binary_expression_less_than));
+    array_push(set->tests, test_case("Binary expression (less than or equal)", test_binary_expression_less_than_equal));
+    array_push(set->tests, test_case("Binary expression (greater than)", test_binary_expression_greater_than));
+    array_push(set->tests, test_case("Binary expression (greater than or equal)", test_binary_expression_greater_than_equal));
+    array_push(set->tests, test_case("Logical expression (and)", test_logical_expression_and));
+    array_push(set->tests, test_case("Logical expression (or)", test_logical_expression_or));
+    array_push(set->tests, test_case("Logical expression (not)", test_logical_expression_not));
     array_push(set->tests, test_case("Variable expression", test_variable_expression));
     array_push(set->tests, test_case("Assignment expression", test_assignment_expression));
     array_push(set->tests, test_case("Index expression", test_index_expression));
@@ -1649,20 +1750,11 @@ Test_Set* parser_test_set()
     array_push(set->tests, test_case("Order of arithmetic operations", test_order_of_arithmetic_operations));
 
     // Statements
-    array_push(set->tests, test_case("Expression statement", test_expression_statement));
-    // TODO(timo): Variable statement expression 'foo;', for now it expects a colon
-    // and type. So we should make sure that also this case is handled so we can
-    // assign variables etc.
-    // TODO(timo): test_expression_statement_variable();
+    array_push(set->tests, test_case("Expression statement (binary +)", test_expression_statement));
+    array_push(set->tests, test_case("Expression statement (variable)", test_expression_statement_variable));
+    array_push(set->tests, test_case("Expression statement (assignment)", test_expression_statement_assignment));
+    array_push(set->tests, test_case("Expression statement (call)", test_expression_statement_call));
     // - 'foo' => starts to parse declaration if there is nothing else after the identifier
-    // - foo; => variable, not declaration
-    // - foo(); => call, not declaration
-    // - a := foo; => assignment, not declaration
-    // - a: int = foo; declaration,
-    // Also the 2nd check is needed to make sure that 'foo;' expresison is
-    // handled correctly as a variable expression.
-    // The 3rd check is needed to distinguish declaration and call expression
-    // Falls down to the expression statement if the condition is not met.
     array_push(set->tests, test_case("Declaration statement", test_declaration_statement));
     array_push(set->tests, test_case("Block statement", test_block_statement));
     array_push(set->tests, test_case("If statement (if then)", test_if_statement_1));
@@ -1671,6 +1763,7 @@ Test_Set* parser_test_set()
     array_push(set->tests, test_case("If statement (arbitrary number of else if's)", test_if_statement_4));
     array_push(set->tests, test_case("While statement", test_while_statement));
     array_push(set->tests, test_case("Break statement", test_break_statement));
+    array_push(set->tests, test_case("Continue statement", test_continue_statement));
 
     // TODO(timo): correctly parsed statements as string
 
