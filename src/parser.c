@@ -1,3 +1,7 @@
+//
+// TODO(timo): Filedocstring
+//
+
 #include "t.h"
 
 
@@ -52,6 +56,18 @@ void parser_free(Parser* parser)
 }
 
 
+// Error recovery for parser if errors are found. The recovery is very basic
+// algorithm where we just skip to next statement or declaration from the point
+// the error was spotted from. Panic mode ends when a token for starting new 
+// statement or declaration is being found and parsing continues from that point on.
+//
+// TODO(timo): At the moment this doesn't actually even work the way I intended
+// it to work, since the recovery is always done after the faulty declaration or
+// statement is parsed all the way through. Therefore the recovery will happen
+// too late.
+//
+// Arguments
+//      parser: Pointer to initialized Parser.
 static void panic_mode(Parser* parser)
 {
     Token_Kind kind = parser->current_token->kind;
@@ -59,11 +75,9 @@ static void panic_mode(Parser* parser)
     do {
         if (kind == TOKEN_SEMICOLON)
             advance(parser);
-        // NOTE(timo): Panic mode ends when a token for starting new statement or
-        // declaration is being found and parsing continues from that point on.
-        if (kind == TOKEN_IDENTIFIER || kind == TOKEN_IF || kind == TOKEN_WHILE ||
-            kind == TOKEN_RETURN || kind == TOKEN_BREAK || kind == TOKEN_EOF ||
-            kind == TOKEN_LEFT_CURLYBRACE)
+        if (kind == TOKEN_IDENTIFIER || kind == TOKEN_IF    || kind == TOKEN_WHILE ||
+            kind == TOKEN_RETURN     || kind == TOKEN_BREAK || kind == TOKEN_CONTINUE ||
+            kind == TOKEN_LEFT_CURLYBRACE || TOKEN_EOF)
             break;
         else
             advance(parser);
@@ -73,20 +87,27 @@ static void panic_mode(Parser* parser)
 }
 
 
-static void expect_token(Parser* parser, Token_Kind kind, const char* lexeme, bool panic)
+// TODO
+//
+// Arguments
+//      parser:
+//      kind:
+//      lexeme:
+//      panic:
+static void expect_token(Parser* parser, const Token_Kind kind, const char* lexeme, const bool panic)
 {
     // NOTE(timo): The boolean 'panic' tells whether it is time to panic or not.
     // There is a lot of situations where that isn't actually necessary e.g.
     // when parsing while statement and the 'do' keyword is missing. That is
     // not so critical mistake, that actual error recovery is needed.
     // TODO(timo): Create better solution or at least go through with care all
-    // the situations where the error recovery is really not needed
+    // the situations where the error recovery is really not needed.
     if (parser->current_token->kind != kind)
     {
         Diagnostic* _diagnostic = diagnostic(
-                DIAGNOSTIC_ERROR, parser->current_token->position, 
-                ":PARSER - SyntaxError: Invalid token '%s', expected '%s'\n", 
-                parser->current_token->lexeme, lexeme);
+            DIAGNOSTIC_ERROR, parser->current_token->position, 
+            ":PARSER - SyntaxError: Invalid token '%s', expected '%s'\n", 
+            parser->current_token->lexeme, lexeme);
         array_push(parser->diagnostics, _diagnostic); 
         parser->panic = panic;
     }
@@ -95,14 +116,25 @@ static void expect_token(Parser* parser, Token_Kind kind, const char* lexeme, bo
 }
 
 
-static inline Token* peek(Parser* parser)
+// TODO
+//
+// Arguments
+//      parser: Pointer to a initialized Parser.
+// Returns
+//      Pointer to a next token in line.
+static inline const Token* peek(const Parser* parser)
 {
     // NOTE(timo): Since the current token is always advanced after assigning it,
-    // the peek needs to return the current pointer and not current + 1
+    // the peek needs to return the current pointer and not current + 1.
     return (Token*)parser->tokens->items[parser->index];
 }
 
 
+// Advances the token stream by setting the current token as the next token
+// in line and by advancing the index.
+//
+// Arguments
+//      parser: Pointer to a initialized Parser.
 static inline void advance(Parser* parser)
 {
     // NOTE(timo): This check is needed to make sure there actually is a 
@@ -145,9 +177,9 @@ Type_Specifier parse_type_specifier(Parser* parser)
         default:
         {
             Diagnostic* _diagnostic = diagnostic(
-                    DIAGNOSTIC_ERROR, parser->current_token->position, 
-                    ":PARSER - SyntaxError: Expected type specifier, got '%s'\n",
-                    parser->current_token->lexeme);
+                DIAGNOSTIC_ERROR, parser->current_token->position, 
+                ":PARSER - SyntaxError: Expected type specifier, got '%s'\n",
+                parser->current_token->lexeme);
             array_push(parser->diagnostics, _diagnostic); 
             parser->panic = true;
             
@@ -160,6 +192,15 @@ Type_Specifier parse_type_specifier(Parser* parser)
 }
 
 
+// Parses a return statement based on the grammar.
+//
+// EBNF grammar:
+//      return_statement         = 'return' expression ';' ;
+//
+// Arguments
+//      parser: Pointer to initialized Parser.
+// Returns
+//      Pointer to the newly created statement.
 static AST_Statement* parse_return_statement(Parser* parser)
 {
     advance(parser); // skip the keyword
@@ -170,11 +211,20 @@ static AST_Statement* parse_return_statement(Parser* parser)
 }
 
 
+// Parses a block statement based on the grammar.
+//
+// EBNF grammar:
+//      block_statement          = '{' statement* '}' ;
+//
+// Arguments
+//      parser: Pointer to initialized Parser.
+// Returns
+//      Pointer to the newly created statement.
 static AST_Statement* parse_block_statement(Parser* parser)
 {
     // NOTE(timo): This expect is important later when we can just assign
     // any statement to if and while statements and to function expressions
-    expect_token(parser, TOKEN_LEFT_CURLYBRACE, "{", true);
+    expect_token(parser, TOKEN_LEFT_CURLYBRACE, "{", false);
 
     array* statements = array_init(sizeof (AST_Statement*));
 
@@ -182,7 +232,9 @@ static AST_Statement* parse_block_statement(Parser* parser)
            parser->current_token->kind != TOKEN_EOF)
     {
         array_push(statements, parse_statement(parser));
-        if (parser->panic) panic_mode(parser);
+
+        if (parser->panic) 
+            panic_mode(parser);
     }
 
     expect_token(parser, TOKEN_RIGHT_CURLYBRACE, "}", true);
@@ -191,11 +243,17 @@ static AST_Statement* parse_block_statement(Parser* parser)
 }
 
 
+// Parses a expression statement based on the grammar.
+//
+// EBNF grammar:
+//      expression_statement     = expression ';' ;
+//
+// Arguments
+//      parser: Pointer to initialized Parser.
+// Returns
+//      Pointer to the newly created statement.
 static AST_Statement* parse_expression_statement(Parser* parser)
 {
-    // TODO(timo): We could check here for all the allowed expression statements
-    // e.g. literal expression cannot be expression statement and therefore before
-    // the expect_token() we need like expect_expression() or something like that
     AST_Expression* expression = parse_expression(parser);
     expect_token(parser, TOKEN_SEMICOLON, ";", true);
 
@@ -203,6 +261,15 @@ static AST_Statement* parse_expression_statement(Parser* parser)
 }
 
 
+// Parses a declaration statement based on the grammar.
+//
+// EBNF grammar:
+//      declaration_statement    = declaration ;
+//
+// Arguments
+//      parser: Pointer to initialized Parser.
+// Returns
+//      Pointer to the newly created statement.
 static AST_Statement* parse_declaration_statement(Parser* parser)
 {
     AST_Declaration* declaration = parse_declaration(parser);
@@ -212,6 +279,15 @@ static AST_Statement* parse_declaration_statement(Parser* parser)
 }
 
 
+// Parses a if statement based on the grammar.
+//
+// EBNF grammar:
+//      if_statement        = 'if' expression 'then' statement ('else' statement)? ;
+//
+// Arguments
+//      parser: Pointer to initialized Parser.
+// Returns
+//      Pointer to the newly created statement.
 static AST_Statement* parse_if_statement(Parser* parser)
 {
     advance(parser); // skip the keyword
@@ -230,6 +306,15 @@ static AST_Statement* parse_if_statement(Parser* parser)
 }
 
 
+// Parses a while statement based on the grammar.
+//
+// EBNF grammar:
+//      while_statement          = 'while' expression 'do' statement ;
+//
+// Arguments
+//      parser: Pointer to initialized Parser.
+// Returns
+//      Pointer to the newly created statement.
 static AST_Statement* parse_while_statement(Parser* parser)
 {
     advance(parser); // skip the keyword
@@ -241,12 +326,39 @@ static AST_Statement* parse_while_statement(Parser* parser)
 }
 
 
+// Parses a break statement based on the grammar.
+//
+// EBNF grammar:
+//      break_statement          = 'break' ';' ;
+//
+// Arguments
+//      parser: Pointer to initialized Parser.
+// Returns
+//      Pointer to the newly created statement.
 static AST_Statement* parse_break_statement(Parser* parser)
 {
     advance(parser); // skip the keyword
     expect_token(parser, TOKEN_SEMICOLON, ";", false);
 
     return break_statement();
+}
+
+
+// Parses a continue statement based on the grammar.
+//
+// EBNF grammar:
+//      continue_statement       = 'continue' ';' ;
+//
+// Arguments
+//      parser: Pointer to initialized Parser.
+// Returns
+//      Pointer to the newly created statement.
+static AST_Statement* parse_continue_statement(Parser* parser)
+{
+    advance(parser); // skip the keyword
+    expect_token(parser, TOKEN_SEMICOLON, ";", false);
+
+    return continue_statement();
 }
 
 
@@ -262,6 +374,8 @@ AST_Statement* parse_statement(Parser* parser)
             return parse_while_statement(parser);
         case TOKEN_BREAK:
             return parse_break_statement(parser);
+        case TOKEN_CONTINUE:
+            return parse_continue_statement(parser);
         case TOKEN_RETURN:
             return parse_return_statement(parser);
         case TOKEN_IDENTIFIER:
@@ -284,6 +398,24 @@ AST_Statement* parse_statement(Parser* parser)
 }
 
 
+// Parses a primary expression based on the grammar.
+//
+// TODO(timo): What are primary expressions
+//
+// EBNF grammar:
+//      primary         = '(' expression ')'
+//                      | '(' parameter_list? ')' '=>' statement ';'
+//                      | literal ;
+//      parameter_list  = IDENTIFIER ':' type_specifier ( ',' IDENTIFIER ':' type_specifier )* ;
+//      type_specifier  = 'int' | 'bool' ;
+//      literal         = IDENTIFIER
+//                      | INTEGER
+//                      | BOOLEAN ;
+//
+// Arguments
+//      parser: Pointer to initialized Parser.
+// Returns
+//      Pointer to the newly created expression.
 static AST_Expression* primary(Parser* parser)
 {
     AST_Expression* expression;
@@ -359,6 +491,17 @@ static AST_Expression* primary(Parser* parser)
 }
 
 
+// Parses a call and subscript expressions based on the grammar.
+//
+// EBNF grammar:
+//      call            = primary '(' arguments? ')' ;
+//      index           = primary '[' expression ']' ;
+//      arguments       = expression ( ',' expression )* ;
+//
+// Arguments
+//      parser: Pointer to initialized Parser.
+// Returns
+//      Pointer to the newly created expression.
 static AST_Expression* call(Parser* parser)
 {
     AST_Expression* expression = primary(parser);
@@ -394,6 +537,16 @@ static AST_Expression* call(Parser* parser)
 }
 
 
+// Parses a unary expression based on the grammar.
+//
+// EBNF grammar:
+//      unary           = ( 'not' | '-' | '+' ) unary
+//                      | call ;
+//
+// Arguments
+//      parser: Pointer to initialized Parser.
+// Returns
+//      Pointer to the newly created expression.
 static AST_Expression* unary(Parser* parser)
 {
     if (parser->current_token->kind == TOKEN_MINUS || 
@@ -411,6 +564,15 @@ static AST_Expression* unary(Parser* parser)
 }
 
 
+// Parses a binary expression based on the grammar.
+//
+// EBNF grammar:
+//      factor          = unary ( ( '/' | '*' ) unary )* ;
+//
+// Arguments
+//      parser: Pointer to initialized Parser.
+// Returns
+//      Pointer to the newly created expression.
 static AST_Expression* factor(Parser* parser)
 {
     AST_Expression* expression = unary(parser);
@@ -428,6 +590,15 @@ static AST_Expression* factor(Parser* parser)
 }
 
 
+// Parses a binary expression based on the grammar.
+//
+// EBNF grammar:
+//      term            = factor ( ( '+' | '-' ) factor )* ;
+//
+// Arguments
+//      parser: Pointer to initialized Parser.
+// Returns
+//      Pointer to the newly created expression.
 static AST_Expression* term(Parser* parser)
 {
     AST_Expression* expression = factor(parser);
@@ -445,7 +616,16 @@ static AST_Expression* term(Parser* parser)
 }
 
 
-static AST_Expression* ordering(Parser* parser)
+// Parses a binary expression based on the grammar.
+//
+// EBNF grammar:
+//      relation        = term ( ( '<' | '<=' | '>' | '>=' ) term )* ;
+//
+// Arguments
+//      parser: Pointer to initialized Parser.
+// Returns
+//      Pointer to the newly created expression.
+static AST_Expression* relation(Parser* parser)
 {
     AST_Expression* expression = term(parser);
 
@@ -464,16 +644,25 @@ static AST_Expression* ordering(Parser* parser)
 }
 
 
+// Parses a binary expression based on the grammar.
+//
+// EBNF grammar:
+//      equality        = relation ( ( '==' | '!=' ) relation )* ;
+//
+// Arguments
+//      parser: Pointer to initialized Parser.
+// Returns
+//      Pointer to the newly created expression.
 static AST_Expression* equality(Parser* parser)
 {
-    AST_Expression* expression = ordering(parser);
+    AST_Expression* expression = relation(parser);
 
     while (parser->current_token->kind == TOKEN_IS_EQUAL || 
            parser->current_token->kind == TOKEN_NOT_EQUAL)
     {
         Token* _operator = parser->current_token;
         advance(parser);
-        AST_Expression* right = ordering(parser);
+        AST_Expression* right = relation(parser);
         expression = binary_expression(expression, _operator, right);
     }
 
@@ -481,6 +670,15 @@ static AST_Expression* equality(Parser* parser)
 }
 
 
+// Parses a binary expression based on the grammar.
+//
+// EBNF grammar:
+//      and             = equality ( 'and' equality )* ;
+//
+// Arguments
+//      parser: Pointer to initialized Parser.
+// Returns
+//      Pointer to the newly created expression.
 static AST_Expression* and(Parser* parser)
 {
     AST_Expression* expression = equality(parser);
@@ -497,6 +695,15 @@ static AST_Expression* and(Parser* parser)
 }
 
 
+// Parses a binary expression based on the grammar.
+//
+// EBNF grammar:
+//      or              = and ( 'or' and )* ;
+//
+// Arguments
+//      parser: Pointer to initialized Parser.
+// Returns
+//      Pointer to the newly created expression.
 static AST_Expression* or(Parser* parser)
 {
     AST_Expression* expression = and(parser);
@@ -513,6 +720,16 @@ static AST_Expression* or(Parser* parser)
 }
 
 
+// Parses an assignment expression based on the grammar.
+//
+// EBNF grammar:
+//      assignment      = IDENTIFIER ':=' assignment
+//                      | or ;
+//
+// Arguments
+//      parser: Pointer to initialized Parser.
+// Returns
+//      Pointer to the newly created expression.
 static AST_Expression* assignment(Parser* parser)
 {
     AST_Expression* expression = or(parser);
@@ -525,8 +742,8 @@ static AST_Expression* assignment(Parser* parser)
         if (expression->kind != EXPRESSION_VARIABLE)
         {
             Diagnostic* _diagnostic = diagnostic(
-                    DIAGNOSTIC_ERROR, expression->position, 
-                    ":PARSER - SyntaxError: Invalid assignment target, expected a variable.\n");
+                DIAGNOSTIC_ERROR, expression->position, 
+                ":PARSER - SyntaxError: Invalid assignment target, expected a variable.\n");
             array_push(parser->diagnostics, _diagnostic); 
             // NOTE(timo): In case of invalid assignment target there is really no need
             // for error recovery since we are already at the end of the expression.
@@ -573,7 +790,8 @@ void parse(Parser* parser)
     {
         array_push(parser->declarations, parse_declaration(parser));
         
-        if (parser->panic) panic_mode(parser);
+        if (parser->panic) 
+            panic_mode(parser);
     }
 
     assert(parser->current_token->kind == TOKEN_EOF);

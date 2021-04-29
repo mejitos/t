@@ -682,46 +682,153 @@ void expression_free(AST_Expression* expression);
 const char* expression_to_string(const AST_Expression* expression);
 
 
-//  Parser
-//  
-//  File: parser.c
+// TODO(timo):
+// 
+// Fields
+//      diagnostics: Array of collected diagnostics.
+//      position: TODO(timo): Is this needed to anything?
+//      index: Index of the current token.
+//      tokens: Stream of tokens in an array.
+//      current_token: Current token from the token stream.
+//      declarations: Array of declarations.
+//      panic: If error recovery is needed to execute.
 typedef struct Parser
 {
     array* diagnostics;
     Position position;
-    int index;
     array* tokens;
+    int index;
     Token* current_token;
     array* declarations;
     bool panic;
 } Parser;
 
 
+// Factory function to initialize new parser.
 //
+// File(s): parser.c
 //
-//
+// Arguments
+//      parser: Pointer to Parser structure.
+//      tokens: Stream of tokens to be parsed into abstract syntax tree.
 void parser_init(Parser* parser, array* tokens);
 
 
+// Frees the memory allocated for a parser.
 //
+// File(s): parser.c
 //
-//
+// Arguments
+//      parser: Parser to be freed.
 void parser_free(Parser* parser);
 
 
+// Main function that turns a stream of tokens into a abstract syntax tree.
+// The stream of tokens will be parsed into an array of declarations which
+// can be accessed through the field 'declarations' after parsing.
 //
+// TODO(timo): Top part of the grammar
 //
+// File(s): parser.c
 //
+// Arguments
+//      parser: Pointer to a already initialized Parser.
 void parse(Parser* parser);
 
 
+// Main interface for parsing type specifiers. TODO(timo):
+//
+// EBNF grammar:
+//      type_specifier  = 'int' | 'bool' | '[int]' ;
+//
+// File(s): parser.c
+//
+// Arguments
+//      parser: Pointer to a already initialized Parser.
+// Returns
+//      Parsed type specifier.
 Type_Specifier parse_type_specifier(Parser* parser);
+
+
+// Main interface for parsing expressions. TODO(timo):
+//
+// EBNF grammar:
+//      expression      = assignment ;
+//      assignment      = IDENTIFIER ':=' assignment
+//                      | or ;
+//      or              = and ( 'or' and )* ;
+//      and             = equality ( 'and' equality )* ;
+//      equality        = relation ( ( '==' | '!=' ) relation )* ;
+//      relation        = term ( ( '<' | '<=' | '>' | '>=' ) term )* ;
+//      term            = factor ( ( '+' | '-' ) factor )* ;
+//      factor          = unary ( ( '/' | '*' ) unary )* ;
+//      unary           = ( 'not' | '-' | '+' ) unary
+//                      | call ;
+//      call            = primary '(' arguments? ')' ;
+//      index           = primary '[' expression ']' ;
+//      arguments       = expression ( ',' expression )* ;
+//      primary         = '(' expression ')'
+//                      | '(' parameter_list? ')' '=>' statement ';'
+//                      | literal ;
+//      parameter_list  = IDENTIFIER ':' type_specifier ( ',' IDENTIFIER ':' type_specifier )* ;
+//      type_specifier  = 'int' | 'bool' ;
+//      literal         = IDENTIFIER
+//                      | INTEGER
+//                      | BOOLEAN ;
+//
+// File(s): parser.c
+//
+// Arguments
+//      parser: Pointer to a already initialized Parser.
+// Returns
+//      Pointer to parsed expression.
 AST_Expression* parse_expression(Parser* parser);
+
+
+// Main interface for parsing statements. TODO(timo):
+//
+// EBNF frammar:
+//      statement                = expression_statement
+//                              | block_statement
+//                              | while_statement
+//                              | if_statement
+//                              | break_statement
+//                              | continue_statement
+//                              | return_statement ;
+//
+//      expression_statement     = expression ';' ;
+//      declaration_statement    = declaration ;
+//      block_statement          = '{' statement* '}' ;
+//      while_statement          = 'while' expression 'do' statement ;
+//      if_statement             = 'if' expression 'then' statement ('else' statement)? ;
+//      break_statement          = 'break' ';' ;
+//      continue_statement       = 'continue' ';' ;
+//      return_statement         = 'return' expression ';' ;
+//
+// File(s): parser.c
+//
+// Arguments
+//      parser: Pointer to a already initialized Parser.
+// Returns
+//      Pointer to parsed statement.
 AST_Statement* parse_statement(Parser* parser);
+
+
+// Main interface for parsing declarations. TODO(timo):
+//
+// File(s): parser.c
+//
+// EBNF grammar:
+//      declaration = IDENTIFIER ':' type_specifier '=' expression ';' ;
+//
+// Arguments
+//      parser: Pointer to a already initialized Parser.
+// Returns
+//      Pointer to parsed declaration.
 AST_Declaration* parse_declaration(Parser* parser);
 
 
-// Enumeration of different types to separate types from each other
+// Enumeration of different type classicifations.
 typedef enum Type_Kind
 {
     TYPE_NONE,
@@ -782,7 +889,7 @@ struct Type
 };
 
 
-// Constructors for different kind of types.
+// Factory functions for initializing types.
 //
 // File(s): type.c
 //
