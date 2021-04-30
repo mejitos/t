@@ -1,3 +1,7 @@
+//
+// TODO(timo): Filedocstring
+//
+
 #include <time.h>
 #include <stdio.h>
 #include "tests.h"
@@ -6,51 +10,73 @@
 #include "../src/common.h"
 
 
-// TODO(timo): Some kind of error handling
-void parse_test_options(struct Test_Options* options, int* argc, char*** argv)
+static const char* usage =
+    "Usage:\n"
+    "    t.sh test [options] [flags]\n"
+    "Options:\n"
+    "    -h, --help: Prints help/usage screen\n"
+    "    -m, --module: Explicitly selected test module to be run. Multiple modules\n"
+    "                  can be selected by passing the option multiple times.\n"
+    "\n"
+    "                  Available test modules and valid arguments for --module:\n"
+    "                       lexer: Run tests for lexer\n"
+    "                       parser: Run tests for parser\n"
+    "                       resolver: Run tests for resolver\n"
+    "                       interpreter: Run tests for interpreter\n"
+    "                       irgenerator: Run tests for IR generator\n"
+    "                       compiler: Run tests for compiler/code generator\n"
+    "Flags:\n"
+    "    --hide-cases: Hides the descriptions of individual test cases\n"
+    "    --hide-errors: Hides the collected errors\n"
+    "    --hide-summary: Hides the compilation summary\n";
+
+
+static void parse_test_options(struct Test_Options* options, int* argc, char*** argv)
 {
     shift(argc, argv); // skip the program name
 
-    while (*argc)
+    while (*argc > 0)
     {
-        if (**argv && (str_equals(**argv, "-h") || str_equals(**argv, "--help")))
+        char* arg = (char*)**argv;
+
+        if (str_equals(arg, "-h") || str_equals(arg, "--help"))
         {
-            printf("Usage: \n");
+            printf(usage);
             exit(1);
         }
-        else if (**argv && str_equals(**argv, "-m"))
+        else if (str_equals(arg, "-m") || str_equals(arg, "--module"))
         {
             options->run_all = false;
             shift(argc, argv);
+            arg = (char*)**argv;
 
-            if      (**argv && str_equals(**argv, "lexer"))         options->lexer_tests = true;
-            else if (**argv && str_equals(**argv, "parser"))        options->parser_tests = true;
-            else if (**argv && str_equals(**argv, "resolver"))      options->resolver_tests = true;
-            else if (**argv && str_equals(**argv, "interpreter"))   options->interpreter_tests = true;
-            else if (**argv && str_equals(**argv, "irgenerator"))   options->ir_generator_tests = true;
-            else if (**argv && str_equals(**argv, "compiler"))      options->compiler_tests = true;
+            if (arg && str_equals(arg, "lexer"))         
+                options->lexer_tests = true;
+            else if (arg && str_equals(arg, "parser"))        
+                options->parser_tests = true;
+            else if (arg && str_equals(arg, "resolver"))      
+                options->resolver_tests = true;
+            else if (arg && str_equals(arg, "interpreter"))   
+                options->interpreter_tests = true;
+            else if (arg && str_equals(arg, "irgenerator"))   
+                options->ir_generator_tests = true;
+            else if (arg && str_equals(arg, "compiler"))      
+                options->compiler_tests = true;
             else 
             {
-                printf("No value provided for argument '-m'\n");
+                printf("Error: Invalid or missing argument for option '-m, --module'\n\n");
+                printf(usage);
                 exit(1);
             }
         }
-        else if (**argv && str_equals(**argv, "--hide-cases"))
-        {
+        else if (str_equals(arg, "--hide-cases"))
             options->show_cases = false;
-            shift(argc, argv);
-        }
-        else if (**argv && str_equals(**argv, "--show-errors"))
-        {
-            options->show_errors = true;
-            shift(argc, argv);
-        }
-        else if (**argv && str_equals(**argv, "--show-summary"))
-        {
-            options->show_summary = true;
-            shift(argc, argv);
-        }
-        else shift(argc, argv);
+        else if (str_equals(arg, "--hide-errors"))
+            options->show_errors = false;
+        else if (str_equals(arg, "--hide-summary"))
+            options->show_summary = false;
+
+        shift(argc, argv);
     }
 }
 
@@ -61,8 +87,8 @@ int main(int argc, char** argv)
     struct Test_Options options = 
     {
         .show_cases = true,
-        .show_summary = false,
-        .show_errors = false,
+        .show_summary = true,
+        .show_errors = true,
 
         .run_all = true,
         .lexer_tests = false,

@@ -8,11 +8,15 @@
 
 static const char* usage = 
     "Usage:\n"
-    "    t.sh source_file [options] [flags]\n"
+    "    t.exe source_file [options] [flags]\n"
     "Options:\n"
-    "    -h, --help: Prints a help screen\n"
+    "    -h, --help: Prints help/usage screen\n"
     "    -o, --output: Name of the output/program without file extensions\n"
-    "    -i, --interpret: Interpret the program with ast tree walker or with IR runner\n"
+    "    -i, --interpret: Interpret the program with selected interpreter\n"
+    "\n"
+    "                     Valid arguments:\n"
+    "                           ast: Interpret with abstract syntax tree walker\n"
+    "                           ir: IR interpreter NOT IMPLEMENTED\n"
     "Flags:\n"
     "    --show-summary: Prints a summary of the compilation at the end\n"
     "    --show-symbols: Prints the contents of the symbol table after resolving stage\n"
@@ -69,7 +73,7 @@ void parse_options(struct Options* options, int* argc, char*** argv)
             }
             else
             {
-                printf("Error: Invalid argument for '-i' or '--interpret'\n");
+                printf("Error: Invalid or missing argument for option '-i, --interpret'\n");
                 exit(1);
             }
         }
