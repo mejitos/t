@@ -1,5 +1,6 @@
 # Grammar in EBNF-notation
 
+```
 declaration             = IDENTIFIER ':' type_specifier '=' expression ';' ;
 
 statement               = expression_statement
@@ -43,3 +44,4 @@ type_specifier          = 'int' | 'bool' ;
 literal                 = IDENTIFIER
                         | INTEGER
                         | BOOLEAN ;
+```
