@@ -47,7 +47,7 @@ void ir_generator_free(IR_Generator* generator)
 }
 
 
-IR_Context* ir_context_if(char* exit_label)
+static IR_Context* ir_context_if(char* exit_label)
 {
     IR_Context* context = xmalloc(sizeof (IR_Context));
     context->kind = IR_CONTEXT_IF;
@@ -59,7 +59,7 @@ IR_Context* ir_context_if(char* exit_label)
 }
 
 
-IR_Context* ir_context_while(char* exit_label)
+static IR_Context* ir_context_while(char* exit_label)
 {
     IR_Context* context = xmalloc(sizeof (IR_Context));
     context->kind = IR_CONTEXT_WHILE;
@@ -69,14 +69,14 @@ IR_Context* ir_context_while(char* exit_label)
 }
 
 
-void ir_context_push(IR_Generator* generator, IR_Context* context)
+static void ir_context_push(IR_Generator* generator, IR_Context* context)
 {
     array_push(generator->contexts, context);
     generator->current_context = context;
 }
 
 
-void ir_context_pop(IR_Generator* generator)
+static void ir_context_pop(IR_Generator* generator)
 {
     assert(generator->contexts->length > 0);
 

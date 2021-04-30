@@ -1,7 +1,11 @@
+//
+// TODO(timo): Filedocstring
+//
+
 #include "t.h"
 
 
-Diagnostic* diagnostic(Diagnostic_Kind kind, Position position, const char* message, ...)
+Diagnostic* diagnostic(const Diagnostic_Kind kind, const Position position, const char* message, ...)
 {
     char* buffer;
     size_t buffer_length;
@@ -23,13 +27,13 @@ Diagnostic* diagnostic(Diagnostic_Kind kind, Position position, const char* mess
 }
 
 
-void print_diagnostic(Diagnostic* diagnostic)
+void print_diagnostic(const Diagnostic* diagnostic)
 {
     printf("file.t:%d:%d%s\n", diagnostic->position.line_start, diagnostic->position.column_start, diagnostic->message);
 }
 
 
-void print_diagnostics(array* diagnostics)
+void print_diagnostics(const array* diagnostics)
 {
     for (int i = 0; i < diagnostics->length; i++)
         print_diagnostic(diagnostics->items[i]);

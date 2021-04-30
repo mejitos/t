@@ -46,16 +46,16 @@ typedef struct AST_Statement AST_Statement;
 typedef struct AST_Expression AST_Expression;
 
 
-//  General position struct for everyone to use
+// General position struct for everyone to use
 //
-//  Since for now we will only support compiling of single file, there is no need to add the
-//  file attribute for the position at this stage. Maybe later.
+// Since for now we will only support compiling of single file, there is no 
+// need to add the file attribute for the position at this stage. Maybe later.
 //
-//  Fields
-//      line_start:
-//      column_start:
-//      line_end:
-//      column_end:
+// Fields
+//      line_start: Starting line of the thing.
+//      column_start: Starting column of the thing.
+//      line_end: Ending line of the thing.
+//      column_end: Ending column of the thing.
 typedef struct Position
 {
     int line_start;
@@ -65,11 +65,7 @@ typedef struct Position
 } Position;
 
 
-//  Diagnostics
-//
-//  File(s): diagnostics.c
-//
-//
+// Enumeration of different diagnostic kinds.
 typedef enum Diagnostic_Kind
 {
     DIAGNOSTIC_ERROR,
@@ -77,6 +73,12 @@ typedef enum Diagnostic_Kind
 } Diagnostic_Kind;
 
 
+// Errors and warnings collected during compilation process.
+//
+// Fields
+//      kind: Kind of the diagnostic (ERROR/WARNING).
+//      position: Where the diagnostic was spotted in the source.
+//      message: Message describing the diagnostic.
 typedef struct Diagnostic
 {
     Diagnostic_Kind kind;
@@ -85,10 +87,36 @@ typedef struct Diagnostic
 } Diagnostic;
 
 
-Diagnostic* diagnostic(Diagnostic_Kind kind, Position position, const char* message, ...);
-Diagnostic* diagnostic_simple(Diagnostic_Kind kind, const char* message, ...);
-void print_diagnostics(array* diagnostic);
-void print_diagnostic(Diagnostic* diagnostic);
+// Factory function for initializing new diagnostic.
+//
+// Freeing the diagnostics is the responsibility of the user of the diagnostics.
+//
+// File(s): diagnostics.c
+//
+// Arguments
+//      kind: Kind of the diagnostic (ERROR/WARNING).
+//      position: Where the diagnostic was spotted in the source.
+//      message: Message describing the diagnostic.
+//      ...: Arguments for the formatted message.
+Diagnostic* diagnostic(const Diagnostic_Kind kind, const Position position, const char* message, ...);
+
+
+// Prints all diagnostic messages in array of diagnostics.
+//
+// File(s): diagnostics.c
+//
+// Arguments
+//      diagnostics: Array of diagnostics.
+void print_diagnostics(const array* diagnostics);
+
+
+// Prints diagnostic message.
+//
+// File(s): diagnostics.c
+//
+// Arguments
+//      diagnostic: Diagnostic to be printed.
+void print_diagnostic(const Diagnostic* diagnostic);
 
 
 // Struture for compiler options which are parsed at the beginning of the
@@ -1418,15 +1446,17 @@ typedef struct Address
 } Address;
 
 
-// Represents a single instruction of the intermediate reperesentation
+// Represents a single instruction in the intermediate reperesentation. The
+// instructions are quads, so they have the operations and maximum of three
+// operands.
 //
 // Fields
-//      operation:
-//      arg1:
-//      arg2:
-//      result:
-//      size:
-//      label:
+//      operation: Operation of the instruction.
+//      arg1: Address of the first operand of the instruction.
+//      arg2: Address of the second operand of the instruction.
+//      result: Address of the result of the instruction.
+//      size: Used to compute sizes, aligments etc. numerical info.
+//      label: Used to save labels e.g. for jump instructions.
 typedef struct Instruction 
 {
     Operation operation;
@@ -1436,18 +1466,21 @@ typedef struct Instruction
     char* arg2;
     char* result;
 
-    int size; // this is used to compute sizes, alignments etc. info like that
+    int size;
     const char* label;
 } Instruction;
 
 
+// Factory functions for different kind of instructions.
 //
-//
+// TODO(timo): I can do more informative docstrings by grouping some of these
+// things.
 //
 // File(s): instruction.c
 //
 // Arguments
-//      
+//      Arguments are based on the instruction used. Some instructions have
+//      more operands than others.
 // Returns
 //      Pointer to the newly created Instruction.
 Instruction* instruction_copy(char* arg, char* result);
@@ -1520,7 +1553,7 @@ typedef struct Basic_Block
 } Basic_Block;
 
 
-// 
+// Enumeration of different kind of contexts used in IR generation.
 typedef enum IR_Context_Kind
 {
     IR_CONTEXT_NONE,
@@ -1529,7 +1562,7 @@ typedef enum IR_Context_Kind
 } IR_Context_Kind;
 
 
-//
+// TODO(timo):
 //
 // Fields
 //      kind:
@@ -1556,8 +1589,7 @@ typedef struct IR_Context
 } IR_Context;
 
 
-//
-//
+// TODO(timo):
 //
 // Fields
 //      output_file:
@@ -1585,75 +1617,76 @@ typedef struct IR_Generator
 } IR_Generator;
 
 
-//
+// Factory function for initializing new IR generator.
 //
 // File(s): ir_generator.c
 //
 // Arguments
-//      generator:
-//      global:
+//      generator: Pointer to generator to be initialized.
+//      global: Pointer to global symbol table with resolved symbols.
 void ir_generator_init(IR_Generator* generator, Scope* global);
 
 
-//
+// Frees the memory allocated for the IR generator.
 //
 // File(s): ir_generator.c
 //
 // Arguments
-//      generator:
+//      generator: IR generator to be freed.
 void ir_generator_free(IR_Generator* generator);
 
 
-//
+// TODO(timo):
 //
 // File(s): ir_generator.c
 //
 // Arguments
-//      generator:
-//      declarations:
+//      generator: Pointer to initialized IR generator.
+//      declarations: Array of declarations which the IR instructions will
+//                    be generated from.
 void ir_generate(IR_Generator* generator, array* declarations);
 
 
-//
+// TODO(timo):
 //
 // File(s): ir_generator.c
 //
 // Arguments
-//      generator:
-//      expression:
+//      generator: Pointer to initialized IR generator.
+//      expression: Expression to be generated.
 char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression);
 
 
-//
+// TODO(timo):
 //
 // File(s): ir_generator.c
 //
 // Arguments
-//      generator:
-//      statement:
+//      generator: Pointer to initialized IR generator.
+//      statement: Statement to be generated.
 void ir_generate_statement(IR_Generator* generator, AST_Statement* statement);
 
 
-//
+// TODO(timo):
 //
 // File(s): ir_generator.c
 //
 // Arguments
-//      generator:
-//      declaration:
+//      generator: Pointer to initialized IR generator.
+//      declaration: Declaration to be generated.
 void ir_generate_declaration(IR_Generator* generator, AST_Declaration* declaration);
 
 
-//
+// Prints all the instructions from the array of instructions.
 //
 // Arguments
-//      instructions:
+//      instructions: Array of instructions.
 void dump_instructions(array* instructions);
 
 
-//  Code generation
+// TODO(timo):
 //
-//  Fields
+// Fields
 //      output:
 //      instructions:
 //      diagnostics:
@@ -1682,32 +1715,32 @@ typedef struct Code_Generator
 } Code_Generator;
 
 
-//
+// Factory function for initializing new code generator.
 //
 // File(s): code_generator.c
 //
 // Arguments
-//      generator:
-//      global:
-//      instructions:
+//      generator: Address of the code generator to be initialized.
+//      global: Global scope with resolved symbols.
+//      instructions: Array of instructions from the IR generator.
 void code_generator_init(Code_Generator* generator, Scope* global, array* instructions);
 
 
-//
+// TODO(timo):
 //
 // File(s): code_generator.c
 //
 // Arguments
-//      generator:
+//      generator: Pointer to initialized code generator.
 void code_generate(Code_Generator* generator);
 
 
-//
+// Frees the memory allocated for code generator.
 //
 // File(s): code_generator.c
 //
 // Arguments
-//      generator:
+//      generator: Code generator to be freed.
 void code_generator_free(Code_Generator* generator);
 
 
