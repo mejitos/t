@@ -7,7 +7,7 @@ TEST_BUILD_DIR=./tests/build
 TEST_EXECUTABLE=t_test.exe
 COMMAND=$1
 USAGE="
-Usage: t.sh <command> [args]
+Usage: t.sh <command> [options] [flags]
 
 Commands:
     help:       Show the help/usage message
@@ -69,14 +69,14 @@ case $COMMAND in
         exit 0;;
     run )
         build "$BUILD_DIR" "$SRC_DIR/main.c" "$BUILD_DIR/$EXECUTABLE" "$SRC_DIR/*.c"
-        $BUILD_DIR/$EXECUTABLE $5 $6 $7 $8
+        $BUILD_DIR/$EXECUTABLE "${@:2}"
         exit 0;;
     build )
         build "$BUILD_DIR" "$SRC_DIR/main.c" "$BUILD_DIR/$EXECUTABLE" "$SRC_DIR/*.c"
         exit 0;;
     vgrun )
         build "$BUILD_DIR" "$SRC_DIR/main.c" "$BUILD_DIR/$EXECUTABLE" "$SRC_DIR/*.c"
-        valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --log-file="vglog" --verbose $BUILD_DIR/$EXECUTABLE $5 $6 $7 $8
+        valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --log-file="vglog" --verbose $BUILD_DIR/$EXECUTABLE "${@:2}"
         exit 0;;
     vgtest )
         build "$TEST_BUILD_DIR" "tests/main.c" "$TEST_BUILD_DIR/$TEST_EXECUTABLE" "tests/*.c 
