@@ -133,6 +133,7 @@ AST_Expression* literal_expression(Token* literal)
     expression->kind = EXPRESSION_LITERAL;
     expression->position = literal->position;
     expression->literal = literal;
+    expression->value = (Value){ .type = VALUE_NONE };
 
     return expression;
 }
@@ -148,6 +149,7 @@ AST_Expression* unary_expression(Token* _operator, AST_Expression* operand)
                                         .column_end = operand->position.column_end };
     expression->unary._operator = _operator;
     expression->unary.operand = operand;
+    expression->value = (Value){ .type = VALUE_NONE };
 
     return expression;
 }
@@ -164,6 +166,7 @@ AST_Expression* binary_expression(AST_Expression* left, Token* _operator, AST_Ex
     expression->binary.left = left;
     expression->binary._operator = _operator;
     expression->binary.right = right;
+    expression->value = (Value){ .type = VALUE_NONE };
 
     return expression;
 }
@@ -175,6 +178,7 @@ AST_Expression* variable_expression(Token* identifier)
     expression->kind = EXPRESSION_VARIABLE;
     expression->position = identifier->position;
     expression->identifier = identifier;
+    expression->value = (Value){ .type = VALUE_NONE };
 
     return expression;
 }
@@ -190,6 +194,7 @@ AST_Expression* assignment_expression(AST_Expression* variable, AST_Expression* 
                                         .column_end = value->position.column_end };
     expression->assignment.variable = variable;
     expression->assignment.value = value;
+    expression->value = (Value){ .type = VALUE_NONE };
 
     return expression;
 }
@@ -205,6 +210,7 @@ AST_Expression* index_expression(AST_Expression* variable, AST_Expression* value
                                         .column_end = value->position.column_end };
     expression->index.variable = variable;
     expression->index.value = value;
+    expression->value = (Value){ .type = VALUE_NONE };
 
     return expression;
 }
@@ -231,6 +237,7 @@ AST_Expression* function_expression(array* parameters, int arity, AST_Statement*
     expression->function.parameters = parameters;
     expression->function.arity = arity;
     expression->function.body = body;
+    expression->value = (Value){ .type = VALUE_NONE };
 
     return expression;
 }
@@ -244,6 +251,7 @@ AST_Expression* call_expression(AST_Expression* variable, array* arguments)
     expression->position = variable->position;
     expression->call.variable = variable;
     expression->call.arguments = arguments;
+    expression->value = (Value){ .type = VALUE_NONE };
 
     return expression;
 }

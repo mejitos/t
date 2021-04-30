@@ -4,8 +4,8 @@
 
 #include "t.h"
 
-#define INTEGER_MAX 2147483647;
-#define INTEGER_MIN 2147483648; // absolute value
+#define INTEGER_MAX 2147483647
+#define INTEGER_MIN 2147483648 // absolute value
 
 
 void resolver_init(Resolver* resolver, hashtable* type_table)
@@ -13,8 +13,11 @@ void resolver_init(Resolver* resolver, hashtable* type_table)
     *resolver = (Resolver){ .global = scope_init(NULL, "global"),
                             .diagnostics = array_init(sizeof (Diagnostic*)),
                             .type_table = type_table,
+                            .context.current_function = NULL,
                             .context.not_in_loop = true,
-                            .context.not_in_function = true, };
+                            .context.not_in_function = true, 
+                            .context.not_returned = true,
+                            .context.return_type = NULL };
 
     resolver->local = resolver->global;
 }
@@ -47,10 +50,17 @@ void resolver_free(Resolver* resolver)
 }
 
 
+// Creates a new scope and assigns it as the current local scope.
+//
+// At the moment there is only two scopes in the language: global and functions
+// local scope.
+//
+// Arguments
+//      resolver: Pointer to initialized Resolver.
+//      name: Name of the new scope.
 static inline void enter_scope(Resolver* resolver, const char* name)
 {
-    // NOTE(timo): local scope at this point should be the global scope
-    // since we only have two scopes at the moment
+    // TODO(timo): This should be removed after more flexible scoping is added
     assert(resolver->local == resolver->global);
 
     Scope* scope = scope_init(resolver->local, name);
@@ -58,6 +68,14 @@ static inline void enter_scope(Resolver* resolver, const char* name)
 }
 
 
+// Leaves current scope and sets the enclosing scope as the current local
+// scope.
+//
+// At the moment there is only two scopes in the language: global and functions
+// local scope.
+//
+// Arguments
+//      resolver: Pointer to iniitalized Resolver.
 static inline void leave_scope(Resolver* resolver)
 {
     resolver->local = resolver->local->enclosing;
@@ -67,12 +85,19 @@ static inline void leave_scope(Resolver* resolver)
 }
 
 
+// Resolves type of a literal expression. Integer overflow of integer literal
+// will also be checked.
+//
+// Arguments
+//      resolver: Pointer to initialized Resolver.
+//      expression: Expression to be resolved.
+// Returns
+//      Pointer to resolved type of the expression.
 static Type* resolve_literal_expression(Resolver* resolver, AST_Expression* expression)
 {
     assert(expression->kind == EXPRESSION_LITERAL);
     
     Type* type;
-    Value value;
     Token* literal = expression->literal;
 
     switch (literal->kind)
@@ -105,8 +130,8 @@ static Type* resolve_literal_expression(Resolver* resolver, AST_Expression* expr
             }
             
             type = hashtable_get(resolver->type_table, "int");
-            value = (Value){ .type = VALUE_INTEGER, 
-                             .integer = integer_value };
+            expression->value = (Value){ .type = VALUE_INTEGER, 
+                                         .integer = integer_value };
             break;
         }
         case TOKEN_BOOLEAN_LITERAL:
@@ -119,8 +144,8 @@ static Type* resolve_literal_expression(Resolver* resolver, AST_Expression* expr
                 boolean_value = false;
 
             type = hashtable_get(resolver->type_table, "bool");
-            value = (Value){ .type = VALUE_BOOLEAN,
-                             .boolean = boolean_value };
+            expression->value = (Value){ .type = VALUE_BOOLEAN,
+                                         .boolean = boolean_value };
             break;
         }
         default:
@@ -137,16 +162,24 @@ static Type* resolve_literal_expression(Resolver* resolver, AST_Expression* expr
     }
 
     expression->type = type;
-    expression->value = value;
 
     return type;
 }
 
 
+// Resolves type of a unary expression. If the unary expression is a literal,
+// also integer overflows will be checked.
+//
+// Arguments
+//      resolver: Pointer to initialized Resolver.
+//      expression: Expression to be resolved.
+// Returns
+//      Pointer to resolved type of the expression.
 static Type* resolve_unary_expression(Resolver* resolver, AST_Expression* expression)
 {
     assert(expression->kind == EXPRESSION_UNARY);
 
+    Type* type;
     AST_Expression* operand = expression->unary.operand;
     Token* _operator = expression->unary._operator;
     Type* operand_type = resolve_expression(resolver, operand);
@@ -155,67 +188,90 @@ static Type* resolve_unary_expression(Resolver* resolver, AST_Expression* expres
     {
         case TOKEN_PLUS:
         {
-            if (type_is_not_integer(operand_type))
+            if (type_is_integer(operand_type))
+            {
+                if (value_is_integer(operand->value))
+                {
+                    if (operand->value.integer > INTEGER_MAX)
+                    {
+                        Diagnostic* _diagnostic = diagnostic(
+                            DIAGNOSTIC_ERROR, expression->position,
+                            ":RESOLVER - OverflowError: Integer overflow in integer literal. Maximum integer value is 2147483647");
+                        array_push(resolver->diagnostics, _diagnostic);
+                        break;
+                    }
+                    
+                    expression->value = (Value){ .type = VALUE_INTEGER,
+                                                 .integer = +operand->value.integer };
+                }
+
+                type = operand_type;
+            }
+            else
             {
                 Diagnostic* _diagnostic = diagnostic(
                     DIAGNOSTIC_ERROR, expression->position,
                     ":RESOLVER - TypeError: Unsupported operand type '%s' for unary '+'",
                     type_as_string(operand_type->kind));
                 array_push(resolver->diagnostics, _diagnostic);
+
+                type = hashtable_get(resolver->type_table, "none");
             }
-            /*
-            if (operand->kind == EXPRESSION_LITERAL && operand->value.integer > INTEGER_MAX)
-            {
-                Diagnostic* _diagnostic = diagnostic(
-                    DIAGNOSTIC_ERROR, expression->position,
-                    ":RESOLVER - OverflowError: Integer overflow in integer literal. Maximum integer value is 2147483647");
-                array_push(resolver->diagnostics, _diagnostic);
-                break;
-            }
-            */
-            // TODO(timo): Do we need values to every expression or do we just keep them in literal and unary?
-            expression->value = operand->value;
-            expression->value.integer = +expression->value.integer;
             break;
         }
         case TOKEN_MINUS:
         {
-            if (type_is_not_integer(operand_type))
+            if (type_is_integer(operand_type))
+            {
+                if (value_is_integer(operand->value))
+                {
+                    if (operand->value.integer > INTEGER_MIN)
+                    {
+                        Diagnostic* _diagnostic = diagnostic(
+                            DIAGNOSTIC_ERROR, expression->position,
+                            ":RESOLVER - OverflowError: Integer overflow in integer literal. Minimum integer value is -2147483648");
+                        array_push(resolver->diagnostics, _diagnostic);
+                        break;
+                    }
+
+                    expression->value = (Value){ .type = VALUE_INTEGER,
+                                                 .integer = -operand->value.integer };
+                }
+
+                type = operand_type;
+            }
+            else
             {
                 Diagnostic* _diagnostic = diagnostic(
                     DIAGNOSTIC_ERROR, expression->position,
                     ":RESOLVER - TypeError: Unsupported operand type '%s' for unary '-'",
                     type_as_string(operand_type->kind));
                 array_push(resolver->diagnostics, _diagnostic);
+
+                type = hashtable_get(resolver->type_table, "none");
             }
-            /*
-            if (operand->kind == EXPRESSION_LITERAL && operand->value.integer > INTEGER_MIN)
-            {
-                Diagnostic* _diagnostic = diagnostic(
-                    DIAGNOSTIC_ERROR, expression->position,
-                    ":RESOLVER - OverflowError: Integer overflow in integer literal. Minimum integer value is 2147483648");
-                array_push(resolver->diagnostics, _diagnostic);
-                break;
-            }
-            */
-            // TODO(timo): Do we need values to every expression or do we just keep them in literal and unary?
-            expression->value = operand->value;
-            expression->value.integer = -expression->value.integer;
             break;
         }
         case TOKEN_NOT:
         {
-            if (type_is_not_boolean(operand_type))
+            if (type_is_boolean(operand_type))
+            {
+                if (value_is_boolean(operand->value))
+                    expression->value = (Value){ .type = VALUE_BOOLEAN,
+                                                 .boolean = ! operand->value.boolean };
+
+                type = operand_type;
+            }
+            else
             {
                 Diagnostic* _diagnostic = diagnostic(
                     DIAGNOSTIC_ERROR, expression->position,
                     ":RESOLVER - TypeError: Unsupported operand type '%s' for unary 'not'",
                     type_as_string(operand_type->kind));
                 array_push(resolver->diagnostics, _diagnostic);
+
+                type = hashtable_get(resolver->type_table, "none");
             }
-            // TODO(timo): Do we need values to every expression or do we just keep them in literal and unary?
-            expression->value = operand->value;
-            expression->value.integer = !expression->value.boolean;
             break;
         }
         default:
@@ -225,16 +281,25 @@ static Type* resolve_unary_expression(Resolver* resolver, AST_Expression* expres
                 ":RESOLVER - Unreachable: Invalid unary operator '%s'",
                 _operator->lexeme);
             array_push(resolver->diagnostics, _diagnostic);
+
+            type = hashtable_get(resolver->type_table, "none");
             break;
         }
     }
 
-    expression->type = operand_type;
+    expression->type = type;
 
-    return operand_type;
+    return type;
 }
 
 
+// Resolves type of a binary expression.
+//
+// Arguments
+//      resolver: Pointer to initialized Resolver.
+//      expression: Expression to be resolved.
+// Returns
+//      Pointer to resolved type of the expression.
 static Type* resolve_binary_expression(Resolver* resolver, AST_Expression* expression)
 {
     Type* type_left = resolve_expression(resolver, expression->binary.left);
@@ -258,12 +323,48 @@ static Type* resolve_binary_expression(Resolver* resolver, AST_Expression* expre
                     type_as_string(type_left->kind), type_as_string(type_right->kind), _operator->lexeme);
                 array_push(resolver->diagnostics, _diagnostic);
 
-                // TODO(timo): These none types create a lot of useless error messages in error situations
-                // so consider just removing them
                 type = hashtable_get(resolver->type_table, "none");
             }
             else
+            {
+                Value value_left = expression->binary.left->value;
+                Value value_right = expression->binary.right->value;
+
+                // If both values are integers => they are integer constants and
+                // we can do some constant folding.
+                if (value_is_integer(value_left) && value_is_integer(value_right))
+                {
+                    switch (_operator->kind)
+                    {
+                        case TOKEN_PLUS:
+                        {
+                            expression->value = (Value){ .type = VALUE_INTEGER,
+                                                         .integer = value_left.integer + value_right.integer };
+                            break;
+                        }
+                        case TOKEN_MINUS:
+                        {
+                            expression->value = (Value){ .type = VALUE_INTEGER,
+                                                         .integer = value_left.integer - value_right.integer };
+                            break;
+                        }
+                        case TOKEN_MULTIPLY:
+                        {
+                            expression->value = (Value){ .type = VALUE_INTEGER,
+                                                         .integer = value_left.integer * value_right.integer };
+                            break;
+                        }
+                        case TOKEN_DIVIDE:
+                        {
+                            expression->value = (Value){ .type = VALUE_INTEGER,
+                                                         .integer = value_left.integer / value_right.integer };
+                            break;
+                        }
+                    }
+                }
+
                 type = type_left;
+            }
 
             break;
         }
@@ -284,7 +385,51 @@ static Type* resolve_binary_expression(Resolver* resolver, AST_Expression* expre
                 type = hashtable_get(resolver->type_table, "none");
             }
             else
+            {
+                Value value_left = expression->binary.left->value;
+                Value value_right = expression->binary.right->value;
+
+                // If both values are booleans or both values are integers  => they 
+                // are constants and we can do some constant folding.
+                if (value_is_integer(value_left) && value_is_integer(value_right))
+                {
+                    switch (_operator->kind)
+                    {
+                        case TOKEN_IS_EQUAL:
+                        {
+                            expression->value = (Value){ .type = VALUE_BOOLEAN,
+                                                         .boolean = value_left.integer == value_right.integer};
+                            break;
+                        }
+                        case TOKEN_NOT_EQUAL:
+                        {
+                            expression->value = (Value){ .type = VALUE_BOOLEAN,
+                                                         .boolean = value_left.integer != value_right.integer};
+                            break;
+                        }
+                    }
+                }
+                else if (value_is_boolean(value_left) && value_is_boolean(value_right))
+                {
+                    switch (_operator->kind)
+                    {
+                        case TOKEN_IS_EQUAL:
+                        {
+                            expression->value = (Value){ .type = VALUE_BOOLEAN,
+                                                         .boolean = value_left.boolean == value_right.boolean };
+                            break;
+                        }
+                        case TOKEN_NOT_EQUAL:
+                        {
+                            expression->value = (Value){ .type = VALUE_BOOLEAN,
+                                                         .boolean = value_left.boolean != value_right.boolean };
+                            break;
+                        }
+                    }
+                }
+
                 type = hashtable_get(resolver->type_table, "bool");
+            }
 
             break;
         }
@@ -308,7 +453,45 @@ static Type* resolve_binary_expression(Resolver* resolver, AST_Expression* expre
                 type = hashtable_get(resolver->type_table, "none");
             }
             else
+            {
+                Value value_left = expression->binary.left->value;
+                Value value_right = expression->binary.right->value;
+
+                // If both values are integers => they are integer constants and
+                // we can do some constant folding.
+                if (value_is_integer(value_left) && value_is_integer(value_right))
+                {
+                    switch (_operator->kind)
+                    {
+                        case TOKEN_LESS_THAN:
+                        {
+                            expression->value = (Value){ .type = VALUE_BOOLEAN,
+                                                         .boolean = value_left.integer < value_right.integer };
+                            break;
+                        }
+                        case TOKEN_LESS_THAN_EQUAL:
+                        {
+                            expression->value = (Value){ .type = VALUE_BOOLEAN,
+                                                         .boolean = value_left.integer <= value_right.integer };
+                            break;
+                        }
+                        case TOKEN_GREATER_THAN:
+                        {
+                            expression->value = (Value){ .type = VALUE_BOOLEAN,
+                                                         .boolean = value_left.integer > value_right.integer };
+                            break;
+                        }
+                        case TOKEN_GREATER_THAN_EQUAL:
+                        {
+                            expression->value = (Value){ .type = VALUE_BOOLEAN,
+                                                         .boolean = value_left.integer >= value_right.integer };
+                            break;
+                        }
+                    }
+                }
+
                 type = hashtable_get(resolver->type_table, "bool");
+            }
 
             break;
         }
@@ -328,7 +511,33 @@ static Type* resolve_binary_expression(Resolver* resolver, AST_Expression* expre
                 type = hashtable_get(resolver->type_table, "none");
             }
             else
+            {
+                Value value_left = expression->binary.left->value;
+                Value value_right = expression->binary.right->value;
+
+                // If both values are booleans => they are constants and we can do 
+                // some constant folding.
+                if (value_is_boolean(value_left) && value_is_boolean(value_right))
+                {
+                    switch (_operator->kind)
+                    {
+                        case TOKEN_AND:
+                        {
+                            expression->value = (Value){ .type = VALUE_BOOLEAN,
+                                                         .boolean = value_left.boolean && value_right.boolean };
+                            break;
+                        }
+                        case TOKEN_OR:
+                        {
+                            expression->value = (Value){ .type = VALUE_BOOLEAN,
+                                                         .boolean = value_left.boolean || value_right.boolean };
+                            break;
+                        }
+                    }
+                }
+
                 type = type_left;
+            }
 
             break;
         }
@@ -353,6 +562,13 @@ static Type* resolve_binary_expression(Resolver* resolver, AST_Expression* expre
 }
 
 
+// Resolves type of a variable expression.
+//
+// Arguments
+//      resolver: Pointer to initialized Resolver.
+//      expression: Expression to be resolved.
+// Returns
+//      Pointer to resolved type of the expression.
 static Type* resolve_variable_expression(Resolver* resolver, AST_Expression* expression)
 {
     Type* type;
@@ -379,6 +595,15 @@ static Type* resolve_variable_expression(Resolver* resolver, AST_Expression* exp
 }
 
 
+// Resolves type of a assignment expression. Since assignment expression returns
+// the value being assigned to a variable, the returned type can be either the
+// type of the variable or the type of the value.
+//
+// Arguments
+//      resolver: Pointer to initialized Resolver.
+//      expression: Expression to be resolved.
+// Returns
+//      Pointer to resolved type of the expression.
 static Type* resolve_assignment_expression(Resolver* resolver, AST_Expression* expression)
 {
     Type* type;
@@ -406,10 +631,14 @@ static Type* resolve_assignment_expression(Resolver* resolver, AST_Expression* e
 }
 
 
-/*
- *  Returns the type of the element of the array that is being subscripted
- *  I think that is the correct value?
- */
+// Resolves type of a index/subscript expression. The resolved type will be
+// the type of the elements stored in the subscript target.
+//
+// Arguments
+//      resolver: Pointer to initialized Resolver.
+//      expression: Expression to be resolved.
+// Returns
+//      Pointer to resolved type of the expression.
 static Type* resolve_index_expression(Resolver* resolver, AST_Expression* expression)
 {
     Type* type;
@@ -491,7 +720,6 @@ static Type* resolve_index_expression(Resolver* resolver, AST_Expression* expres
 
     // TODO(timo): The array size should be gotten from initializing the array but since
     // we have the arrays only for the argv, they are resolved at runtime
-    // TODO(timo): We don't have a way to get the value of the argc for now
     /*
     if (index_value.integer > "array capacity - 1")
     {
@@ -501,7 +729,7 @@ static Type* resolve_index_expression(Resolver* resolver, AST_Expression* expres
     }
     */
     
-    // TODO(timo): We prbably should make sure that the elements of the array are integers
+    // TODO(timo): We probably should make sure that the elements of the array are integers
     // or the element types but that is not needed for now since we only have arrays for argv
 
     // Return the type of the element in the array which the subscript accesses
@@ -513,6 +741,14 @@ end:
 }
 
 
+// Resolves type of a function expression. The type will be the type of the
+// value returned by the function.
+//
+// Arguments
+//      resolver: Pointer to initialized Resolver.
+//      expression: Expression to be resolved.
+// Returns
+//      Pointer to resolved type of the expression.
 static Type* resolve_function_expression(Resolver* resolver, AST_Expression* expression)
 {
     // TODO(timo): If we are in function at this point, error out.
@@ -524,6 +760,8 @@ static Type* resolve_function_expression(Resolver* resolver, AST_Expression* exp
     // Begin a new scope
     // TODO(timo): If anonymous functions are being supported, we
     // should check here whether the current function is NULL or not
+    // TODO(timo): Other solution is to just simply open the scope
+    // before entering this expression itself.
     enter_scope(resolver, resolver->context.current_function);
 
     Type* type = type_function();
@@ -547,17 +785,32 @@ static Type* resolve_function_expression(Resolver* resolver, AST_Expression* exp
 
     // Resolve body and return type
     resolve_statement(resolver, expression->function.body);
+
+    // Function has to return value
+    if (resolver->context.not_returned)
+    {
+        Diagnostic* _diagnostic = diagnostic(
+            DIAGNOSTIC_ERROR, (Position){0},
+            ":RESOLVER - SyntaxError: Function has to return a value.");
+        array_push(resolver->diagnostics, _diagnostic);
+    }
     
-    // Set the functions scope to created local scope
+    // Set the functions scope to the created local scope
     type->function.scope = resolver->local;
+    // NOTE(timo): Decided to force only single return statement per function, so 
+    // this can actually return something. Even though this information could 
+    // carry inside the context structure.
+    // NOTE(timo): We should check that the function actually returned something,
+    // but that check is made in resolve_function_declaration()
+    type->function.return_type = resolver->context.return_type;
 
     // End scope
     leave_scope(resolver);
-    resolver->context.not_in_function = true;
 
-    // NOTE(timo): Decided to force only single return statement per function, so this can actually 
-    // return something. Even though this information could carry inside the context structure.
-    type->function.return_type = resolver->context.return_type;
+    // Reset the context
+    resolver->context.not_in_function = true;
+    resolver->context.return_type = NULL;
+    resolver->context.not_returned = true;
 
     expression->type = type;
 
@@ -565,6 +818,14 @@ static Type* resolve_function_expression(Resolver* resolver, AST_Expression* exp
 }
 
 
+// Resolves type of a call expression. The resolved type will be the type of
+// the value returned by the called function/callable.
+//
+// Arguments
+//      resolver: Pointer to initialized Resolver.
+//      expression: Expression to be resolved.
+// Returns
+//      Pointer to resolved type of the expression.
 static Type* resolve_call_expression(Resolver* resolver, AST_Expression* expression)
 {
     Type* type = resolve_expression(resolver, expression->call.variable);
@@ -582,10 +843,9 @@ static Type* resolve_call_expression(Resolver* resolver, AST_Expression* express
                 ":RESOLVER - TypeError: Function '%s' expected %d arguments, but %d was given\n", 
                 symbol->identifier, symbol->type->function.arity, arguments->length);
             array_push(resolver->diagnostics, _diagnostic);
-            // TODO(timo): return type none?
         }
         
-        // types of the arguments == types of the parameters
+        // Types of the arguments == types of the parameters
         for (int i = 0; i < arguments->length; i++)
         {
             AST_Expression* argument = (AST_Expression*)arguments->items[i];
@@ -659,17 +919,31 @@ Type* resolve_expression(Resolver* resolver, AST_Expression* expression)
                 DIAGNOSTIC_ERROR, expression->position,
                 ":RESOLVER - Unreachable: Invalid expression");
             array_push(resolver->diagnostics, _diagnostic);
+
+            type = hashtable_get(resolver->type_table, "none");
             break;
         }
     }
     
-    // TODO(timo): Could we just set the expression type in here?
+    // TODO(timo): Could we just set the expression type in here? We probably
+    // should, so we don't have to set the type anywhere else.
+    // TODO(timo): Also if we used the Operand structure we created before,
+    // we could just return the operand and take the values of the operand
+    // and set it's type and value as the type and value of the expression.
+    // TODO(timo): Third option could be just to make each function type of
+    // void, since we are just decorating the expressions, we don't actually
+    // have to return anything.
 
     return type;
 }
 
 
-void resolve_block_statement(Resolver* resolver, AST_Statement* statement)
+// Resolves each statement in a block statement.
+//
+// Arguments
+//      resolver: Pointer to initialized Resolver.
+//      statement: Statement to be resolved.
+static void resolve_block_statement(Resolver* resolver, AST_Statement* statement)
 {
     // TODO(timo): enter the scope of the block
 
@@ -682,14 +956,21 @@ void resolve_block_statement(Resolver* resolver, AST_Statement* statement)
 }
 
 
-void resolve_if_statement(Resolver* resolver, AST_Statement* statement)
+// Resolves a if statement.
+//
+// Arguments
+//      resolver: Pointer to initialized Resolver.
+//      statement: Statement to be resolved.
+static void resolve_if_statement(Resolver* resolver, AST_Statement* statement)
 {
     Type* condition = resolve_expression(resolver, statement->_if.condition);
 
     if (type_is_not_boolean(condition))
     {
-        printf("Conditional expression must produce boolean value\n");
-        exit(1);
+        Diagnostic* _diagnostic = diagnostic(
+            DIAGNOSTIC_ERROR, statement->_if.condition->position,
+            ":RESOLVER - TypeError: Conditional expression must produce boolean value");
+        array_push(resolver->diagnostics, _diagnostic);
     }
 
     resolve_statement(resolver, statement->_if.then);
@@ -699,14 +980,21 @@ void resolve_if_statement(Resolver* resolver, AST_Statement* statement)
 }
 
 
-void resolve_while_statement(Resolver* resolver, AST_Statement* statement)
+// Resolves a while statement.
+//
+// Arguments
+//      resolver: Pointer to initialized Resolver.
+//      statement: Statement to be resolved.
+static void resolve_while_statement(Resolver* resolver, AST_Statement* statement)
 {
     Type* condition = resolve_expression(resolver, statement->_while.condition);
 
     if (type_is_not_boolean(condition))
     {
-        printf("Conditional expression must produce boolean value\n");
-        exit(1);
+        Diagnostic* _diagnostic = diagnostic(
+            DIAGNOSTIC_ERROR, statement->_while.condition->position,
+            ":RESOLVER - TypeError: Conditional expression must produce boolean value");
+        array_push(resolver->diagnostics, _diagnostic);
     }
 
     resolver->context.not_in_loop = false;
@@ -715,36 +1003,81 @@ void resolve_while_statement(Resolver* resolver, AST_Statement* statement)
 }
 
 
-void resolve_return_statement(Resolver* resolver, AST_Statement* statement)
+// Resolves a return statement.
+//
+// Arguments
+//      resolver: Pointer to initialized Resolver.
+//      statement: Statement to be resolved.
+static void resolve_return_statement(Resolver* resolver, AST_Statement* statement)
 {
     assert(statement->kind == STATEMENT_RETURN);
 
     if (resolver->context.not_in_function)
     {
-        printf("Can't return outside of functions\n");
-        exit(1);
+        Diagnostic* _diagnostic = diagnostic(
+            DIAGNOSTIC_ERROR, statement->position,
+            ":RESOLVER - SyntaxError: Can't return outside of functions");
+        array_push(resolver->diagnostics, _diagnostic);
     }
-
-    if (resolver->context.returned)
+    
+    if (! resolver->context.not_returned)
     {
-        printf("YORO - You only return once\n");
-        exit(1);
+        Diagnostic* _diagnostic = diagnostic(
+            DIAGNOSTIC_ERROR, statement->position,
+            ":RESOLVER - SyntaxError: You can only return once from function");
+        array_push(resolver->diagnostics, _diagnostic);
     }
     
     // NOTE(timo): Since we are in return statement, we have something to return
     // and for now explicit returning without value is not possible.
     // TODO(timo): There must be a better way
-    resolver->context.return_type = resolve_expression(resolver, statement->_return.value);
+    // Returns statement must return a value
+    if (statement->_return.value && statement->_return.value->kind != EXPRESSION_NONE)
+    {
+        resolver->context.return_type = resolve_expression(resolver, statement->_return.value);
+        resolver->context.not_returned = false;
+    }
+    else
+    {
+        Diagnostic* _diagnostic = diagnostic(
+            DIAGNOSTIC_ERROR, statement->position,
+            ":RESOLVER - SyntaxError: Return statement must return a value.");
+        array_push(resolver->diagnostics, _diagnostic);
+
+        resolver->context.return_type = hashtable_get(resolver->type_table, "none");
+    }
 }
 
 
-void resolve_break_statement(Resolver* resolver, AST_Statement* statement)
+// Resolves a break statement.
+//
+// Arguments
+//      resolver: Pointer to initialized Resolver.
+//      statement: Statement to be resolved.
+static void resolve_break_statement(Resolver* resolver, AST_Statement* statement)
 {
     if (resolver->context.not_in_loop)
     {
         Diagnostic* _diagnostic = diagnostic(
             DIAGNOSTIC_ERROR, statement->position,
             ":RESOLVER - SyntaxError: Cant't break outside of loops.");
+        array_push(resolver->diagnostics, _diagnostic);
+    }
+}
+
+
+// Resolves a continue statement.
+//
+// Arguments
+//      resolver: Pointer to initialized Resolver.
+//      statement: Statement to be resolved.
+static void resolve_continue_statement(Resolver* resolver, AST_Statement* statement)
+{
+    if (resolver->context.not_in_loop)
+    {
+        Diagnostic* _diagnostic = diagnostic(
+            DIAGNOSTIC_ERROR, statement->position,
+            ":RESOLVER - SyntaxError: Cant't continue outside of loops.");
         array_push(resolver->diagnostics, _diagnostic);
     }
 }
@@ -779,6 +1112,9 @@ void resolve_statement(Resolver* resolver, AST_Statement* statement)
             break;
         case STATEMENT_BREAK:
             resolve_break_statement(resolver, statement);
+            break;
+        case STATEMENT_CONTINUE:
+            resolve_continue_statement(resolver, statement);
             break;
         default:
         {
@@ -829,32 +1165,46 @@ Type* resolve_type_specifier(Resolver* resolver, Type_Specifier specifier)
 }
 
 
-void resolve_variable_declaration(Resolver* resolver, AST_Declaration* declaration)
+// Resolves a variable declaration.
+//
+// Arguments
+//      resolver: Pointer to initialized Resolver.
+//      declaration: Declaration to be resolved.
+static void resolve_variable_declaration(Resolver* resolver, AST_Declaration* declaration)
 {
-    // NOTE(timo): So this type will be the type of the value assigned to the variable 
-    // or if the declaration is function, this will be the type of the return value.
-    // printf("type specifier of variable: %s\n", );
     Type* expected_type = resolve_type_specifier(resolver, declaration->specifier);
     Type* actual_type = resolve_expression(resolver, declaration->initializer);
 
-    // TODO(timo): If the resolved type is a function, we have to compare the type
-    // to the return type of the function
+    // The initializer has to be a constant literal. At this point we can check
+    // that by checking if the value is none or not after resolving it.
+    Value initializer_value = declaration->initializer->value;
+
+    if (resolver->local == resolver->global && value_is_none(initializer_value))
+    {
+        Diagnostic* _diagnostic = diagnostic(
+            DIAGNOSTIC_ERROR, declaration->position,
+            ":RESOLVER - Error: Global variable initializer has to be compile-time constant.");
+        array_push(resolver->diagnostics, _diagnostic);
+    }
+
     if (types_not_equal(actual_type, expected_type))
     {
-        // TODO(timo): Error
-        AST_Expression* initializer = declaration->initializer;
-        printf("Conflicting types when declaring variable '%s'\n", declaration->identifier->lexeme);
-        printf("Line %d, column %d\n", initializer->position.line_start, initializer->position.column_start);
-        printf("Actual type: %s, expected %s\n", type_as_string(actual_type->kind), type_as_string(expected_type->kind));
-        // exit(1);
+        Diagnostic* _diagnostic = diagnostic(
+            DIAGNOSTIC_ERROR, declaration->position,
+            ":RESOLVER - TypeError: Conflicting types in variable declaration. Declaring type '%s' to '%s'",
+            type_as_string(actual_type->kind), type_as_string(expected_type->kind));
+        array_push(resolver->diagnostics, _diagnostic);
     }
 
     // Declare the symbol into the current scope
     Symbol* symbol = symbol_variable(resolver->local, declaration->identifier->lexeme, actual_type);
     
-    // TODO(timo): Set value for a global variable, but this solution kinda sucks
-    // just a hacky solution to get things going for now
-    if (str_equals(resolver->local->name, "global"))
+    // TODO(timo): Set value for a global variable, but this solution kinda 
+    // sucks just a hacky solution to get things going for now.
+    // if (str_equals(resolver->local->name, "global"))
+    // TODO(timo): We probably can just assign the value straight up, since we 
+    // have at least a none value in every expression.
+    if (resolver->local == resolver->global)
         symbol->value = declaration->initializer->value;
     
     // TODO(timo): Should we take the responsibility of declaring errors of
@@ -863,7 +1213,12 @@ void resolve_variable_declaration(Resolver* resolver, AST_Declaration* declarati
 }
 
 
-void resolve_function_declaration(Resolver* resolver, AST_Declaration* declaration)
+// Resolves a function declaration.
+//
+// Arguments
+//      resolver: Pointer to initialized Resolver.
+//      declaration: Declaration to be resolved.
+static void resolve_function_declaration(Resolver* resolver, AST_Declaration* declaration)
 {
     // TODO(timo): This is the place where we create the routines which has
     // the name of the routine, its parameters, its scope etc.
@@ -874,38 +1229,40 @@ void resolve_function_declaration(Resolver* resolver, AST_Declaration* declarati
     // Set the current context to the context of the function
     resolver->context.current_function = (char*)declaration->identifier->lexeme;
 
-    // NOTE(timo): So this type will be the type of the value assigned to the variable 
-    // or if the declaration is function, this will be the type of the return value.
     Type* expected_type = resolve_type_specifier(resolver, declaration->specifier);
-
-    // Declare the scope here so we can set the scope into the symbol
     Type* actual_type = resolve_expression(resolver, declaration->initializer);
-   
-    // The type has to be a function type
+
+    // The initializer has to be a function type
     if (type_is_not_function(actual_type))
     {
+        // TODO(timo): 
         printf("Expected function type, got something else\n");
         exit(1);
     }
 
-    // Check if the expected type and the actual type match
-    // TODO(timo): Dont know yet if this is the right thing to do, since in principal
-    // the function should return something and it should be the correct type so
-    // this kind of disregarding the "none" type is probably not good. For now it will
-    // be just a resolving-stage type only so this is somewhat justified
-    if (types_not_equal(actual_type->function.return_type, expected_type) && 
-        type_is_not_none(actual_type->function.return_type))
+    // Function has to return a value. If this is true, the function does not
+    // have a return statement at all.
+    if (! actual_type->function.return_type)
     {
-        // TODO(timo): Error
-        printf("Conflicting types in function declaration\n");
-        exit(1);
+        // NOTE(timo): The diagnostic is added in the resolve_function_expression
+        // TODO(timo): Decide how to handle this in here.
+    }
+    // Check if the expected type and the actual type match
+    else if (types_not_equal(actual_type->function.return_type, expected_type) && 
+             type_is_not_none(actual_type->function.return_type))
+    {
+        Diagnostic* _diagnostic = diagnostic(
+            DIAGNOSTIC_ERROR, declaration->position,
+            ":RESOLVER - TypeError: Conflicting types in function declaration. Declaring type '%s' to '%s'",
+            type_as_string(actual_type->function.return_type->kind), type_as_string(expected_type->kind));
+        array_push(resolver->diagnostics, _diagnostic);
     }
     
     // Declare the symbol into the current scope
     Symbol* symbol = symbol_function(resolver->local, declaration->identifier->lexeme, actual_type);
 
     // TODO(timo): Should we take the responsibility of declaring errors of
-    // already diagnosed variables instead of doing it in the scope
+    // already declared variables instead of doing it in the scope
     scope_declare(resolver->local, symbol);
 
     // Reset the context

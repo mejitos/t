@@ -321,8 +321,10 @@ typedef struct Value
 // Returns
 //      Value true if the Value is the correct type according to the function, 
 //      otherwise false.
+const bool value_is_none(const Value value);
 const bool value_is_integer(const Value value);
 const bool value_is_boolean(const Value value);
+const bool value_is_not_none(const Value value);
 const bool value_is_not_boolean(const Value value);
 const bool value_is_not_integer(const Value value);
 
@@ -1177,7 +1179,7 @@ typedef struct Resolver
         char* current_function; // TODO(timo): This could also be pointer to symbol
         bool not_in_loop;
         bool not_in_function;
-        bool returned;
+        bool not_returned;
         Type* return_type;
     } context;
 } Resolver;

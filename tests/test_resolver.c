@@ -584,7 +584,6 @@ static void test_resolve_index_expression(Test_Runner* runner)
     
     assert_base(runner, resolver.diagnostics->length == 0,
         "Invalid number of resolver diagnostics: %d, expected 0", resolver.diagnostics->length);
-    assert_type(runner, resolver.context.return_type->kind, TYPE_INTEGER);
     
     declaration_free(declaration);
     resolver_free(&resolver);
@@ -924,8 +923,6 @@ static void test_resolve_function_expression(Test_Runner* runner)
     assert_base(runner, resolver.diagnostics->length == 0,
         "Invalid number of resolver diagnostics: %d, expected 0", resolver.diagnostics->length);
     assert_type(runner, type->kind, TYPE_FUNCTION);
-    assert_base(runner, resolver.context.return_type->kind == TYPE_INTEGER,
-        "Unexpected return type in resolver context'%s', expected 'int'", type_as_string(resolver.context.return_type->kind));
     assert_base(runner, type->function.return_type->kind == TYPE_INTEGER,
         "Unexpected function return type '%s', expected 'int'", type_as_string(type->function.return_type->kind));
     assert_base(runner, type->function.scope->symbols->count == 2,
@@ -963,8 +960,6 @@ static void test_resolve_function_expression(Test_Runner* runner)
     assert_base(runner, resolver.diagnostics->length == 0,
         "Invalid number of resolver diagnostics: %d, expected 0", resolver.diagnostics->length);
     assert_type(runner, type->kind, TYPE_FUNCTION);
-    assert_base(runner, resolver.context.return_type->kind == TYPE_INTEGER,
-        "Unexpected return type in resolver context'%s', expected 'int'", type_as_string(resolver.context.return_type->kind));
     assert_base(runner, type->function.return_type->kind == TYPE_INTEGER,
         "Unexpected function return type '%s', expected 'int'", type_as_string(type->function.return_type->kind));
     assert_base(runner, type->function.scope->symbols->count == 1,
@@ -1018,6 +1013,243 @@ static void test_resolve_call_expression(Test_Runner* runner)
     // TODO(timo): no arguments 
 
     // TODO(timo): assigning a value to variable from call expression
+}
+
+
+static void test_constant_folding_binary_arithmetics(Test_Runner* runner)
+{
+    Lexer lexer;
+    Parser parser;
+    hashtable* type_table;
+    Resolver resolver;
+    AST_Declaration* declaration;
+    char* source;
+
+    // global variable
+    const char* tests[] =
+    {
+        "foo: int = 1 + 2;",
+        "foo: int = 3 - 4;",
+        "foo: int = 5 * 6;",
+        "foo: int = 7 / 8;",
+    };
+
+    const int expected[] = { 3, -1, 30, 0 };
+
+    for (int i = 0; i < sizeof (tests) / sizeof (*tests); i++)
+    {
+        lexer_init(&lexer, tests[i]); 
+        lex(&lexer);
+
+        parser_init(&parser, lexer.tokens);
+        declaration = parse_declaration(&parser);
+        
+        type_table = type_table_init();
+        resolver_init(&resolver, type_table);
+        resolve_declaration(&resolver, declaration);
+
+        assert_base(runner, resolver.diagnostics->length == 0,
+            "Invalid number of resolver diagnostics: %d, expected 0", resolver.diagnostics->length);
+        assert_value(runner, declaration->initializer->value, VALUE_INTEGER, expected[i]);
+
+        declaration_free(declaration);
+        resolver_free(&resolver);
+        type_table_free(type_table);
+        parser_free(&parser);
+        lexer_free(&lexer);
+    }
+
+    // TODO(timo): local variables
+}
+
+
+static void test_constant_folding_binary_equality(Test_Runner* runner)
+{
+    Lexer lexer;
+    Parser parser;
+    hashtable* type_table;
+    Resolver resolver;
+    AST_Declaration* declaration;
+    char* source;
+
+    // global variable
+    const char* tests[] =
+    {
+        "foo: bool = 1 == 2;",
+        "foo: bool = 3 != 4;",
+        "foo: bool = true == false;",
+        "foo: bool = false != true;",
+    };
+
+    const bool expected[] = { false, true, false, true };
+
+    for (int i = 0; i < sizeof (tests) / sizeof (*tests); i++)
+    {
+        lexer_init(&lexer, tests[i]); 
+        lex(&lexer);
+
+        parser_init(&parser, lexer.tokens);
+        declaration = parse_declaration(&parser);
+        
+        type_table = type_table_init();
+        resolver_init(&resolver, type_table);
+        resolve_declaration(&resolver, declaration);
+
+        assert_base(runner, resolver.diagnostics->length == 0,
+            "Invalid number of resolver diagnostics: %d, expected 0", resolver.diagnostics->length);
+        assert_value(runner, declaration->initializer->value, VALUE_BOOLEAN, expected[i]);
+
+        declaration_free(declaration);
+        resolver_free(&resolver);
+        type_table_free(type_table);
+        parser_free(&parser);
+        lexer_free(&lexer);
+    }
+
+    // TODO(timo): local variables
+}
+
+
+static void test_constant_folding_binary_relation(Test_Runner* runner)
+{
+    Lexer lexer;
+    Parser parser;
+    hashtable* type_table;
+    Resolver resolver;
+    AST_Declaration* declaration;
+    char* source;
+
+    // global variable
+    const char* tests[] =
+    {
+        "foo: bool = 1 < 2;",
+        "foo: bool = 3 <= 4;",
+        "foo: bool = 5 > 6;",
+        "foo: bool = 7 >= 8;",
+    };
+
+    const bool expected[] = { true, true, false, false };
+
+    for (int i = 0; i < sizeof (tests) / sizeof (*tests); i++)
+    {
+        lexer_init(&lexer, tests[i]); 
+        lex(&lexer);
+
+        parser_init(&parser, lexer.tokens);
+        declaration = parse_declaration(&parser);
+        
+        type_table = type_table_init();
+        resolver_init(&resolver, type_table);
+        resolve_declaration(&resolver, declaration);
+
+        assert_base(runner, resolver.diagnostics->length == 0,
+            "Invalid number of resolver diagnostics: %d, expected 0", resolver.diagnostics->length);
+        assert_value(runner, declaration->initializer->value, VALUE_BOOLEAN, expected[i]);
+
+        declaration_free(declaration);
+        resolver_free(&resolver);
+        type_table_free(type_table);
+        parser_free(&parser);
+        lexer_free(&lexer);
+    }
+
+    // TODO(timo): local variables
+    // TODO(timo): condition expressions
+}
+
+
+static void test_constant_folding_binary_logical(Test_Runner* runner)
+{
+    Lexer lexer;
+    Parser parser;
+    hashtable* type_table;
+    Resolver resolver;
+    AST_Declaration* declaration;
+    char* source;
+
+    // global variable
+    const char* tests[] =
+    {
+        "foo: bool = true and false;",
+        "foo: bool = true or false;",
+        "foo: bool = not true;",
+        "foo: bool = not false;",
+    };
+
+    const bool expected[] = { false, true, false, true };
+
+    for (int i = 0; i < sizeof (tests) / sizeof (*tests); i++)
+    {
+        lexer_init(&lexer, tests[i]); 
+        lex(&lexer);
+
+        parser_init(&parser, lexer.tokens);
+        declaration = parse_declaration(&parser);
+        
+        type_table = type_table_init();
+        resolver_init(&resolver, type_table);
+        resolve_declaration(&resolver, declaration);
+
+        assert_base(runner, resolver.diagnostics->length == 0,
+            "Invalid number of resolver diagnostics: %d, expected 0", resolver.diagnostics->length);
+        assert_value(runner, declaration->initializer->value, VALUE_BOOLEAN, expected[i]);
+
+        declaration_free(declaration);
+        resolver_free(&resolver);
+        type_table_free(type_table);
+        parser_free(&parser);
+        lexer_free(&lexer);
+    }
+
+    // TODO(timo): local variables
+    // TODO(timo): condition expressions
+}
+
+
+static void test_constant_folding_complex_arithmetics(Test_Runner* runner)
+{
+    Lexer lexer;
+    Parser parser;
+    hashtable* type_table;
+    Resolver resolver;
+    AST_Declaration* declaration;
+    char* source;
+
+    // global variable
+    const char* tests[] =
+    {
+        "foo: int = 1 + 2 * 3;",
+        "foo: int = (1 + 2) * 3;",
+        "foo: int = (1 + 2) * (3 - 4);",
+        "foo: int = (1 + 2) * (3 - 4) / -3;",
+    };
+
+    const int expected[] = { 7, 9, -3, 1 };
+
+    for (int i = 0; i < sizeof (tests) / sizeof (*tests); i++)
+    {
+        lexer_init(&lexer, tests[i]); 
+        lex(&lexer);
+
+        parser_init(&parser, lexer.tokens);
+        declaration = parse_declaration(&parser);
+        
+        type_table = type_table_init();
+        resolver_init(&resolver, type_table);
+        resolve_declaration(&resolver, declaration);
+
+        assert_base(runner, resolver.diagnostics->length == 0,
+            "Invalid number of resolver diagnostics: %d, expected 0", resolver.diagnostics->length);
+        assert_value(runner, declaration->initializer->value, VALUE_INTEGER, expected[i]);
+
+        declaration_free(declaration);
+        resolver_free(&resolver);
+        type_table_free(type_table);
+        parser_free(&parser);
+        lexer_free(&lexer);
+    }
+
+    // TODO(timo): local variables
 }
 
 
@@ -1352,6 +1584,242 @@ static void test_resolve_return_statement(Test_Runner* runner)
 }
 
 
+static void test_diagnose_no_return_statement_outside_functions(Test_Runner* runner)
+{
+    Lexer lexer;
+    Parser parser;
+    hashtable* type_table;
+    Resolver resolver;
+    AST_Expression* return_value;
+    Diagnostic* diagnostic;
+
+    // return statement at top level
+    const char* source = "return 0;";
+    const char* result = ":RESOLVER - SyntaxError: Can't return outside of functions";
+
+    lexer_init(&lexer, source);
+    lex(&lexer);
+    
+    parser_init(&parser, lexer.tokens);
+    AST_Statement* statement = parse_statement(&parser);
+    
+    type_table = type_table_init();
+    resolver_init(&resolver, type_table);
+    resolve_statement(&resolver, statement);
+    
+    assert_base(runner, resolver.diagnostics->length == 1,
+        "Invalid number of resolver diagnostics: %d, expected 1", resolver.diagnostics->length);
+
+    diagnostic = resolver.diagnostics->items[0];
+
+    assert_base(runner, strcmp(diagnostic->message, result) == 0,
+        "Invalid diagnostic '%s', expected '%s'", diagnostic->message, result);
+    
+    statement_free(statement);
+    resolver_free(&resolver);
+    type_table_free(type_table);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    // TODO(timo): return statements somewhere else in wrong places?
+}
+
+
+static void test_diagnose_function_has_to_return_value(Test_Runner* runner)
+{
+    Lexer lexer;
+    Parser parser;
+    hashtable* type_table;
+    Resolver resolver;
+    Diagnostic* diagnostic;
+
+    // return statement at top level
+    const char* source = "main: int (argc: int, argv: [int]) => {\n"
+                         "    1 + 1;\n"
+                         "};";
+    const char* result = ":RESOLVER - SyntaxError: Function has to return a value.";
+
+    lexer_init(&lexer, source);
+    lex(&lexer);
+    
+    parser_init(&parser, lexer.tokens);
+    parse(&parser);
+    
+    type_table = type_table_init();
+    resolver_init(&resolver, type_table);
+    resolve(&resolver, parser.declarations);
+    
+    assert_base(runner, resolver.diagnostics->length == 1,
+        "Invalid number of resolver diagnostics: %d, expected 1", resolver.diagnostics->length);
+
+    diagnostic = resolver.diagnostics->items[0];
+
+    assert_base(runner, strcmp(diagnostic->message, result) == 0,
+        "Invalid diagnostic '%s', expected '%s'", diagnostic->message, result);
+    
+    resolver_free(&resolver);
+    type_table_free(type_table);
+    parser_free(&parser);
+    lexer_free(&lexer);
+}
+
+
+static void test_diagnose_return_statement_must_return_value(Test_Runner* runner)
+{
+    Lexer lexer;
+    Parser parser;
+    hashtable* type_table;
+    Resolver resolver;
+    Diagnostic* diagnostic;
+    char* message;
+
+    const char* source = "main: int (argc: int, argv: [int]) => {\n"
+                         "    return;\n"
+                         "};";
+
+    lexer_init(&lexer, source);
+    lex(&lexer);
+    
+    parser_init(&parser, lexer.tokens);
+    parse(&parser);
+    
+    type_table = type_table_init();
+    resolver_init(&resolver, type_table);
+    resolve(&resolver, parser.declarations);
+    
+    assert_base(runner, resolver.diagnostics->length == 2,
+        "Invalid number of resolver diagnostics: %d, expected 2", resolver.diagnostics->length);
+
+    message = ":RESOLVER - SyntaxError: Return statement must return a value.";
+    diagnostic = resolver.diagnostics->items[0];
+
+    assert_base(runner, strcmp(diagnostic->message, message) == 0,
+        "Invalid diagnostic '%s', expected '%s'", diagnostic->message, message);
+   
+    // NOTE(timo): This is actually a wrong message because in this situation
+    // the function doesnt actually even have a return type, it is NULL.
+    // message = ":RESOLVER - TypeError: Conflicting types in function declaration. Declaring type 'none' to 'int'";
+    message = ":RESOLVER - SyntaxError: Function has to return a value.";
+    diagnostic = resolver.diagnostics->items[1];
+
+    assert_base(runner, strcmp(diagnostic->message, message) == 0,
+        "Invalid diagnostic '%s', expected '%s'", diagnostic->message, message);
+    
+    resolver_free(&resolver);
+    type_table_free(type_table);
+    parser_free(&parser);
+    lexer_free(&lexer);
+}
+
+
+static void test_diagnose_yoro(Test_Runner* runner)
+{
+    Lexer lexer;
+    Parser parser;
+    hashtable* type_table;
+    Resolver resolver;
+    Diagnostic* diagnostic;
+    char* message;
+    char* source;
+
+    // same type of return values
+    source = "main: int (argc: int, argv: [int]) => {\n"
+             "    return 0;\n"
+             "    return 0;\n"
+             "};";
+
+    lexer_init(&lexer, source);
+    lex(&lexer);
+    
+    parser_init(&parser, lexer.tokens);
+    parse(&parser);
+    
+    type_table = type_table_init();
+    resolver_init(&resolver, type_table);
+    resolve(&resolver, parser.declarations);
+    
+    assert_base(runner, resolver.diagnostics->length == 1,
+        "Invalid number of resolver diagnostics: %d, expected 1", resolver.diagnostics->length);
+
+    message = ":RESOLVER - SyntaxError: You can only return once from function";
+    diagnostic = resolver.diagnostics->items[0];
+
+    assert_base(runner, strcmp(diagnostic->message, message) == 0,
+        "Invalid diagnostic '%s', expected '%s'", diagnostic->message, message);
+    
+    resolver_free(&resolver);
+    type_table_free(type_table);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    // different type of return values
+    source = "main: int (argc: int, argv: [int]) => {\n"
+             "    return true;\n"
+             "    return 0;\n"
+             "};";
+
+    lexer_init(&lexer, source);
+    lex(&lexer);
+    
+    parser_init(&parser, lexer.tokens);
+    parse(&parser);
+    
+    type_table = type_table_init();
+    resolver_init(&resolver, type_table);
+    resolve(&resolver, parser.declarations);
+    
+    assert_base(runner, resolver.diagnostics->length == 1,
+        "Invalid number of resolver diagnostics: %d, expected 1", resolver.diagnostics->length);
+
+    message = ":RESOLVER - SyntaxError: You can only return once from function";
+    diagnostic = resolver.diagnostics->items[0];
+
+    assert_base(runner, strcmp(diagnostic->message, message) == 0,
+        "Invalid diagnostic '%s', expected '%s'", diagnostic->message, message);
+    
+    resolver_free(&resolver);
+    type_table_free(type_table);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    // only the "last" return will be taken into account when resolving types
+    source = "main: int (argc: int, argv: [int]) => {\n"
+             "    return 0;\n"
+             "    return true;\n"
+             "};";
+
+    lexer_init(&lexer, source);
+    lex(&lexer);
+    
+    parser_init(&parser, lexer.tokens);
+    parse(&parser);
+    
+    type_table = type_table_init();
+    resolver_init(&resolver, type_table);
+    resolve(&resolver, parser.declarations);
+    
+    assert_base(runner, resolver.diagnostics->length == 2,
+        "Invalid number of resolver diagnostics: %d, expected 2", resolver.diagnostics->length);
+
+    message = ":RESOLVER - SyntaxError: You can only return once from function";
+    diagnostic = resolver.diagnostics->items[0];
+
+    assert_base(runner, strcmp(diagnostic->message, message) == 0,
+        "Invalid diagnostic '%s', expected '%s'", diagnostic->message, message);
+
+    message = ":RESOLVER - TypeError: Conflicting types in function declaration. Declaring type 'bool' to 'int'";
+    diagnostic = resolver.diagnostics->items[1];
+
+    assert_base(runner, strcmp(diagnostic->message, message) == 0,
+        "Invalid diagnostic '%s', expected '%s'", diagnostic->message, message);
+    
+    resolver_free(&resolver);
+    type_table_free(type_table);
+    parser_free(&parser);
+    lexer_free(&lexer);
+}
+
+
 static void test_resolve_break_statement(Test_Runner* runner)
 {
     Lexer lexer;
@@ -1399,6 +1867,83 @@ static void test_diagnose_no_break_statement_outside_loops(Test_Runner* runner)
     };
 
     const char* result = ":RESOLVER - SyntaxError: Cant't break outside of loops.";
+
+    for (int i = 0; i < sizeof (tests) / sizeof (*tests); i++)
+    {
+        lexer_init(&lexer, tests[i]);
+        lex(&lexer);
+        
+        parser_init(&parser, lexer.tokens);
+        statement = parse_statement(&parser);
+        
+        type_table = type_table_init();
+        resolver_init(&resolver, type_table);
+        resolve_statement(&resolver, statement);
+
+        assert_base(runner, resolver.diagnostics->length == 1,
+            "Invalid number of resolver diagnostics: %d, expected 1", resolver.diagnostics->length);
+
+        diagnostic = resolver.diagnostics->items[0];
+
+        assert_base(runner, strcmp(diagnostic->message, result) == 0,
+            "Invalid diagnostic '%s', expected '%s'", diagnostic->message, result);
+        
+        statement_free(statement);
+        resolver_free(&resolver);
+        type_table_free(type_table);
+        parser_free(&parser);
+        lexer_free(&lexer);
+    }
+}
+
+
+static void test_resolve_continue_statement(Test_Runner* runner)
+{
+    Lexer lexer;
+    Parser parser;
+    hashtable* type_table;
+    Resolver resolver;
+    AST_Statement* statement;
+
+    const char* source = "while 1 > 0 do { continue; }";
+
+    lexer_init(&lexer, source);
+    lex(&lexer);
+    
+    parser_init(&parser, lexer.tokens);
+    statement = parse_statement(&parser);
+    
+    type_table = type_table_init();
+    resolver_init(&resolver, type_table);
+    resolve_statement(&resolver, statement);
+
+    assert_base(runner, resolver.diagnostics->length == 0,
+        "Invalid number of resolver diagnostics: %d, expected 0", resolver.diagnostics->length);
+
+    statement_free(statement);
+    resolver_free(&resolver);
+    type_table_free(type_table);
+    parser_free(&parser);
+    lexer_free(&lexer);
+}
+
+
+static void test_diagnose_no_continue_statement_outside_loops(Test_Runner* runner)
+{
+    Lexer lexer;
+    Parser parser;
+    hashtable* type_table;
+    Resolver resolver;
+    AST_Statement* statement;
+    Diagnostic* diagnostic;
+    
+    const char* tests[] =
+    {
+        "{ continue; }",
+        "if 1 < 0 then { continue; }",
+    };
+
+    const char* result = ":RESOLVER - SyntaxError: Cant't continue outside of loops.";
 
     for (int i = 0; i < sizeof (tests) / sizeof (*tests); i++)
     {
@@ -1595,6 +2140,41 @@ static void test_resolve_multiple_global_variable_declarations(Test_Runner* runn
 }
 
 
+static void test_diagnose_variable_declaration_const_literal_only(Test_Runner* runner)
+{
+    Lexer lexer;
+    Parser parser;
+    hashtable* type_table;
+    Resolver resolver;
+    char* source = "foo: int = 42;\n"
+                   "bar: int = foo + 1;\n";
+
+    lexer_init(&lexer, source);
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    parse(&parser);
+    
+    type_table = type_table_init();
+    resolver_init(&resolver, type_table);
+    resolve(&resolver, parser.declarations);
+    
+    assert_base(runner, resolver.diagnostics->length == 1,
+        "Invalid number of resolver diagnostics: %d, expected 1", resolver.diagnostics->length);
+
+    char* message = ":RESOLVER - Error: Global variable initializer has to be compile-time constant.";
+    Diagnostic* diagnostic = resolver.diagnostics->items[0];
+
+    assert_base(runner, strcmp(diagnostic->message, message) == 0,
+        "Invalid diagnostic '%s', expected '%s'", diagnostic->message, message);
+
+    resolver_free(&resolver);
+    type_table_free(type_table);
+    parser_free(&parser);
+    lexer_free(&lexer);
+}
+
+
 static void test_resolve_function_declaration(Test_Runner* runner)
 {
     Lexer lexer;
@@ -1624,12 +2204,63 @@ static void test_resolve_function_declaration(Test_Runner* runner)
         "Invalid number of resolver diagnostics: %d, expected 0", resolver.diagnostics->length);
     assert_base(runner, resolver.global->symbols->count == 1,
         "Invalid number of symbols in the symbol table: %d, expected 1", resolver.global->symbols->count);
-    assert_type(runner, resolver.context.return_type->kind, TYPE_INTEGER);
 
     resolver_free(&resolver);
     type_table_free(type_table);
     parser_free(&parser);
     lexer_free(&lexer);
+}
+
+
+static void test_resolve_type_specifier(Test_Runner* runner)
+{
+    const char* tests[] =
+    {
+        "int",
+        "bool",
+        "[int]",
+    };
+
+    int expected[3][2] =
+    {
+        { TYPE_SPECIFIER_INT, TYPE_INTEGER },
+        { TYPE_SPECIFIER_BOOL, TYPE_BOOLEAN },
+        { TYPE_SPECIFIER_ARRAY_INT, TYPE_ARRAY },
+    };
+
+    Lexer lexer;
+    Parser parser;
+    Resolver resolver;
+    hashtable* type_table;
+    Type_Specifier specifier;
+
+    for (int i = 0; i < sizeof (tests) / sizeof (*tests); i++)
+    {
+        lexer_init(&lexer, tests[i]);
+        lex(&lexer);
+
+        parser_init(&parser, lexer.tokens);
+        specifier = parse_type_specifier(&parser);
+
+        assert_type_specifier(runner, specifier, expected[i][0]);
+        
+        type_table = type_table_init();
+        resolver_init(&resolver, type_table);
+
+        Type* type = resolve_type_specifier(&resolver, specifier);
+
+        assert_base(runner, resolver.diagnostics->length == 0,
+            "Invalid number of resolver diagnostics: %d, expected 0", resolver.diagnostics->length);
+        assert_type(runner, type->kind, expected[i][1]);
+
+        if (type->kind == TYPE_ARRAY)
+            type_free(type);
+
+        resolver_free(&resolver);
+        type_table_free(type_table);
+        parser_free(&parser);
+        lexer_free(&lexer);
+    }
 }
 
 
@@ -1644,10 +2275,12 @@ Test_Set* resolver_test_set()
     // Unary
     array_push(set->tests, test_case("Unary expression", test_resolve_unary_expression));
     array_push(set->tests, test_case("Diagnose invalid unary operands", test_diagnose_invalid_operand_types_unary_expression));
+    // TODO(timo): Integer overflow checks in unary (positive and negative)
 
     // Binary
     array_push(set->tests, test_case("Binary expression", test_resolve_binary_expression));
     array_push(set->tests, test_case("Diagnose invalid binary operands", test_diagnose_invalid_operand_types_binary_expression));
+    // TODO(timo): Integer overflow checks in binary (positive and negative)
 
     // Logical expressions
     array_push(set->tests, test_case("Logical expression", test_resolve_logical_expression));
@@ -1673,6 +2306,8 @@ Test_Set* resolver_test_set()
 
     // Function expression
     array_push(set->tests, test_case("Function expression", test_resolve_function_expression));
+    // TODO(timo): Diagnose invalid type of the return value. Here or in the function declaration or both?
+    // TODO(timo): Function cannot be declared inside a function
 
     // Call expression
     array_push(set->tests, test_case("Call expression", test_resolve_call_expression));
@@ -1680,46 +2315,50 @@ Test_Set* resolver_test_set()
     array_push(set->tests, test_case("Diagnose invalid number of arguments", test_diagnose_invalid_number_of_arguments));
     array_push(set->tests, test_case("Diagnose invalid type of argument", test_diagnose_invalid_type_of_argument));
 
+    // Constant folding
+    array_push(set->tests, test_case("Constant folding (binary arithmetics)", test_constant_folding_binary_arithmetics));
+    array_push(set->tests, test_case("Constant folding (binary equality)", test_constant_folding_binary_equality));
+    array_push(set->tests, test_case("Constant folding (binary relation)", test_constant_folding_binary_relation));
+    array_push(set->tests, test_case("Constant folding (binary logical)", test_constant_folding_binary_logical));
+    array_push(set->tests, test_case("Constant folding (complex arithmetics)", test_constant_folding_complex_arithmetics));
+
     // Statements
     array_push(set->tests, test_case("Declaration statement (variable)", test_resolve_declaration_statement_variable));
     array_push(set->tests, test_case("If statement", test_resolve_if_statement));
     array_push(set->tests, test_case("While statement", test_resolve_while_statement));
+
+    // Return statement
     array_push(set->tests, test_case("Return statement", test_resolve_return_statement));
-    array_push(set->tests, test_case("If statement", test_resolve_if_statement));
+    array_push(set->tests, test_case("Diagnose no return outside functions", test_diagnose_no_return_statement_outside_functions));
+    array_push(set->tests, test_case("Diagnose function has to return value", test_diagnose_function_has_to_return_value));
+    array_push(set->tests, test_case("Diagnose return statement has to return value", test_diagnose_return_statement_must_return_value));
+    array_push(set->tests, test_case("Diagnose you can only return once", test_diagnose_yoro));
 
     // Break statement
     array_push(set->tests, test_case("Break statement", test_resolve_break_statement));
     array_push(set->tests, test_case("Diagnose no break outside loops", test_diagnose_no_break_statement_outside_loops));
 
+    // Continue statement
+    array_push(set->tests, test_case("Continue statement", test_resolve_continue_statement));
+    array_push(set->tests, test_case("Diagnose no continue outside loops", test_diagnose_no_continue_statement_outside_loops));
+
     // Variable declarations
     array_push(set->tests, test_case("Global variable declaration", test_resolve_variable_declaration));
-    // TODO(timo): array_push(set->tests, test_case("Global variable declaration has to be literal constant", test_resolve_variable_declaration_literal_const_only));
     array_push(set->tests, test_case("Multiple global variable declarations", test_resolve_multiple_global_variable_declarations));
+    array_push(set->tests, test_case("Diagnose global variable declaration has to be literal constant", test_diagnose_variable_declaration_const_literal_only));
     
     // Function declarations
     array_push(set->tests, test_case("Function declaration", test_resolve_function_declaration));
-
-    // Type specifiers
-    // TODO(timo): test_resolve_type_specifier();
-    
-    // MISC / TODO
-    // TODO(timo): Integer overflow checks in unary (positive and negative)
-
-    // TODO(timo): Integer overflow checks in binary (positive and negative)
-
+    // TODO(timo): Diagnose invalid type of the return value. Here or in the function expression or both?
     // TODO(timo): Function cannot be declared inside a function
 
-    // TODO(timo): Diagnose invalid type of the return value
+    // Type specifiers
+    array_push(set->tests, test_case("Type specifier", test_resolve_type_specifier));
+    
+    // MISC / TODO
 
     // ---
     
-    // TODO(timo): test_resolve_expression_statement();
-
-    // TODO(timo): Diganose error while resolving return statement (return value is missing)
-    // TODO(timo): Diagnose no continue statement outside loops
-    // TODO(timo): Function HAS to have a return statement e.g. it has to return value
-    // TODO(timo): Diagnose no return statement outside functions
-    // TODO(timo): YORO - you only return once
     // TODO(timo): You can only use declarations at the top level so no
     // statements or expressions are allowed at top level.
 
