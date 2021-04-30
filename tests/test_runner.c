@@ -1,3 +1,7 @@
+//
+// TODO(timo): Filedocstring
+//
+
 #include "../src/t.h"
 #include "tests.h"
 
@@ -41,6 +45,7 @@ void test_runner_free(Test_Runner* runner)
     for (int i = 0; i < runner->errors->length; i++)
     {
         Test_Error* error = runner->errors->items[i];
+
         free((char*)error->test_set);
         error->test_set = NULL;
         free((char*)error->test_case);
@@ -58,10 +63,8 @@ void test_runner_free(Test_Runner* runner)
 
 Test_Case* test_case(const char* description, const void* test)
 {
-    int description_length = strlen(description);
     Test_Case* _case = xmalloc(sizeof (Test_Case));
-    _case->description = xcalloc(description_length + 1, sizeof (char));
-    memcpy((char*)_case->description, description, description_length);
+    _case->description = str_copy(description);
     _case->test = test;
 
     return _case;
@@ -70,10 +73,8 @@ Test_Case* test_case(const char* description, const void* test)
 
 Test_Set* test_set(const char* description)
 {
-    int description_length = strlen(description);
     Test_Set* set = xmalloc(sizeof (Test_Set));
-    set->description = xcalloc(description_length + 1, sizeof (char));
-    memcpy((char*)set->description, description, description_length);
+    set->description = str_copy(description);
     set->tests = array_init(sizeof (Test_Case*));
     set->length = 0;
 
@@ -83,20 +84,14 @@ Test_Set* test_set(const char* description)
 
 Test_Error* test_error(const char* test_set, const char* test_case, const char* message)
 {
-    int test_set_length = strlen(test_set);
-    int test_case_length = strlen(test_case);
-    int message_length = strlen(message);
-
     Test_Error* error = xmalloc(sizeof (Test_Error));
-    error->test_set = xcalloc(test_set_length + 1, sizeof (char));
-    memcpy((char*)error->test_set, test_set, test_set_length);
-    error->test_case = xcalloc(test_case_length + 1, sizeof (char));
-    memcpy((char*)error->test_case, test_case, test_case_length);
-    error->message = xcalloc(message_length + 1, sizeof (char));
-    memcpy((char*)error->message, message, message_length);
+    error->test_set = str_copy(test_set);
+    error->test_case = str_copy(test_case);
+    error->message = str_copy(message);
 
     return error;
 }
+
 
 void test_runner_append_test_set(Test_Runner* runner, Test_Set* set)
 {
@@ -132,12 +127,14 @@ void test_runner_run(Test_Runner* runner, struct Test_Options options)
             if (runner->error) 
             {
                 runner->failed++;
+
                 if (options.show_cases)
                     printf("FAILED\n");
             }
             else 
             {
                 runner->passed++;
+
                 if (options.show_cases)
                     printf("PASSED\n");
             }
