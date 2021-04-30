@@ -1,4 +1,8 @@
-# Grammar in EBNF-notation
+# Language reference
+
+## Lexical syntax
+
+## Grammar in EBNF-notation
 
 ```
 declaration             = IDENTIFIER ':' type_specifier '=' expression ';' ;
