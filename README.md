@@ -1,8 +1,8 @@
 # The T programming language
 
 This is a course project for the course TIES448 in the university of Jyväskylä.
-Goal of the course was learn about compiler techniques and principlesi by 
-creating a compiler for own source language.
+Goal of the course was learn about compiler techniques and principles by creating
+a compiler for own source language.
 
 
 - [Requirements](#requirements)
