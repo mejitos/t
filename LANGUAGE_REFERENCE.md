@@ -1,6 +1,6 @@
 # Language reference
 
-* 1. Lexical syntax
+1. Lexical syntax
     * 1.1. Whitespace
     * 1.2. Comments
     * 1.3. Identifiers
@@ -9,7 +9,7 @@
     * 1.6. Boolean literals
     * 1.7. Punctuation
     * 1.8. Operators
-* 2. Grammar and semantics
+2. Grammar and semantics
     * 2.1. Types
     * 2.2. Declarations
     * 2.3. Statements
