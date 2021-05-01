@@ -1,36 +1,36 @@
 # Language reference
 
-* Lexical syntax
-    * Whitespace
-    * Comments
-    * Identifiers
-    * Keywords / reserved words
-    * Integer literals
-    * Boolean literals
-    * Punctuation
-    * Operators
-* Grammar and semantics
-    * Types
-    * Declarations
-    * Statements
-    * Expressions
+1. Lexical syntax
+    1.1. Whitespace
+    1.2. Comments
+    1.3. Identifiers
+    1.4. Keywords / reserved words
+    1.5. Integer literals
+    1.6. Boolean literals
+    1.7. Punctuation
+    1.8. Operators
+2. Grammar and semantics
+    2.1. Types
+    2.2. Declarations
+    2.3. Statements
+    2.4. Expressions
 
 
-## Lexical syntax
+## 1. Lexical syntax
 
-### Whitespace
+### 1.1. Whitespace
 
 Whitespace characters consists of space, tab and new line. All whitespace is
 ignored.
 
 
-### Comments
+### 1.2. Comments
 
 Comments start with the character '#' and rest of the line after that will be
 ignored. There is no multiline/block comments in the language.
 
 
-### Identifiers
+### 1.3. Identifiers
 
 Identifiers start with ASCII alphabet character or the '_' character. After
 that they will continue with the starter characters and ASCII digits. 
@@ -38,7 +38,7 @@ Identifiers are either keywords / reserved words of the language, type
 specifiers or names for variables.
 
 
-### Keywords / reserved words
+### 1.4. Keywords / reserved words
 
 ```
 int         bool        true        false
@@ -47,7 +47,7 @@ while       do          break       continue
 if          then        else        
 ```
 
-### Integer literals
+### 1.5. Integer literals
 
 Only numbers the language supports, are integers. Integer literal are composed
 of one or more digits between 0 and 9. Zeros at the beginning of integer will
@@ -58,20 +58,20 @@ the literals will be checked at compile-time but there is no runtime checks of
 possible integer overflows.
 
 
-### Boolean literals
+### 1.6. Boolean literals
 
 There is two different boolean literals and therefore two different values: 
 'true' and 'false'.
 
 
-### Punctuation
+### 1.7. Punctuation
 
 ```
 (   )   {   }   [   ]
 :   ;   ,   =>
 ```
 
-### Operators
+### 1.8. Operators
 
 ```
 +   -   *   /
@@ -81,23 +81,23 @@ There is two different boolean literals and therefore two different values:
 ```
 
 
-## Grammar and semantics
+## 2. Grammar and semantics
 
-### Types
+### 2.1. Types
 
 ```
 type_specifier          = 'int' | 'bool' ;
 ```
 
 
-### Declarations
+### 2.2. Declarations
 
 ```
 declaration             = IDENTIFIER ':' type_specifier '=' expression ';' ;
 ```
 
 
-### Statements
+### 2.3. Statements
 
 ```
 statement               = expression_statement
@@ -119,7 +119,7 @@ return_statement        = 'return' expression ';' ;
 ```
 
 
-### Expressions
+### 2.4. Expressions
 
 ```
 expression              = assignment ;
