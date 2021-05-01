@@ -1,12 +1,105 @@
 # Language reference
 
+* Lexical syntax
+    * Whitespace
+    * Comments
+    * Identifiers
+    * Keywords / reserved words
+    * Integer literals
+    * Boolean literals
+    * Punctuation
+    * Operators
+* Grammar and semantics
+    * Types
+    * Declarations
+    * Statements
+    * Expressions
+
+
 ## Lexical syntax
 
-## Grammar in EBNF-notation
+### Whitespace
+
+Whitespace characters consists of space, tab and new line. All whitespace is
+ignored.
+
+
+### Comments
+
+Comments start with the character '#' and rest of the line after that will be
+ignored. There is no multiline/block comments in the language.
+
+
+### Identifiers
+
+Identifiers start with ASCII alphabet character or the '_' character. After
+that they will continue with the starter characters and ASCII digits. 
+Identifiers are either keywords / reserved words of the language, type
+specifiers or names for variables.
+
+
+### Keywords / reserved words
+
+```
+int         bool        true        false
+and         or          not         return
+while       do          break       continue
+if          then        else        
+```
+
+### Integer literals
+
+Only numbers the language supports, are integers. Integer literal are composed
+of one or more digits between 0 and 9. Zeros at the beginning of integer will
+be disregarded. The semantic value of the literal is the value of the lexeme
+in base 10. Integers in this language are 4 bytes wide so the maximum value of
+the integer is 2147483647 and the minimum value is -2147483648. Overflows of
+the literals will be checked at compile-time but there is no runtime checks of
+possible integer overflows.
+
+
+### Boolean literals
+
+There is two different boolean literals and therefore two different values: 
+'true' and 'false'.
+
+
+### Punctuation
+
+```
+(   )   {   }   [   ]
+:   ;   ,   =>
+```
+
+### Operators
+
+```
++   -   *   /
+:=
+==  !=
+<   <=  >   >=
+```
+
+
+## Grammar and semantics
+
+### Types
+
+```
+type_specifier          = 'int' | 'bool' ;
+```
+
+
+### Declarations
 
 ```
 declaration             = IDENTIFIER ':' type_specifier '=' expression ';' ;
+```
 
+
+### Statements
+
+```
 statement               = expression_statement
                         | block_statement
                         | while_statement
@@ -23,7 +116,12 @@ if_statement            = 'if' expression 'then' statement ('else' statement)? ;
 break_statement         = 'break' ';' ;
 continue_statement      = 'continue' ';' ;
 return_statement        = 'return' expression ';' ;
+```
 
+
+### Expressions
+
+```
 expression              = assignment ;
 assignment              = variable ':=' assignment
                         | or ;
@@ -44,7 +142,6 @@ primary                 = '(' expression ')'
                         | literal ;
 
 parameter_list          = IDENTIFIER ':' type_specifier ( ',' IDENTIFIER ':' type_specifier )* ;
-type_specifier          = 'int' | 'bool' ;
 literal                 = IDENTIFIER
                         | INTEGER
                         | BOOLEAN ;
