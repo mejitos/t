@@ -46,8 +46,14 @@ All of the commands assumes that the current working directory is the root
 directory (=same directory as the script).
 
 ```
-t.sh <command> [compiler_options] [compiler_flags]
+t.sh <command> [source file] [compiler/test options] [compiler/test flags]
 ```
+
+The options/arguments after the command, are based on the used command. The
+descriptions of the [compiler](#compiler-options-and-flags) and 
+[test](#test-options-and-flags) options and flags can be found on their
+own sections.
+
 
 ### [command] `help`
 
