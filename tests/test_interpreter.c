@@ -318,70 +318,70 @@ static void test_evaluate_variable_declaration(Test_Runner* runner)
 
 static void test_example_first(Test_Runner* runner)
 {
-    Value return_value = interpret_from_file("./examples/first.t");
+    Value return_value = interpret_from_file("./tests/cases/first.t");
     assert_value(runner, return_value, VALUE_INTEGER, 0);
 }
 
 
 static void test_example_trivial_add(Test_Runner* runner)
 {
-    Value return_value = interpret_from_file("./examples/trivial_add.t");
+    Value return_value = interpret_from_file("./tests/cases/trivial_add.t");
     assert_value(runner, return_value, VALUE_INTEGER, 2);
 }
 
 
 static void test_example_trivial_subtract(Test_Runner* runner)
 {
-    Value return_value = interpret_from_file("./examples/trivial_subtract.t");
+    Value return_value = interpret_from_file("./tests/cases/trivial_subtract.t");
     assert_value(runner, return_value, VALUE_INTEGER, 0);
 }
 
 
 static void test_example_trivial_multiply(Test_Runner* runner)
 {
-    Value return_value = interpret_from_file("./examples/trivial_multiply.t");
+    Value return_value = interpret_from_file("./tests/cases/trivial_multiply.t");
     assert_value(runner, return_value, VALUE_INTEGER, 6);
 }
 
 
 static void test_example_trivial_divide(Test_Runner* runner)
 {
-    Value return_value = interpret_from_file("./examples/trivial_divide.t");
+    Value return_value = interpret_from_file("./tests/cases/trivial_divide.t");
     assert_value(runner, return_value, VALUE_INTEGER, 5);
 }
 
 
 static void test_example_trivial_arithmetics(Test_Runner* runner)
 {
-    Value return_value = interpret_from_file("./examples/trivial_arithmetics.t");
+    Value return_value = interpret_from_file("./tests/cases/trivial_arithmetics.t");
     assert_value(runner, return_value, VALUE_INTEGER, 7);
 }
 
 
 static void test_example_if_1(Test_Runner* runner)
 {
-    Value return_value = interpret_from_file("./examples/if_1.t");
+    Value return_value = interpret_from_file("./tests/cases/if_1.t");
     assert_value(runner, return_value, VALUE_INTEGER, 0);
 }
 
 
 static void test_example_if_7(Test_Runner* runner)
 {
-    Value return_value = interpret_from_file("./examples/if_7.t");
+    Value return_value = interpret_from_file("./tests/cases/if_7.t");
     assert_value(runner, return_value, VALUE_INTEGER, 1);
 }
 
 
 static void test_example_while_1(Test_Runner* runner)
 {
-    Value return_value = interpret_from_file("./examples/while_loop_1.t");
+    Value return_value = interpret_from_file("./tests/cases/while_loop_1.t");
     assert_value(runner, return_value, VALUE_INTEGER, 4950);
 }
 
 
 static void test_example_while_2(Test_Runner* runner)
 {
-    Value return_value = interpret_from_file("./examples/while_loop_2.t");
+    Value return_value = interpret_from_file("./tests/cases/while_loop_2.t");
     assert_value(runner, return_value, VALUE_INTEGER, 105);
 }
 
