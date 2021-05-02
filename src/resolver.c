@@ -651,6 +651,8 @@ static Type* resolve_index_expression(Resolver* resolver, AST_Expression* expres
     Type* variable_type = resolve_expression(resolver, variable);
     Symbol* symbol = scope_lookup(resolver->local, variable->identifier->lexeme);
 
+    // TODO(timo): Seriously refactor this mess
+
     // Make sure the subscript target is an array type
     if (type_is_not_array(variable_type))
     {
@@ -858,15 +860,16 @@ static Type* resolve_call_expression(Resolver* resolver, AST_Expression* express
 {
     assert(expression->kind == EXPRESSION_CALL);
 
-    // TODO(timo): Check if the callee's name even exists before doing anything else
-
     Type* type = resolve_expression(resolver, expression->call.variable);
-    array* arguments = expression->call.arguments;
-    Symbol* symbol = scope_lookup(resolver->local, expression->call.variable->identifier->lexeme);
-
+    
+    // TODO(timo): Refactor this to be in line with other functions and 
+    // have only one return statement at the end.
     // Make sure the called variable is actually callable - a function in our case
     if (type_is_function(type))
     {
+        array* arguments = expression->call.arguments;
+        Symbol* symbol = scope_lookup(resolver->local, expression->call.variable->identifier->lexeme);
+
         // Number of arguments == arity of the called function
         if (symbol->type->function.arity != arguments->length)
         {
@@ -907,7 +910,7 @@ static Type* resolve_call_expression(Resolver* resolver, AST_Expression* express
         Diagnostic* _diagnostic = diagnostic(
             DIAGNOSTIC_ERROR, expression->position,
             ":RESOLVER - TypeError: '%s' is not callable.",
-            symbol->identifier);
+            expression->call.variable->identifier->lexeme);
         array_push(resolver->diagnostics, _diagnostic);
         // TODO(timo): return type none?
         return hashtable_get(resolver->type_table, "none");
@@ -918,6 +921,10 @@ static Type* resolve_call_expression(Resolver* resolver, AST_Expression* express
 Type* resolve_expression(Resolver* resolver, AST_Expression* expression)
 {
     Type* type;
+
+    // TODO(timo): At this point we could check if the expression is being
+    // declared in global scope. If it is => error. Only declarations
+    // allowed in the global scope.
 
     switch (expression->kind)
     {
@@ -1127,10 +1134,9 @@ static void resolve_continue_statement(Resolver* resolver, AST_Statement* statem
 
 void resolve_statement(Resolver* resolver, AST_Statement* statement)
 {
-    // NOTE(timo): In case of statements we cant really return anything
-    // since the statements themselves don't return anything. For example
-    // the return statement. Function can return at any point so we can't
-    // resolve the function body in a way that we return just a single value
+    // TODO(timo): At this point we could check if the statement is being
+    // declared in global scope. If it is => error. Only declarations
+    // allowed in the global scope.
 
     switch (statement->kind)
     {

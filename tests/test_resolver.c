@@ -1144,6 +1144,55 @@ static void test_resolve_call_expression(Test_Runner* runner)
 }
 
 
+static void test_diagnose_referencing_identifier_before_declaring_call(Test_Runner* runner)
+{
+    Lexer lexer;
+    Parser parser;
+    Resolver resolver;
+    hashtable* type_table;
+    AST_Expression* expression;
+    Diagnostic* diagnostic;
+    char* message;
+    char* source;
+
+    // without parameters
+    source = "foo()";
+
+    lexer_init(&lexer, source);
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    expression = parse_expression(&parser);
+    
+    type_table = type_table_init();
+    resolver_init(&resolver, type_table);
+    resolve_expression(&resolver, expression);
+
+    assert_base(runner, resolver.diagnostics->length == 2,
+        "Invalid number of resolver diagnostics: %d, expected 2", resolver.diagnostics->length);
+    
+    message = ":RESOLVER - SyntaxError: Referencing identifier 'foo' before declaring it";
+    diagnostic = resolver.diagnostics->items[0];
+
+    assert_base(runner, strcmp(diagnostic->message, message) == 0,
+        "Invalid diagnostic '%s', expected '%s'", diagnostic->message, message);
+
+    message = ":RESOLVER - TypeError: 'foo' is not callable.";
+    diagnostic = resolver.diagnostics->items[1];
+
+    assert_base(runner, strcmp(diagnostic->message, message) == 0,
+        "Invalid diagnostic '%s', expected '%s'", diagnostic->message, message);
+    
+    expression_free(expression);
+    resolver_free(&resolver);
+    type_table_free(type_table);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    // TODO(timo): with parameters
+}
+
+
 static void test_constant_folding_binary_arithmetics(Test_Runner* runner)
 {
     Lexer lexer;
@@ -2554,7 +2603,7 @@ Test_Set* resolver_test_set()
 
     // Call expression
     array_push(set->tests, test_case("Call expression", test_resolve_call_expression));
-    // TODO(timo): Diagnose referencing variable before declaring it
+    array_push(set->tests, test_case("Diagnose referencing identifier before declaring it (call)", test_diagnose_referencing_identifier_before_declaring_call));
     array_push(set->tests, test_case("Diagnose callee is not callable", test_diagnose_callee_is_not_callable));
     array_push(set->tests, test_case("Diagnose invalid number of arguments", test_diagnose_invalid_number_of_arguments));
     array_push(set->tests, test_case("Diagnose invalid type of argument", test_diagnose_invalid_type_of_argument));
