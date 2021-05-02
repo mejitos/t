@@ -35,7 +35,7 @@ void scope_free(Scope* scope)
 }
 
 
-static Symbol* scope_get(const Scope* scope, const char* identifier)
+Symbol* scope_get(const Scope* scope, const char* identifier)
 {
     return hashtable_get(scope->symbols, identifier);
 }
@@ -43,9 +43,6 @@ static Symbol* scope_get(const Scope* scope, const char* identifier)
 
 static void scope_put(Scope* scope, Symbol* symbol)
 {
-    // TODO(timo): Should I check here if the symbol is already declared?
-    // Or do I do it somewhere else before putting the symbol in the table?
-    // array_push(scope->symbols, symbol);
     hashtable_put(scope->symbols, symbol->identifier, symbol);
 }
 
@@ -66,26 +63,12 @@ Symbol* scope_lookup(const Scope* scope, const char* identifier)
 void scope_declare(Scope* scope, Symbol* symbol)
 {
     assert(scope != NULL);
-    Symbol* temp = scope_get(scope, symbol->identifier);
-    
-    // TODO(timo): This is not really scopes problem to handle to be honest. Resolver
-    // should handle this situation on its own
-    if (temp != NULL)
-    {
-        // TODO(timo): Error
-        // TODO(timo): Add the location of the declared variable into the message
-        printf("Redeclaration of '%s'\n", symbol->identifier);
-        exit(1);
-    }
+
+    // TODO(timo): I'm not sure though this is job of the scope to set these 
+    // offsets. Maybe this should be done with totally different module or
+    // at least with different function? Create somekind of Sizer or something.
 
     // Setting the memory offsets / alignment
-    // TODO(timo): I'm not sure though this is job of the scope to set these offsets
-    // NOTE(timo): This has to be offset + 8 because of how the stack works
-    // We cannot have position stack_top - 0, since then the value would go
-    // outside of the stack.
-    // TODO(timo): Get rid of this and do something more useful
-    // At least separate the parameters and local variables from each other
-    // TODO(timo): We would need a separate counter for parameter offsets
     if (symbol->kind == SYMBOL_PARAMETER)
     {
         if (strcmp(scope->name, "main") == 0)
@@ -96,17 +79,21 @@ void scope_declare(Scope* scope, Symbol* symbol)
         scope->offset_parameter += symbol->type->size;
 
         // TODO(timo): We should probably compute the correct alignment
-        // for these parameters too
+        // for the parameters too
     }
     else
     {
+        // NOTE(timo): This has to be offset + 8 because of how the stack 
+        // works. We cannot have position stack_top - 0, since then the 
+        // value would go outside of the stack.
         symbol->offset = scope->offset + 8;
 
         // Compute the new offset for the scope
         scope->offset += symbol->type->size;
         // scope->offset += symbol->type->alignment;
 
-        // Lets just use the alignment of 8 bytes for everything for now to make life easier
+        // Lets just use the alignment of 8 bytes for everything for now to 
+        // make life easier
         while (scope->offset % symbol->type->alignment != 0)
             scope->offset += 1;
     }

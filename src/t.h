@@ -1126,19 +1126,35 @@ Scope* scope_init(Scope* enclosing, const char* name);
 void scope_free(Scope* scope);
 
 
-// Finds symbol from the current scope or one of its enclosing scopes.
+// Finds symbol from the passed scope.
 //
 // File(s): scope.c
 //
 // Arguments
-//      scope: The first scope where the symbol will be looked up from.
+//      scope: Pointer to scope where the symbol will be looked from.
+//      identifier: Name of the symbol to be looked from the scope.
+// Returns
+//      Pointer to symbol if it is found, otherwise NULL.
+Symbol* scope_get(const Scope* scope, const char* identifier);
+
+
+// Finds symbol from the passed scope or one of its enclosing scopes it doesn't
+// exist in the passed scope.
+//
+// File(s): scope.c
+//
+// Arguments
+//      scope: The first scope where the symbol will be looked from.
 //      identifier: Identifier of the symbol to be looked from the scope.
 // Returns
 //      Pointer to the symbol if it is found, otherwise NULL.
-Symbol* scope_lookup(const Scope* scope, const char* identifier);
+Symbol* scope_lookup(const Scope* scope, const char*
 
 
-// Declares new symbol into scope.
+// Declares new symbol into scope and computes the offsets and alignments
+// of the symbols in the scope.
+//
+// Function does not check for already existing symbols.
 //
 // File(s): scope.c
 //
