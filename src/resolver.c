@@ -302,6 +302,8 @@ static Type* resolve_unary_expression(Resolver* resolver, AST_Expression* expres
 //      Pointer to resolved type of the expression.
 static Type* resolve_binary_expression(Resolver* resolver, AST_Expression* expression)
 {
+    assert(expression->kind == EXPRESSION_BINARY);
+
     Type* type_left = resolve_expression(resolver, expression->binary.left);
     Type* type_right = resolve_expression(resolver, expression->binary.right);
     Token* _operator = expression->binary._operator;
@@ -571,6 +573,8 @@ static Type* resolve_binary_expression(Resolver* resolver, AST_Expression* expre
 //      Pointer to resolved type of the expression.
 static Type* resolve_variable_expression(Resolver* resolver, AST_Expression* expression)
 {
+    assert(expression->kind == EXPRESSION_VARIABLE);
+
     Type* type;
     Symbol* symbol = scope_lookup(resolver->local, expression->identifier->lexeme);
      
@@ -606,6 +610,8 @@ static Type* resolve_variable_expression(Resolver* resolver, AST_Expression* exp
 //      Pointer to resolved type of the expression.
 static Type* resolve_assignment_expression(Resolver* resolver, AST_Expression* expression)
 {
+    assert(expression->kind == EXPRESSION_ASSIGNMENT);
+
     Type* type;
     Type* variable_type = resolve_expression(resolver, expression->assignment.variable);
     Type* value_type = resolve_expression(resolver, expression->assignment.value);
@@ -641,6 +647,8 @@ static Type* resolve_assignment_expression(Resolver* resolver, AST_Expression* e
 //      Pointer to resolved type of the expression.
 static Type* resolve_index_expression(Resolver* resolver, AST_Expression* expression)
 {
+    assert(expression->kind == EXPRESSION_INDEX);
+
     Type* type;
     AST_Expression* variable = expression->index.variable;
     Type* variable_type = resolve_expression(resolver, variable);
@@ -751,6 +759,8 @@ end:
 //      Pointer to resolved type of the expression.
 static Type* resolve_function_expression(Resolver* resolver, AST_Expression* expression)
 {
+    assert(expression->kind == EXPRESSION_FUNCTION);
+
     // TODO(timo): If we are in function at this point, error out.
     // if not in function -> resolve function -> return function type
     // else -> error -> return none type
@@ -828,6 +838,8 @@ static Type* resolve_function_expression(Resolver* resolver, AST_Expression* exp
 //      Pointer to resolved type of the expression.
 static Type* resolve_call_expression(Resolver* resolver, AST_Expression* expression)
 {
+    assert(expression->kind == EXPRESSION_CALL);
+
     Type* type = resolve_expression(resolver, expression->call.variable);
     array* arguments = expression->call.arguments;
     Symbol* symbol = scope_lookup(resolver->local, expression->call.variable->identifier->lexeme);
@@ -945,6 +957,8 @@ Type* resolve_expression(Resolver* resolver, AST_Expression* expression)
 //      statement: Statement to be resolved.
 static void resolve_block_statement(Resolver* resolver, AST_Statement* statement)
 {
+    assert(statement->kind == STATEMENT_BLOCK);
+
     // TODO(timo): enter the scope of the block
 
     array* statements = statement->block.statements;
@@ -963,6 +977,8 @@ static void resolve_block_statement(Resolver* resolver, AST_Statement* statement
 //      statement: Statement to be resolved.
 static void resolve_if_statement(Resolver* resolver, AST_Statement* statement)
 {
+    assert(statement->kind == STATEMENT_IF);
+
     Type* condition = resolve_expression(resolver, statement->_if.condition);
 
     if (type_is_not_boolean(condition))
@@ -987,6 +1003,8 @@ static void resolve_if_statement(Resolver* resolver, AST_Statement* statement)
 //      statement: Statement to be resolved.
 static void resolve_while_statement(Resolver* resolver, AST_Statement* statement)
 {
+    assert(statement->kind == STATEMENT_WHILE);
+
     Type* condition = resolve_expression(resolver, statement->_while.condition);
 
     if (type_is_not_boolean(condition))
@@ -1056,6 +1074,8 @@ static void resolve_return_statement(Resolver* resolver, AST_Statement* statemen
 //      statement: Statement to be resolved.
 static void resolve_break_statement(Resolver* resolver, AST_Statement* statement)
 {
+    assert(statement->kind == STATEMENT_BREAK);
+
     if (resolver->context.not_in_loop)
     {
         Diagnostic* _diagnostic = diagnostic(
@@ -1073,6 +1093,8 @@ static void resolve_break_statement(Resolver* resolver, AST_Statement* statement
 //      statement: Statement to be resolved.
 static void resolve_continue_statement(Resolver* resolver, AST_Statement* statement)
 {
+    assert(statement->kind == STATEMENT_CONTINUE);
+
     if (resolver->context.not_in_loop)
     {
         Diagnostic* _diagnostic = diagnostic(
@@ -1165,13 +1187,19 @@ Type* resolve_type_specifier(Resolver* resolver, Type_Specifier specifier)
 }
 
 
-// Resolves a variable declaration.
+// Resolves a variable declaration by making sure the intended and actual
+// actual resolved types matches. If the variable is global, it is also made
+// sure the initializer is a compile-time constant. This is behaviour taken
+// from C language and is being used for now. At the end, symbol will be
+// declared into the current local scope.
 //
 // Arguments
 //      resolver: Pointer to initialized Resolver.
 //      declaration: Declaration to be resolved.
 static void resolve_variable_declaration(Resolver* resolver, AST_Declaration* declaration)
 {
+    assert(declaration->kind == DECLARATION_VARIABLE);
+
     Type* expected_type = resolve_type_specifier(resolver, declaration->specifier);
     Type* actual_type = resolve_expression(resolver, declaration->initializer);
 
@@ -1196,16 +1224,9 @@ static void resolve_variable_declaration(Resolver* resolver, AST_Declaration* de
         array_push(resolver->diagnostics, _diagnostic);
     }
 
-    // Declare the symbol into the current scope
     Symbol* symbol = symbol_variable(resolver->local, declaration->identifier->lexeme, actual_type);
-    
-    // TODO(timo): Set value for a global variable, but this solution kinda 
-    // sucks just a hacky solution to get things going for now.
-    // if (str_equals(resolver->local->name, "global"))
-    // TODO(timo): We probably can just assign the value straight up, since we 
-    // have at least a none value in every expression.
-    if (resolver->local == resolver->global)
-        symbol->value = declaration->initializer->value;
+    // We have at least a none value in every expression.
+    symbol->value = declaration->initializer->value;
     
     // TODO(timo): Should we take the responsibility of declaring errors of
     // already diagnosed variables instead of doing it in the scope
@@ -1220,12 +1241,8 @@ static void resolve_variable_declaration(Resolver* resolver, AST_Declaration* de
 //      declaration: Declaration to be resolved.
 static void resolve_function_declaration(Resolver* resolver, AST_Declaration* declaration)
 {
-    // TODO(timo): This is the place where we create the routines which has
-    // the name of the routine, its parameters, its scope etc.
+    assert(declaration->kind == DECLARATION_FUNCTION);
 
-    // TODO(timo): We should actually open and close the new scope in here considering our
-    // implementation at this point
-    
     // Set the current context to the context of the function
     resolver->context.current_function = (char*)declaration->identifier->lexeme;
 
@@ -1235,9 +1252,11 @@ static void resolve_function_declaration(Resolver* resolver, AST_Declaration* de
     // The initializer has to be a function type
     if (type_is_not_function(actual_type))
     {
-        // TODO(timo): 
-        printf("Expected function type, got something else\n");
-        exit(1);
+        Diagnostic* _diagnostic = diagnostic(
+            DIAGNOSTIC_ERROR, declaration->position,
+            ":RESOLVER - TypeError: Expected a function expression in initializer of function declaration, got '%s'.",
+            type_as_string(actual_type->kind));
+        array_push(resolver->diagnostics, _diagnostic);
     }
 
     // Function has to return a value. If this is true, the function does not
