@@ -1578,6 +1578,7 @@ typedef struct IR_Context
 
     union {
         struct {
+            char* start_label;
             char* exit_label;
         } _while;
         struct {

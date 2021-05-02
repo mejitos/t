@@ -388,9 +388,9 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
             Symbol* result = scope_lookup(generator->local, instruction->result);
             
             fprintf(generator->output,
-                "    mov    rax, [rbp-%d]       ; \n"
-                "    and    rax, [rbp-%d]       ; \n"
-                "    mov    [rbp-%d], rax       ; \n", 
+                "    mov    rax, [rbp-%d]           ; \n"
+                "    and    rax, [rbp-%d]           ; \n"
+                "    mov    [rbp-%d], rax           ; \n", 
                 destination->offset, 
                 source->offset, 
                 result->offset);
@@ -404,9 +404,9 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
             Symbol* result = scope_lookup(generator->local, instruction->result);
             
             fprintf(generator->output,
-                "    mov    rax, [rbp-%d]       ; \n"
-                "    or     rax, [rbp-%d]       ; \n"
-                "    mov    [rbp-%d], rax       ; \n", 
+                "    mov    rax, [rbp-%d]           ; \n"
+                "    or     rax, [rbp-%d]           ; \n"
+                "    mov    [rbp-%d], rax           ; \n", 
                 destination->offset, 
                 source->offset, 
                 result->offset);

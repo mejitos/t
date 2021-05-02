@@ -801,6 +801,38 @@ static void test_example_while_4(Test_Runner* runner)
 }
 
 
+static void test_example_while_loop_continue_1(Test_Runner* runner)
+{
+    const char* program_name = "while_loop_continue_1";
+    const char* file_path = "./tests/cases/while_loop_continue_1.t";
+    const char* result = "Program exited with the value 91\n";
+    const char* args = NULL;
+
+    char* buffer = run_example(runner, program_name, file_path, result, args);
+    
+    assert_base(runner, strcmp(result, buffer) == 0,
+        "Invalid exit value '%s', expected '%s'", buffer, result);
+
+    free(buffer);
+}
+
+
+static void test_example_while_loop_continue_break_1(Test_Runner* runner)
+{
+    const char* program_name = "while_loop_continue_break_1";
+    const char* file_path = "./tests/cases/while_loop_continue_break_1.t";
+    const char* result = "Program exited with the value 11\n";
+    const char* args = NULL;
+
+    char* buffer = run_example(runner, program_name, file_path, result, args);
+    
+    assert_base(runner, strcmp(result, buffer) == 0,
+        "Invalid exit value '%s', expected '%s'", buffer, result);
+
+    free(buffer);
+}
+
+
 static void test_example_function_1(Test_Runner* runner)
 {
     const char* program_name = "function_1";
@@ -1140,9 +1172,11 @@ Test_Set* compiler_test_set()
     array_push(set->tests, test_case("Example file: while_loop_3.t", test_example_while_3));
     // Basic "while true" -loop
     array_push(set->tests, test_case("Example file: while_loop_4.t", test_example_while_4));
+    // With continue
+    array_push(set->tests, test_case("Example file: while_loop_continue_1.t", test_example_while_loop_continue_1));
+    array_push(set->tests, test_case("Example file: while_loop_continue_break_1.t", test_example_while_loop_continue_break_1));
     // TODO(timo): Nested while loops
     // TODO(timo): Nested while loops with breaks
-    
     // TODO(timo): Nested if + while statements (testing for contexts)
 
     // Functions

@@ -59,10 +59,11 @@ static IR_Context* ir_context_if(char* exit_label)
 }
 
 
-static IR_Context* ir_context_while(char* exit_label)
+static IR_Context* ir_context_while(char* start_label, char* exit_label)
 {
     IR_Context* context = xmalloc(sizeof (IR_Context));
     context->kind = IR_CONTEXT_WHILE;
+    context->_while.start_label = str_copy(start_label);
     context->_while.exit_label = str_copy(exit_label);
 
     return context;
@@ -84,6 +85,8 @@ static void ir_context_pop(IR_Generator* generator)
     
     if (context->kind == IR_CONTEXT_WHILE)
     {
+        free(context->_while.start_label);
+        context->_while.start_label = NULL;
         free(context->_while.exit_label);
         context->_while.exit_label = NULL;
     }
@@ -508,7 +511,7 @@ void ir_generate_statement(IR_Generator* generator, AST_Statement* statement)
             char* label_exit = label(generator); // exit
 
             // Push context
-            ir_context_push(generator, ir_context_while(label_exit));
+            ir_context_push(generator, ir_context_while(label_condition, label_exit));
             
             // Start of the loop
             instruction = instruction_label(label_condition);
@@ -637,6 +640,21 @@ void ir_generate_statement(IR_Generator* generator, AST_Statement* statement)
                 }
             }
 
+            break;
+        }
+        case STATEMENT_CONTINUE:
+        {
+            for (int i = generator->contexts->length - 1; i >= 0; i--)
+            {
+                IR_Context* context = generator->contexts->items[i];
+
+                if (context->kind == IR_CONTEXT_WHILE)
+                {
+                    Instruction* instruction = instruction_goto(context->_while.start_label);
+                    array_push(generator->instructions, instruction);
+                    break;
+                }
+            }
             break;
         }
         default:

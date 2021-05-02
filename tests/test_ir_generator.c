@@ -1218,6 +1218,156 @@ static void test_generate_while_statement_with_break(Test_Runner* runner)
 }
 
 
+static void test_generate_while_statement_with_continue(Test_Runner* runner)
+{
+    const char* source = "{\n"
+                         "    i: int = 0;\n"
+                         "    while i < 100 do {\n"
+                         "        continue;\n"
+                         "    }\n"
+                         "}";
+
+    Operation expected[] =
+    {
+        OP_COPY,
+        OP_COPY,
+        OP_LABEL,
+        OP_COPY,
+        OP_COPY,
+        OP_LT,
+        OP_GOTO_IF_FALSE,
+        OP_GOTO,
+        OP_GOTO,
+        OP_LABEL
+    };
+
+    Lexer lexer;
+    Parser parser;
+    hashtable* type_table;
+    Resolver resolver;
+    IR_Generator generator;
+    AST_Statement* statement;
+
+    lexer_init(&lexer, source);
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    statement = parse_statement(&parser);
+
+    type_table = type_table_init();
+    resolver_init(&resolver, type_table);
+
+    // We need to have local scope for this to work correctly
+    Scope* local = scope_init(resolver.global, "local");
+    resolver.local = local;
+    resolve_statement(&resolver, statement);
+    
+    ir_generator_init(&generator, resolver.global);
+    generator.local = local;
+    ir_generate_statement(&generator, statement);
+
+    int actual_length = generator.instructions->length;
+    int expected_length = sizeof (expected) / sizeof (*expected);
+    
+    assert_base(runner, actual_length == expected_length,
+        "Invalid number of instructions: %d, expected %d", actual_length, expected_length);
+
+    for (int i = 0; actual_length == expected_length && i < expected_length; i++)
+        assert_instruction(runner, generator.instructions->items[i], expected[i]);
+
+    // dump_instructions(generator.instructions);
+
+    scope_free(local);
+    statement_free(statement);
+    ir_generator_free(&generator);
+    resolver_free(&resolver);
+    type_table_free(type_table);
+    parser_free(&parser);
+    lexer_free(&lexer);
+}
+
+
+static void test_generate_while_statement_with_continue_and_break(Test_Runner* runner)
+{
+    const char* source = "{\n"
+                         "    i: int = 0;\n"
+                         "    while true do {\n"
+                         "        i := i + 1;\n"
+                         "        if i / 10 == 0 then continue;\n"
+                         "        break;\n"
+                         "    }\n"
+                         "}";
+
+    Operation expected[] =
+    {
+        OP_COPY,
+        OP_COPY,
+        OP_LABEL,
+        OP_COPY,
+        OP_GOTO_IF_FALSE,
+        OP_COPY,
+        OP_COPY,
+        OP_ADD,
+        OP_COPY,
+        OP_COPY,
+        OP_COPY,
+        OP_DIV,
+        OP_COPY,
+        OP_EQ,
+        OP_GOTO_IF_FALSE,
+        OP_GOTO,
+        OP_LABEL,
+        OP_GOTO,
+        OP_GOTO,
+        OP_LABEL
+    };
+
+    Lexer lexer;
+    Parser parser;
+    hashtable* type_table;
+    Resolver resolver;
+    IR_Generator generator;
+    AST_Statement* statement;
+
+    lexer_init(&lexer, source);
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    statement = parse_statement(&parser);
+
+    type_table = type_table_init();
+    resolver_init(&resolver, type_table);
+
+    // We need to have local scope for this to work correctly
+    Scope* local = scope_init(resolver.global, "local");
+    resolver.local = local;
+    resolve_statement(&resolver, statement);
+    
+    ir_generator_init(&generator, resolver.global);
+    generator.local = local;
+    ir_generate_statement(&generator, statement);
+
+    int actual_length = generator.instructions->length;
+    int expected_length = sizeof (expected) / sizeof (*expected);
+    
+    assert_base(runner, actual_length == expected_length,
+        "Invalid number of instructions: %d, expected %d", actual_length, expected_length);
+
+    for (int i = 0; actual_length == expected_length && i < expected_length; i++)
+        assert_instruction(runner, generator.instructions->items[i], expected[i]);
+
+    // dump_instructions(generator.instructions);
+
+    scope_free(local);
+    statement_free(statement);
+    ir_generator_free(&generator);
+    resolver_free(&resolver);
+    type_table_free(type_table);
+    parser_free(&parser);
+    lexer_free(&lexer);
+}
+
+
 static void test_generate_while_statement_nested(Test_Runner* runner)
 {
     const char* source = "while 0 < 1 do {\n"
@@ -1901,8 +2051,10 @@ Test_Set* ir_generator_test_set()
     array_push(set->tests, test_case("If statement (if then - else if then - else)", test_generate_if_statement_3));
     array_push(set->tests, test_case("If statement (arbitrary number of else if's)", test_generate_if_statement_4));
     array_push(set->tests, test_case("While statement", test_generate_while_statement));
-    array_push(set->tests, test_case("While statement (with break)", test_generate_while_statement_with_break));
     array_push(set->tests, test_case("While statement (nested)", test_generate_while_statement_nested));
+    array_push(set->tests, test_case("While statement (with break)", test_generate_while_statement_with_break));
+    array_push(set->tests, test_case("While statement (with continue)", test_generate_while_statement_with_continue));
+    array_push(set->tests, test_case("While statement (with continue and break)", test_generate_while_statement_with_continue_and_break));
     array_push(set->tests, test_case("While statement (nested with break)", test_generate_while_statement_nested_with_break));
     array_push(set->tests, test_case("While statement (nested with breaks)", test_generate_while_statement_nested_with_breaks));
     array_push(set->tests, test_case("Return statement", test_generate_return_statement));
