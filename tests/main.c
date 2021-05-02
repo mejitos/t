@@ -26,9 +26,9 @@ static const char* usage =
     "                       irgenerator: Run tests for IR generator\n"
     "                       compiler: Run tests for compiler/code generator\n"
     "Flags:\n"
-    "    --hide-cases: Hides the descriptions of individual test cases\n"
-    "    --hide-errors: Hides the collected errors\n"
-    "    --hide-summary: Hides the compilation summary\n";
+    "    --hide-cases: Hides the descriptions and results of individual test cases\n"
+    "    --hide-errors: Hides the collected errors from the output\n"
+    "    --hide-summary: Hides the test summary from the output\n";
 
 
 static void parse_test_options(struct Test_Options* options, int* argc, char*** argv)
