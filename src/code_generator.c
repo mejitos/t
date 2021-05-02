@@ -116,50 +116,77 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
 {
     switch (instruction->operation)
     {
+        case OP_COPY:
+        {
+            // TODO(timo): Assignment to global variable
+
+            // NOTE(timo): This result will always be set, since it is temporary
+            Symbol* result = scope_lookup(generator->local, instruction->result);
+            Symbol* arg = scope_lookup(generator->local, instruction->arg1);
+
+            // NOTE(timo): If argument symbol is found, argument is a variable, else it is probably constant
+            if (arg != NULL)
+            {
+                if (arg->scope == generator->global)
+                {
+                    fprintf(generator->output,
+                        "    mov    rax, [%s]               ; move global variable to register\n"
+                        "    mov    [rbp-%d], rax           ; move global variable from register to stack\n", 
+                        arg->identifier, result->offset);
+                }
+                // TODO(timo): For now this is just a super quick hacky solution to get things working
+                // TODO(timo): I should fixt the assigning of the offsets so I can get rid of alot of
+                // these conditions
+                else if (arg->kind == SYMBOL_PARAMETER)
+                {
+                    fprintf(generator->output,
+                        "    mov    rax, [rbp+%d]           ; move parameter from stack to rax\n"
+                        "    mov    qword [rbp-%d], rax     ; move parameter from rax to stack\n", 
+                        arg->offset, result->offset);
+                }
+                else
+                {
+                    fprintf(generator->output,
+                        "    mov    rax, [rbp-%d]           ; --\n"
+                        "    mov    qword [rbp-%d], rax     ; --\n", 
+                        arg->offset, result->offset);
+                }
+            }
+            else // This is used when literal constants are being copied
+            {
+                // NOTE(timo): Is this actually needed? I mean at this point we save pretty much everything to
+                // stack at this point, so there is probably no need for register allocation here
+                // result->_register = allocate_register(generator);
+                
+                if (result->type->kind == TYPE_INTEGER)
+                    fprintf(generator->output,
+                        "    mov    qword [rbp-%d], %s      ; --\n", 
+                        result->offset, instruction->arg1);
+                else if (result->type->kind == TYPE_BOOLEAN)
+                    fprintf(generator->output,
+                        "    mov    rax, [%s]               ; --\n"
+                        "    mov    qword [rbp-%d], rax     ; --\n",
+                        instruction->arg1, result->offset);
+            }
+
+            break;
+        }
         case OP_ADD: // https://www.felixcloutier.com/x86/add
         {
             Symbol* destination = scope_lookup(generator->local, instruction->arg1);
             Symbol* source = scope_lookup(generator->local, instruction->arg2);
             Symbol* result = scope_lookup(generator->local, instruction->result);
+            int temp_reg = allocate_register(generator);
             
-            if (destination != NULL) // get variable from stack to register
-            {
-                destination->_register = allocate_register(generator);
-                fprintf(generator->output,
-                    "    mov    %s, [rbp-%d]            ; move variable from the stack to the register\n", 
-                    register_list[destination->_register], destination->offset);
-            }
+            fprintf(generator->output,
+                "    mov    %s, [rbp-%d]            ; move first operand from the stack to the register\n"
+                "    add    %s, [rbp-%d]            ; add the values together\n"
+                "    mov    qword [rbp-%d], %s      ; move the result to the stack\n", 
+                register_list[temp_reg], destination->offset,
+                register_list[temp_reg], source->offset,
+                result->offset, register_list[temp_reg]);
 
-            if (source != NULL) // get variable from stack to register
-            {
-                source->_register = allocate_register(generator);
-                fprintf(generator->output,
-                    "    mov    %s, [rbp-%d]            ; move variable from the stack to the register\n", 
-                    register_list[source->_register], source->offset);
-            }
-
-            if (result != NULL) // add two registers together and save the result to the stack
-            {
-                fprintf(generator->output,
-                    "    add    %s, %s                  ; add the values together\n", 
-                    register_list[destination->_register], register_list[source->_register]);
-                fprintf(generator->output,
-                    "    mov    qword [rbp-%d], %s      ; move the result to the stack\n", 
-                    result->offset, register_list[destination->_register]);
-            }
-            else // add two registers together and set the result register
-            {
-                result->_register = destination->_register;
-                fprintf(generator->output,
-                    "    add    %s, %s                  ; add the values together\n", 
-                    register_list[destination->_register], register_list[source->_register]);
-            }
-
-            // TODO(timo): I'm constantly running out of registers, so maybe I shouldnt play around
-            // with them at all until I actually know what I'm doing. KISS = Keep It Stack Simple
-            // free_register(generator, source->_register);
-            free_registers();
-            source->_register = -1;
+            free_register(generator, temp_reg);
             break;
         }
         case OP_SUB: // https://www.felixcloutier.com/x86/sub
@@ -167,42 +194,17 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
             Symbol* destination = scope_lookup(generator->local, instruction->arg1);
             Symbol* source = scope_lookup(generator->local, instruction->arg2);
             Symbol* result = scope_lookup(generator->local, instruction->result);
+            int temp_reg = allocate_register(generator);
 
-            if (destination != NULL) // get variable from stack to register
-            {
-                destination->_register = allocate_register(generator);
-                fprintf(generator->output,
-                    "    mov    %s, [rbp-%d]            ; move the variable from the stack to the register\n", 
-                    register_list[destination->_register], destination->offset);
-            }
+            fprintf(generator->output,
+                "    mov    %s, [rbp-%d]            ; move the variable from the stack to the register\n"
+                "    sub    %s, [rbp-%d]                  ; subtract two values from each other\n"
+                "    mov    qword [rbp-%d], %s      ; move the result to the stack\n", 
+                register_list[temp_reg], destination->offset,
+                register_list[temp_reg], source->offset,
+                result->offset, register_list[temp_reg]);
 
-            if (source != NULL) // get variable from stack to register
-            {
-                source->_register = allocate_register(generator);
-                fprintf(generator->output,
-                    "    mov    %s, [rbp-%d]            ; move the variable from the stack to the register\n", 
-                    register_list[source->_register], source->offset);
-            }
-
-            if (result != NULL) // subtract two registers from each other and save the result to the stack
-            {
-                fprintf(generator->output,
-                    "    sub    %s, %s                  ; subtract two values from each other\n", 
-                    register_list[destination->_register], register_list[source->_register]);
-                fprintf(generator->output,
-                    "    mov    qword [rbp-%d], %s      ; move the result to the stack\n", 
-                    result->offset, register_list[destination->_register]);
-            }
-            else // subtract two registers from each other and set the result register
-            {
-                result->_register = destination->_register;
-                fprintf(generator->output,
-                    "    sub    %s, %s                  ; subtract two values from each other\n", 
-                    register_list[destination->_register], register_list[source->_register]);
-            }
-
-            free_register(generator, source->_register);
-            source->_register = -1;
+            free_register(generator, temp_reg);
             break;
         }
         case OP_MUL: // https://www.felixcloutier.com/x86/mul
@@ -244,6 +246,8 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
                 free_register(generator, source->_register);
                 source->_register = -1;
             }
+
+            free_registers();
 
             break;
         }
@@ -291,6 +295,7 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
                 source->_register = -1;
             }
 
+            free_registers();
             break;
         }
         case OP_MINUS: // https://www.felixcloutier.com/x86/neg
@@ -466,61 +471,6 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
             free_register(generator, temp_reg);
             break;
         }
-        case OP_COPY:
-        {
-            // TODO(timo): Assignment to global variable
-
-            // NOTE(timo): This result will always be set, since it is temporary
-            Symbol* result = scope_lookup(generator->local, instruction->result);
-            Symbol* arg = scope_lookup(generator->local, instruction->arg1);
-
-            // NOTE(timo): If argument symbol is found, argument is a variable, else it is probably constant
-            if (arg != NULL)
-            {
-                if (arg->scope == generator->global)
-                {
-                    fprintf(generator->output,
-                        "    mov    rax, [%s]               ; move global variable to register\n"
-                        "    mov    [rbp-%d], rax           ; move global variable from register to stack\n", 
-                        arg->identifier, result->offset);
-                }
-                // TODO(timo): For now this is just a super quick hacky solution to get things working
-                // TODO(timo): I should fixt the assigning of the offsets so I can get rid of alot of
-                // these conditions
-                else if (arg->kind == SYMBOL_PARAMETER)
-                {
-                    fprintf(generator->output,
-                        "    mov    rax, [rbp+%d]           ; move parameter from stack to rax\n"
-                        "    mov    qword [rbp-%d], rax     ; move parameter from rax to stack\n", 
-                        arg->offset, result->offset);
-                }
-                else
-                {
-                    fprintf(generator->output,
-                        "    mov    rax, [rbp-%d]           ; --\n"
-                        "    mov    qword [rbp-%d], rax     ; --\n", 
-                        arg->offset, result->offset);
-                }
-            }
-            else // This is used when literal constants are being copied
-            {
-                // NOTE(timo): Is this actually needed? I mean at this point we save pretty much everything to
-                // stack at this point, so there is probably no need for register allocation here
-                // result->_register = allocate_register(generator);
-                
-                if (result->type->kind == TYPE_INTEGER)
-                    fprintf(generator->output,
-                        "    mov    qword [rbp-%d], %s      ; --\n", 
-                        result->offset, instruction->arg1);
-                else if (result->type->kind == TYPE_BOOLEAN)
-                    fprintf(generator->output,
-                        "    mov    rax, [%s]               ; --\n"
-                        "    mov    qword [rbp-%d], rax     ; --\n",
-                        instruction->arg1, result->offset);
-            }
-
-            break;
-        }
         case OP_LABEL:
         {
             fprintf(generator->output, "%s:\n", instruction->label);
@@ -561,6 +511,9 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
                 "    sub    rsp, %d                 ; allocate memory for local variables from stack\n", 
                 instruction->size);
 
+            // NOTE(timo): There is no need to save the callee saved registers
+            // since we don't utilize the registers at all.
+
             break;
         }
         case OP_PARAM_PUSH:
@@ -587,18 +540,16 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
         {
             fprintf(generator->output, "%s_epilogue:\n", instruction->label);
 
-            // Restore the stack
-            // NOTE(timo): Parameters are popped one by one with OP_PARAM_POP
+            // NOTE(timo): There is no need to restore the callee saved registers
+            // since we don't utilize the registers at all.
 
-            // Restore the arguments/registers
-            // TODO(timo): This should be implemented when caller/callee saved 
-            // registers are taken into account. Now everything is being passed 
-            // through stack.
-
-            // Return to the caller
+            // Restore the stack frame and return to the caller. The stack frame
+            // is restored with the `leave` instruction which handles the restoring
+            // automatically.
             // TODO(timo): Hacky solution to get things work for now. The main 
-            // function is handled at the code_generate() function. Maybe there 
-            // is a better way to handle this.
+            // function is handled at the code_generate() function. Main function
+            // is different because it prints the result message for the user.
+            // Maybe there is a better way to handle this.
             if (strcmp(generator->local->name, "main") != 0)
             {
                 fprintf(generator->output,
@@ -627,7 +578,10 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
                 value->offset, 
                 generator->local->name);
 
-            free_registers();
+            // NOTE(timo): This is not needed to anything at the moment since
+            // we don't actually utilize the registers and all the used registers
+            // are free'd right after they are used.
+            // free_registers();
             break;
         }
         case OP_CALL:
@@ -640,6 +594,13 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
                 "    mov    [rbp-%d], rax           ; Moving the function result to the result address\n",
                 value->identifier,
                 result->offset);
+
+            // NOTE(timo): The parameters are popped one by one with the OP_PARAM_POP
+            // instruction. That could also be done with single instruction by
+            // just adding n bytes to the stack.
+
+            // NOTE(timo): Also there is no need to restore the caller saved
+            // registers, since we don't actually utilize them to anything.
 
             break;
         }
