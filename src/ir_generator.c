@@ -1,3 +1,24 @@
+// IR Generator is responsible for generating the intermediate representation
+// of the source code. Generator will generate array of three address code
+// instructions from the abstract syntax tree, annotated by the resolver.
+//
+// TODO(timo): Filedocstring
+//
+// The instructions could save the operands of the instruction as straight
+// pointers to the symbol table instead of type char*. That way we can minimize
+// the lookups to the symbol table and make the code more straightforward
+// in the future stages.
+//
+// The context handling stuff is a bit ugly and messy as it is. I probably
+// could get rid of alot of the code just by parsing the if-statements some
+// other way. I think the all the 'else-if' parts could be parsed as separate
+// list of statements so the whole if-sequence will have automatically only
+// one starting and one ending point without that unecessarily difficult and
+// ugly context selection.
+//
+// Author: Timo Mehto
+// Date: 2020/05/02
+
 #include "t.h"
 
 
