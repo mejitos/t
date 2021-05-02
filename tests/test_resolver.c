@@ -429,7 +429,7 @@ static void test_resolve_variable_expression(Test_Runner* runner)
 }
 
 
-static void test_diagnose_referencing_variable_before_declaring(Test_Runner* runner)
+static void test_diagnose_referencing_identifier_before_declaring_variable(Test_Runner* runner)
 {
     Lexer lexer;
     Parser parser;
@@ -517,6 +517,53 @@ static void test_resolve_assignment_expression(Test_Runner* runner)
 }
 
 
+static void test_diagnose_referencing_identifier_before_declaring_assignment(Test_Runner* runner)
+{
+    Lexer lexer;
+    Parser parser;
+    Resolver resolver;
+    hashtable* type_table;
+    AST_Expression* expression;
+    Diagnostic* diagnostic;
+    char* message;
+    char* source;
+
+    // base case
+    source = "foo := 1";
+
+    lexer_init(&lexer, source);
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    expression = parse_expression(&parser);
+    
+    type_table = type_table_init();
+    resolver_init(&resolver, type_table);
+    resolve_expression(&resolver, expression);
+
+    assert_base(runner, resolver.diagnostics->length == 2,
+        "Invalid number of resolver diagnostics: %d, expected 2", resolver.diagnostics->length);
+    
+    message = ":RESOLVER - SyntaxError: Referencing identifier 'foo' before declaring it";
+    diagnostic = resolver.diagnostics->items[0];
+
+    assert_base(runner, strcmp(diagnostic->message, message) == 0,
+        "Invalid diagnostic '%s', expected '%s'", diagnostic->message, message);
+
+    message = ":RESOLVER - TypeError: Conflicting types in assignment expression. Assigning to 'none' from 'int'";
+    diagnostic = resolver.diagnostics->items[1];
+
+    assert_base(runner, strcmp(diagnostic->message, message) == 0,
+        "Invalid diagnostic '%s', expected '%s'", diagnostic->message, message);
+    
+    expression_free(expression);
+    resolver_free(&resolver);
+    type_table_free(type_table);
+    parser_free(&parser);
+    lexer_free(&lexer);
+}
+
+
 static void test_diagnose_conflicting_types_assignment_expression(Test_Runner* runner)
 {
     Lexer lexer;
@@ -597,7 +644,54 @@ static void test_resolve_index_expression(Test_Runner* runner)
 }
 
 
-static void test_diagnose_type_is_not_subscriptable_literal(Test_Runner* runner)
+static void test_diagnose_referencing_identifier_before_declaring_index(Test_Runner* runner)
+{
+    Lexer lexer;
+    Parser parser;
+    Resolver resolver;
+    hashtable* type_table;
+    AST_Expression* expression;
+    Diagnostic* diagnostic;
+    char* message;
+    char* source;
+
+    // base case
+    source = "foo[777]";
+
+    lexer_init(&lexer, source);
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    expression = parse_expression(&parser);
+    
+    type_table = type_table_init();
+    resolver_init(&resolver, type_table);
+    resolve_expression(&resolver, expression);
+
+    assert_base(runner, resolver.diagnostics->length == 2,
+        "Invalid number of resolver diagnostics: %d, expected 2", resolver.diagnostics->length);
+    
+    message = ":RESOLVER - SyntaxError: Referencing identifier 'foo' before declaring it";
+    diagnostic = resolver.diagnostics->items[0];
+
+    assert_base(runner, strcmp(diagnostic->message, message) == 0,
+        "Invalid diagnostic '%s', expected '%s'", diagnostic->message, message);
+
+    message = ":RESOLVER - TypeError: 'none' is not subscriptable.";
+    diagnostic = resolver.diagnostics->items[1];
+
+    assert_base(runner, strcmp(diagnostic->message, message) == 0,
+        "Invalid diagnostic '%s', expected '%s'", diagnostic->message, message);
+    
+    expression_free(expression);
+    resolver_free(&resolver);
+    type_table_free(type_table);
+    parser_free(&parser);
+    lexer_free(&lexer);
+}
+
+
+static void test_diagnose_type_is_not_subscriptable_variable(Test_Runner* runner)
 {
     Lexer lexer;
     Parser parser;
@@ -608,9 +702,10 @@ static void test_diagnose_type_is_not_subscriptable_literal(Test_Runner* runner)
     char* message;
     char* source;
 
-    // literal
+    // integer
     source = "main: int = (argc: int, argv: [int]) => {\n"
-             "    return 42[2];\n"
+             "    foo: int = 42;\n"
+             "    return foo[2];\n"
              "};";
 
     lexer_init(&lexer, source);
@@ -637,20 +732,8 @@ static void test_diagnose_type_is_not_subscriptable_literal(Test_Runner* runner)
     type_table_free(type_table);
     parser_free(&parser);
     lexer_free(&lexer);
-}
 
-
-static void test_diagnose_type_is_not_subscriptable_variable(Test_Runner* runner)
-{
-    Lexer lexer;
-    Parser parser;
-    hashtable* type_table;
-    Resolver resolver;
-    AST_Declaration* declaration;
-    Diagnostic* diagnostic;
-    char* message;
-    char* source;
-
+    // bool
     source = "main: int = (argc: int, argv: [int]) => {\n"
              "    foo: bool = true;\n"
              "    return foo[2];\n"
@@ -2444,17 +2527,18 @@ Test_Set* resolver_test_set()
 
     // Variable
     array_push(set->tests, test_case("Variable expression", test_resolve_variable_expression));
-    array_push(set->tests, test_case("Diagnose referencing variable before declaring it", test_diagnose_referencing_variable_before_declaring));
+    array_push(set->tests, test_case("Diagnose referencing identifier before declaring it (variable)", test_diagnose_referencing_identifier_before_declaring_variable));
 
     // Assignment
     array_push(set->tests, test_case("Assignment expression", test_resolve_assignment_expression));
-    // TODO(timo): Diagnose referencing variable before declaring it
+    array_push(set->tests, test_case("Diagnose referencing identifier before declaring it (assignment)", test_diagnose_referencing_identifier_before_declaring_assignment));
     array_push(set->tests, test_case("Diagnose conflicting types in assignment", test_diagnose_conflicting_types_assignment_expression));
 
     // Index expression / subscript
     array_push(set->tests, test_case("Index expression", test_resolve_index_expression));
-    // TODO(timo): Diagnose referencing variable before declaring it
-    array_push(set->tests, test_case("Diagnose type is not subscriptable (literal)", test_diagnose_type_is_not_subscriptable_literal));
+    array_push(set->tests, test_case("Diagnose referencing identifier before declaring it (index)", test_diagnose_referencing_identifier_before_declaring_index));
+    // NOTE(timo): Literal cannot be used since parser should disregard everything except variable expressions
+    // array_push(set->tests, test_case("Diagnose type is not subscriptable (literal)", test_diagnose_type_is_not_subscriptable_literal));
     array_push(set->tests, test_case("Diagnose type is not subscriptable (variable)", test_diagnose_type_is_not_subscriptable_variable));
     array_push(set->tests, test_case("Diagnose type is not subscriptable (function)", test_diagnose_type_is_not_subscriptable_function));
     array_push(set->tests, test_case("Diagnose invalid array subscript type", test_diagnose_invalid_array_subscript));

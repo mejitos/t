@@ -612,11 +612,10 @@ static Type* resolve_assignment_expression(Resolver* resolver, AST_Expression* e
 {
     assert(expression->kind == EXPRESSION_ASSIGNMENT);
 
-    // TODO(timo): Check if the name even exists in the scope before doing anything else
-
-    Type* type;
-    Type* variable_type = resolve_expression(resolver, expression->assignment.variable);
-    Type* value_type = resolve_expression(resolver, expression->assignment.value);
+    AST_Expression* variable = expression->assignment.variable;
+    AST_Expression* value = expression->assignment.value;
+    Type* variable_type = resolve_expression(resolver, variable);
+    Type* value_type = resolve_expression(resolver, value);
     
     if (types_not_equal(variable_type, value_type))
     {
@@ -626,16 +625,12 @@ static Type* resolve_assignment_expression(Resolver* resolver, AST_Expression* e
             type_as_string(variable_type->kind), type_as_string(value_type->kind));
         array_push(resolver->diagnostics, _diagnostic);
 
-        // TODO(timo): These none types create a lot of useless error messages in error situations
-        // so consider just removing them
-        type = hashtable_get(resolver->type_table, "none");
+        // NOTE(timo): We can return whatever type the value has, error or no error.
     }
-    else
-        type = value_type;
 
-    expression->type = type;
+    expression->type = value_type;
 
-    return type;
+    return value_type;
 }
 
 
@@ -655,8 +650,6 @@ static Type* resolve_index_expression(Resolver* resolver, AST_Expression* expres
     AST_Expression* variable = expression->index.variable;
     Type* variable_type = resolve_expression(resolver, variable);
     Symbol* symbol = scope_lookup(resolver->local, variable->identifier->lexeme);
-
-    // TODO(timo): Check if the name even exists in the scope before doing anything else
 
     // Make sure the subscript target is an array type
     if (type_is_not_array(variable_type))
