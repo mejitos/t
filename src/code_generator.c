@@ -213,41 +213,13 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
             Symbol* source = scope_lookup(generator->local, instruction->arg2);
             Symbol* result = scope_lookup(generator->local, instruction->result);
 
-            if (destination != NULL) // source 1
-            {
-                fprintf(generator->output,
-                    "    mov    rax, [rbp-%d]           ; move the variable being multiplied from the stack to the rax\n", 
-                    destination->offset);
-            }
-
-            if (source != NULL) // source 2
-            {
-                fprintf(generator->output,
-                    "    mul    qword [rbp-%d]          ; multiply the value in rax with the argument\n", 
-                    source->offset);
-            }
-
-            if (result != NULL) // rdx:rax
-            {
-                fprintf(generator->output,
-                    "    mov    qword [rbp-%d], rax     ; move the result to the stack\n", 
-                    result->offset);
-            }
-            else
-            {
-                result->_register = destination->_register;
-
-                fprintf(generator->output,
-                    "    mov    rax, %s                 ; move the value to be multiplied to rax\n"
-                    "    mul    %s                      ; multiply the value in the rax with the argument\n"
-                    "    mov    %s, rax                 ; move the result to the result register\n", 
-                    register_list[destination->_register], register_list[source->_register], register_list[result->_register]);
-
-                free_register(generator, source->_register);
-                source->_register = -1;
-            }
-
-            free_registers();
+            fprintf(generator->output,
+                "    mov    rax, [rbp-%d]           ; move the variable being multiplied from the stack to the rax\n"
+                "    mul    qword [rbp-%d]          ; multiply the value in rax with the operand\n"
+                "    mov    qword [rbp-%d], rax     ; move the result to the stack\n", 
+                destination->offset,
+                source->offset,
+                result->offset);
 
             break;
         }
