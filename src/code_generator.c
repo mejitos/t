@@ -231,43 +231,14 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
             Symbol* result = scope_lookup(generator->local, instruction->result);
 
             fprintf(generator->output,
-                "    mov    rdx, 0                  ; setting rdx to 0 because it represents the top bits of the divident\n");
+                "    mov    rdx, 0                  ; setting rdx to 0 because it represents the top bits of the divident\n"
+                "    mov    rax, [rbp-%d]           ; move the dividend to rax\n"
+                "    div    qword [rbp-%d]          ; divide the rax with the operand (divisor)\n"
+                "    mov    qword [rbp-%d], rax     ; move the result to the stack\n", 
+                destination->offset,
+                source->offset,
+                result->offset);
 
-            if (destination != NULL)
-            {
-                fprintf(generator->output,
-                    "    mov    rax, [rbp-%d]           ; --\n", 
-                    destination->offset);
-            }
-            if (source != NULL)
-            {
-                fprintf(generator->output,
-                    "    div     qword [rbp-%d]         ; --\n", 
-                    source->offset);
-            }
-
-            if (result != NULL)
-            {
-                fprintf(generator->output,
-                    "    mov    qword [rbp-%d], rax     ; --\n", 
-                    result->offset);
-            }
-            else
-            {
-                result->_register = destination->_register;
-
-                fprintf(generator->output,
-                    "    mov    rdx, 0                  ; setting rdx to 0 because it represents the top bits of the input divident\n"
-                    "    mov    rax, %s                 ; \n"
-                    "    div    %s                      ; divide the rax with the source\n"
-                    "    mov    %s, rax                 ; move the result to the result register\n", 
-                    register_list[destination->_register], register_list[source->_register], register_list[result->_register]);
-
-                free_register(generator, source->_register);
-                source->_register = -1;
-            }
-
-            free_registers();
             break;
         }
         case OP_MINUS: // https://www.felixcloutier.com/x86/neg
