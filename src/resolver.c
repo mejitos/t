@@ -612,6 +612,8 @@ static Type* resolve_assignment_expression(Resolver* resolver, AST_Expression* e
 {
     assert(expression->kind == EXPRESSION_ASSIGNMENT);
 
+    // TODO(timo): Check if the name even exists in the scope before doing anything else
+
     Type* type;
     Type* variable_type = resolve_expression(resolver, expression->assignment.variable);
     Type* value_type = resolve_expression(resolver, expression->assignment.value);
@@ -653,6 +655,8 @@ static Type* resolve_index_expression(Resolver* resolver, AST_Expression* expres
     AST_Expression* variable = expression->index.variable;
     Type* variable_type = resolve_expression(resolver, variable);
     Symbol* symbol = scope_lookup(resolver->local, variable->identifier->lexeme);
+
+    // TODO(timo): Check if the name even exists in the scope before doing anything else
 
     // Make sure the subscript target is an array type
     if (type_is_not_array(variable_type))
@@ -752,6 +756,10 @@ end:
 // Resolves type of a function expression. The type will be the type of the
 // value returned by the function.
 //
+// 
+// NOTE(timo): We don't check the return type here, it is the callers responsibility.
+// Expression just returns the value, or in this case, the type.
+//
 // Arguments
 //      resolver: Pointer to initialized Resolver.
 //      expression: Expression to be resolved.
@@ -784,8 +792,25 @@ static Type* resolve_function_expression(Resolver* resolver, AST_Expression* exp
         for (int i = 0; i < parameters->length; i++)
         {
             Parameter* parameter = parameters->items[i];
+
+            if (scope_get(resolver->local, parameter->identifier->lexeme) != NULL)
+            {
+                Diagnostic* _diagnostic = diagnostic(
+                    DIAGNOSTIC_ERROR, parameter->position,
+                    "RESOLVER - NameError: Redeclaration of identifier '%s' in '%s'",
+                    parameter->identifier->lexeme, resolver->local->name);
+                array_push(resolver->diagnostics, _diagnostic);
+                // We can just skip iteration because we already have the identifier
+                // declared -> future uses of the identifier won't mess things up.
+                // TODO(timo): How to handle arity of the function in this case?
+                // Just decrement the arity? That way we can at least avoid
+                // unnecessary error messages.
+                continue;
+            }
+            
             Type* parameter_type = resolve_type_specifier(resolver, parameter->specifier);
             Symbol* symbol = symbol_parameter(resolver->local, parameter->identifier->lexeme, parameter_type);
+
             scope_declare(resolver->local, symbol);
             array_push(type->function.parameters, symbol);
         }
@@ -839,6 +864,8 @@ static Type* resolve_function_expression(Resolver* resolver, AST_Expression* exp
 static Type* resolve_call_expression(Resolver* resolver, AST_Expression* expression)
 {
     assert(expression->kind == EXPRESSION_CALL);
+
+    // TODO(timo): Check if the callee's name even exists before doing anything else
 
     Type* type = resolve_expression(resolver, expression->call.variable);
     array* arguments = expression->call.arguments;
@@ -1200,11 +1227,25 @@ static void resolve_variable_declaration(Resolver* resolver, AST_Declaration* de
 {
     assert(declaration->kind == DECLARATION_VARIABLE);
 
+    // Check if the identifier already exists in the local scope.
+    if (scope_get(resolver->local, declaration->identifier->lexeme) != NULL)
+    {
+        Diagnostic* _diagnostic = diagnostic(
+            DIAGNOSTIC_ERROR, declaration->position,
+            "RESOLVER - NameError: Redeclaration of identifier '%s' in '%s'",
+            declaration->identifier->lexeme, resolver->local->name);
+        array_push(resolver->diagnostics, _diagnostic);
+
+        // We can just return since the identifier is already declared so in
+        // future uses of the identifier won't mess things up.
+        return;
+    }
+
     Type* expected_type = resolve_type_specifier(resolver, declaration->specifier);
     Type* actual_type = resolve_expression(resolver, declaration->initializer);
 
-    // The initializer has to be a constant literal. At this point we can check
-    // that by checking if the value is none or not after resolving it.
+    // The variables initializer has to be a constant literal. At this point we 
+    // can check that by checking if the value is none or not after resolving it.
     Value initializer_value = declaration->initializer->value;
 
     if (resolver->local == resolver->global && value_is_none(initializer_value))
@@ -1227,9 +1268,6 @@ static void resolve_variable_declaration(Resolver* resolver, AST_Declaration* de
     Symbol* symbol = symbol_variable(resolver->local, declaration->identifier->lexeme, actual_type);
     // We have at least a none value in every expression.
     symbol->value = declaration->initializer->value;
-    
-    // TODO(timo): Should we take the responsibility of declaring errors of
-    // already diagnosed variables instead of doing it in the scope
     scope_declare(resolver->local, symbol);
 }
 
@@ -1242,6 +1280,20 @@ static void resolve_variable_declaration(Resolver* resolver, AST_Declaration* de
 static void resolve_function_declaration(Resolver* resolver, AST_Declaration* declaration)
 {
     assert(declaration->kind == DECLARATION_FUNCTION);
+
+    // Check if the identifier already exists in the local scope.
+    if (scope_get(resolver->local, declaration->identifier->lexeme) != NULL)
+    {
+        Diagnostic* _diagnostic = diagnostic(
+            DIAGNOSTIC_ERROR, declaration->position,
+            "RESOLVER - NameError: Redeclaration of identifier '%s' in '%s'",
+            declaration->identifier->lexeme, resolver->local->name);
+        array_push(resolver->diagnostics, _diagnostic);
+
+        // We can just return since the identifier is already declared so in
+        // future uses of the identifier won't mess things up.
+        return;
+    }
 
     // Set the current context to the context of the function
     resolver->context.current_function = (char*)declaration->identifier->lexeme;
@@ -1282,6 +1334,7 @@ static void resolve_function_declaration(Resolver* resolver, AST_Declaration* de
 
     // TODO(timo): Should we take the responsibility of declaring errors of
     // already declared variables instead of doing it in the scope
+    // TODO(timo): Check for redeclaration of the variable
     scope_declare(resolver->local, symbol);
 
     // Reset the context

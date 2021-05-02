@@ -978,6 +978,47 @@ static void test_resolve_function_expression(Test_Runner* runner)
 }
 
 
+static void test_diagnose_redeclaration_of_identifier_function_parameter(Test_Runner* runner)
+{
+    Lexer lexer;
+    Parser parser;
+    hashtable* type_table;
+    Resolver resolver;
+    Diagnostic* diagnostic;
+    char* message;
+    char* source;
+    
+    // parameters the same name
+    source = "foo: int = (bar: int, bar: bool) => { return 0; };\n";
+
+    lexer_init(&lexer, source);
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    parse(&parser);
+    
+    type_table = type_table_init();
+    resolver_init(&resolver, type_table);
+    resolve(&resolver, parser.declarations);
+    
+    assert_base(runner, resolver.diagnostics->length == 1,
+        "Invalid number of resolver diagnostics: %d, expected 1", resolver.diagnostics->length);
+
+    message = "RESOLVER - NameError: Redeclaration of identifier 'bar' in 'foo'";
+    diagnostic = resolver.diagnostics->items[0];
+
+    assert_base(runner, strcmp(diagnostic->message, message) == 0,
+        "Invalid diagnostic '%s', expected '%s'", diagnostic->message, message);
+
+    resolver_free(&resolver);
+    type_table_free(type_table);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    // TODO(timo): parameter name same as function name? they can't be same.
+}
+
+
 static void test_resolve_call_expression(Test_Runner* runner)
 {
     Lexer lexer;
@@ -2179,6 +2220,78 @@ static void test_diagnose_variable_declaration_const_literal_only(Test_Runner* r
 }
 
 
+static void test_diagnose_redeclaration_of_identifier_variable_declaration(Test_Runner* runner)
+{
+    Lexer lexer;
+    Parser parser;
+    hashtable* type_table;
+    Resolver resolver;
+    Diagnostic* diagnostic;
+    char* message;
+    char* source;
+
+    // global variables
+    source = "foo: int = 42;\n"
+             "foo: int = 7;\n";
+
+    lexer_init(&lexer, source);
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    parse(&parser);
+    
+    type_table = type_table_init();
+    resolver_init(&resolver, type_table);
+    resolve(&resolver, parser.declarations);
+    
+    assert_base(runner, resolver.diagnostics->length == 1,
+        "Invalid number of resolver diagnostics: %d, expected 1", resolver.diagnostics->length);
+
+    message = "RESOLVER - NameError: Redeclaration of identifier 'foo' in 'global'";
+    diagnostic = resolver.diagnostics->items[0];
+
+    assert_base(runner, strcmp(diagnostic->message, message) == 0,
+        "Invalid diagnostic '%s', expected '%s'", diagnostic->message, message);
+
+    resolver_free(&resolver);
+    type_table_free(type_table);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    // local variables
+    source = "main: int () => {\n"
+             "    foo: int = 42;\n"
+             "    foo: bool = true;\n"
+             "\n"
+             "    return 0;\n"
+             "};";
+
+    lexer_init(&lexer, source);
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    parse(&parser);
+    
+    type_table = type_table_init();
+    resolver_init(&resolver, type_table);
+    resolve(&resolver, parser.declarations);
+    
+    assert_base(runner, resolver.diagnostics->length == 1,
+        "Invalid number of resolver diagnostics: %d, expected 1", resolver.diagnostics->length);
+
+    message = "RESOLVER - NameError: Redeclaration of identifier 'foo' in 'main'";
+    diagnostic = resolver.diagnostics->items[0];
+
+    assert_base(runner, strcmp(diagnostic->message, message) == 0,
+        "Invalid diagnostic '%s', expected '%s'", diagnostic->message, message);
+
+    resolver_free(&resolver);
+    type_table_free(type_table);
+    parser_free(&parser);
+    lexer_free(&lexer);
+}
+
+
 static void test_resolve_function_declaration(Test_Runner* runner)
 {
     Lexer lexer;
@@ -2208,6 +2321,46 @@ static void test_resolve_function_declaration(Test_Runner* runner)
         "Invalid number of resolver diagnostics: %d, expected 0", resolver.diagnostics->length);
     assert_base(runner, resolver.global->symbols->count == 1,
         "Invalid number of symbols in the symbol table: %d, expected 1", resolver.global->symbols->count);
+
+    resolver_free(&resolver);
+    type_table_free(type_table);
+    parser_free(&parser);
+    lexer_free(&lexer);
+}
+
+
+static void test_diagnose_redeclaration_of_identifier_function_declaration(Test_Runner* runner)
+{
+    Lexer lexer;
+    Parser parser;
+    hashtable* type_table;
+    Resolver resolver;
+    Diagnostic* diagnostic;
+    char* message;
+    char* source;
+
+    // global variables
+    source = "foo: int = () => { return 0; };\n\n"
+             "foo: int = () => { return 1; };\n";
+
+    lexer_init(&lexer, source);
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    parse(&parser);
+    
+    type_table = type_table_init();
+    resolver_init(&resolver, type_table);
+    resolve(&resolver, parser.declarations);
+    
+    assert_base(runner, resolver.diagnostics->length == 1,
+        "Invalid number of resolver diagnostics: %d, expected 1", resolver.diagnostics->length);
+
+    message = "RESOLVER - NameError: Redeclaration of identifier 'foo' in 'global'";
+    diagnostic = resolver.diagnostics->items[0];
+
+    assert_base(runner, strcmp(diagnostic->message, message) == 0,
+        "Invalid diagnostic '%s', expected '%s'", diagnostic->message, message);
 
     resolver_free(&resolver);
     type_table_free(type_table);
@@ -2295,10 +2448,12 @@ Test_Set* resolver_test_set()
 
     // Assignment
     array_push(set->tests, test_case("Assignment expression", test_resolve_assignment_expression));
+    // TODO(timo): Diagnose referencing variable before declaring it
     array_push(set->tests, test_case("Diagnose conflicting types in assignment", test_diagnose_conflicting_types_assignment_expression));
 
     // Index expression / subscript
     array_push(set->tests, test_case("Index expression", test_resolve_index_expression));
+    // TODO(timo): Diagnose referencing variable before declaring it
     array_push(set->tests, test_case("Diagnose type is not subscriptable (literal)", test_diagnose_type_is_not_subscriptable_literal));
     array_push(set->tests, test_case("Diagnose type is not subscriptable (variable)", test_diagnose_type_is_not_subscriptable_variable));
     array_push(set->tests, test_case("Diagnose type is not subscriptable (function)", test_diagnose_type_is_not_subscriptable_function));
@@ -2310,11 +2465,12 @@ Test_Set* resolver_test_set()
 
     // Function expression
     array_push(set->tests, test_case("Function expression", test_resolve_function_expression));
-    // TODO(timo): Diagnose invalid type of the return value. Here or in the function declaration or both?
+    array_push(set->tests, test_case("Diagnose redeclaration of identifier (function parameter)", test_diagnose_redeclaration_of_identifier_function_parameter));
     // TODO(timo): Function cannot be declared inside a function
 
     // Call expression
     array_push(set->tests, test_case("Call expression", test_resolve_call_expression));
+    // TODO(timo): Diagnose referencing variable before declaring it
     array_push(set->tests, test_case("Diagnose callee is not callable", test_diagnose_callee_is_not_callable));
     array_push(set->tests, test_case("Diagnose invalid number of arguments", test_diagnose_invalid_number_of_arguments));
     array_push(set->tests, test_case("Diagnose invalid type of argument", test_diagnose_invalid_type_of_argument));
@@ -2325,6 +2481,10 @@ Test_Set* resolver_test_set()
     array_push(set->tests, test_case("Constant folding (binary relation)", test_constant_folding_binary_relation));
     array_push(set->tests, test_case("Constant folding (binary logical)", test_constant_folding_binary_logical));
     array_push(set->tests, test_case("Constant folding (complex arithmetics)", test_constant_folding_complex_arithmetics));
+
+    // Expressions MISC
+    // TODO(timo): You can only use declarations at the top level so no
+    // statements or expressions are allowed at top level.
 
     // Statements
     array_push(set->tests, test_case("Declaration statement (variable)", test_resolve_declaration_statement_variable));
@@ -2346,14 +2506,21 @@ Test_Set* resolver_test_set()
     array_push(set->tests, test_case("Continue statement", test_resolve_continue_statement));
     array_push(set->tests, test_case("Diagnose no continue outside loops", test_diagnose_no_continue_statement_outside_loops));
 
+    // Statements MISC
+    // TODO(timo): You can only use declarations at the top level so no
+    // statements or expressions are allowed at top level.
+
     // Variable declarations
     array_push(set->tests, test_case("Global variable declaration", test_resolve_variable_declaration));
     array_push(set->tests, test_case("Multiple global variable declarations", test_resolve_multiple_global_variable_declarations));
     array_push(set->tests, test_case("Diagnose global variable declaration has to be literal constant", test_diagnose_variable_declaration_const_literal_only));
+    array_push(set->tests, test_case("Diagnose redeclaration of identifier (variable declaration)", test_diagnose_redeclaration_of_identifier_variable_declaration));
+    // TODO(timo): Create global variable foo and local variable foo
     
     // Function declarations
     array_push(set->tests, test_case("Function declaration", test_resolve_function_declaration));
-    // TODO(timo): Diagnose invalid type of the return value. Here or in the function expression or both?
+    array_push(set->tests, test_case("Diagnose redeclaration of identifier (function declaration)", test_diagnose_redeclaration_of_identifier_function_declaration));
+    // TODO(timo): Diagnose invalid type of the return value.
     // TODO(timo): Function cannot be declared inside a function
 
     // Type specifiers
@@ -2363,11 +2530,10 @@ Test_Set* resolver_test_set()
 
     // ---
     
-    // TODO(timo): You can only use declarations at the top level so no
-    // statements or expressions are allowed at top level.
 
     // ----
 
+    // Scoping
     // TODO(timo): test_resolve_local_scopes();
     
     set->length = set->tests->length;
