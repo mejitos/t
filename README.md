@@ -7,9 +7,10 @@ a compiler for own source language.
 
 - [Requirements](#requirements)
 - [Getting the program](#getting-the-program)
-- [Usage](#usage)
+- [Using the program](#usage)
 - [Compiler options and flags](#compiler-options-and-flags)
 - [Test options and flags](#test-options-and-flags)
+
 
 
 ## Requirements
@@ -18,17 +19,16 @@ a compiler for own source language.
 
 Probably any version from 2000's works though.
 
-
 ### Linux operating system
 
 Program is not tested on Windows (it's developed on Linux) and I'm pretty sure 
 it won't work on Windows at all. 
 
-
 ### Valgrind 3.x.x
 
 Valgrind is not necessary for the program per se, but it can be used to analyze
 the program for errors and memory leaks.
+
 
 
 ## Getting the program
@@ -39,6 +39,7 @@ git clone https://github.com/mejitos/t.git .
 ```
 
 
+
 ## Usage
 
 There is convenience shellscript `t.sh` for building and testing the compiler.
@@ -46,7 +47,7 @@ All of the commands assumes that the current working directory is the root
 directory (=same directory as the script).
 
 ```
-t.sh <command> [source file] [compiler/test options] [compiler/test flags]
+./t.sh <command> [source file] [compiler/test options] [compiler/test flags]
 ```
 
 The options/arguments after the command, are based on the used command. The
@@ -61,7 +62,7 @@ Prints the help/usage screen.
 
 ### [command] `build`
 
-Builds the compiler to the `build` directory by the name `t.exe`. Compiler will
+Builds the compiler to the directory `build` by the name `t`. Compiler will
 be built with command
 
 ```
@@ -69,6 +70,13 @@ gcc -O3 -o ./build/t src/*.c
 ```
 
 The `build` directory will be created by the script if it does not exist.
+
+### [command] `buildtest`
+
+Builds the compiler with test modules to the directory `tests/build` by the
+name `t_test`. Compiler will be built with same compiler options as the normal
+compiler. The only difference is with the included files and different main.c
+file.
 
 ### [command] `run`
 
@@ -91,6 +99,7 @@ Same as command `run` but it will be run through Valgrind. The Valgrind report
 will go to the file `vglog`
 
 
+
 ## Compiler options and flags
 
 Compiler has one mandatory argument: path to the source file being compiled.
@@ -106,7 +115,6 @@ or by using the built compiler directly from the build directory
 ```
 ./build/t <source_file> [options] [flags]
 ```
-
 
 ### [option] `-h, --help`
 
@@ -125,7 +133,6 @@ Interpret the program with selected interpreter.
 - #### [arg] `ir` **NOT_IMPLEMENTED**
     - Interpret with intermediate code interpreter 
 
-
 ### [flag] `--show-summary`
 
 Prints a summary of the compilation at the end.
@@ -143,12 +150,19 @@ Prints the generated intermediate code.
 Prints the generated assembly file.
 
 
+
 ## Test options and flags
 
 Tests can be run by using the `t.sh` script
 
 ```
 ./t.sh test [options] [flags]
+```
+
+or by using the built test compiler directly from the build directory
+
+```
+./tests/build/t_test [options] [flags]
 ```
 
 If no options or flags are passed, all tests will be run and all info will
