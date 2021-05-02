@@ -1148,7 +1148,7 @@ Symbol* scope_get(const Scope* scope, const char* identifier);
 //      identifier: Identifier of the symbol to be looked from the scope.
 // Returns
 //      Pointer to the symbol if it is found, otherwise NULL.
-Symbol* scope_lookup(const Scope* scope, const char*
+Symbol* scope_lookup(const Scope* scope, const char* identifier);
 
 
 // Declares new symbol into scope and computes the offsets and alignments
