@@ -536,29 +536,23 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
             // Change the scope to the functions scope
             Symbol* symbol = scope_lookup(generator->local, instruction->label);
 
-            if (symbol != NULL && symbol->type->kind == TYPE_FUNCTION)
-                generator->local = symbol->type->function.scope;
+            // NOTE(timo): The symbol should never be NULL at this point and 
+            // the symbol should always be function, but, just in case.
+            assert(symbol != NULL);
+            assert(type_is_function(symbol->type));
+
+            // Set the scope as the function scope
+            generator->local = symbol->type->function.scope;
             
-            // TODO(timo): Handle the main function separately somewhere else so 
-            // we don't have to do this check every time there is a function
-            // TODO(timo): Is this really even needed. Since if the user does not 
-            // use the command line arguments, so what? They can still be pushed 
-            // to the stack normally even if they are not used. That way I can 
-            // remove this unnecessary code?
+            // NOTE(timo): Even if the user does not use the command line
+            // arguments, we will save them.
             if (strcmp(generator->local->name, "main") == 0)
             {
-                Symbol* argc = scope_lookup(generator->local, "argc");
-                Symbol* argv = scope_lookup(generator->local, "argv");
-
-                if (argv != NULL)
-                    fprintf(generator->output,
-                        "    add    rsi, 8                  ; increment argv pointer and skip the program name\n"
-                        "    push   rsi                     ; push argv to stack before starting main program\n");
-
-                if (argc != NULL)
-                    fprintf(generator->output,
-                        "    sub    rdi, 1                  ; decrement argument count by 1 to skip the program name\n"
-                        "    push   rdi                     ; push argc to stack before starting main program\n");
+                fprintf(generator->output,
+                    "    add    rsi, 8                  ; increment argv pointer and skip the program name\n"
+                    "    push   rsi                     ; push argv to stack before starting main program\n"
+                    "    sub    rdi, 1                  ; decrement argument count by 1 to skip the program name\n"
+                    "    push   rdi                     ; push argc to stack before starting main program\n");
             }
 
             fprintf(generator->output, 
@@ -597,12 +591,14 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
             // NOTE(timo): Parameters are popped one by one with OP_PARAM_POP
 
             // Restore the arguments/registers
-            // TODO(timo): This should be implemented when caller/callee saved registers
-            // are taken into account. Now everything is being passed through stack.
+            // TODO(timo): This should be implemented when caller/callee saved 
+            // registers are taken into account. Now everything is being passed 
+            // through stack.
 
             // Return to the caller
-            // TODO(timo): Hacky solution to get things work for now. Main function is
-            // handled at the main code_generate() function. Maybe there is a better way.
+            // TODO(timo): Hacky solution to get things work for now. The main 
+            // function is handled at the code_generate() function. Maybe there 
+            // is a better way to handle this.
             if (strcmp(generator->local->name, "main") != 0)
             {
                 fprintf(generator->output,
@@ -613,7 +609,8 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
             // Set the current scope to the enclosing scope
             generator->local = generator->local->enclosing;
 
-            // TODO(timo): This should be removed when more flexible scoping is added
+            // TODO(timo): This should be removed when more flexible scoping is 
+            // added to the language.
             assert(generator->local == generator->global);
             break;
         }
@@ -621,8 +618,9 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
         {
             Symbol* value = scope_lookup(generator->local, instruction->arg1);
             
-            // NOTE(timo): Jump to function epilogue is really not necessary right now 
-            // since we only allow one return per function
+            // NOTE(timo): Jump to function epilogue is really not necessary 
+            // right now since we only allow one return per function but so
+            // this is in here purely for future updates.
             fprintf(generator->output,
                 "    mov    rax, [rbp-%d]           ; put return value to rax\n"
                 "    jmp    %s_epilogue             ; run the function epilogue\n", 
@@ -676,6 +674,7 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
 
 void code_generate(Code_Generator* generator)
 {
+    // Open the file handle to the ASM file.
     if ((generator->output = fopen(generator->asm_file, "w")) == NULL)
     {
         Diagnostic* _diagnostic = diagnostic(DIAGNOSTIC_ERROR, (Position){0},
@@ -684,25 +683,24 @@ void code_generate(Code_Generator* generator)
         return;
     }
     
-    // Template start and externs
+    // Generate template start with externs and the initial global variables.
     fprintf(generator->output,
         "; ----------------------------------------\n"
-        "; main.asm\n"
+        "; %s\n"
         "; ----------------------------------------\n"
         "\n"
         "    global main\n"
         "    extern printf\n"
         "    extern atoll\n"
-        "\n");
-
-    // Global variables
-    fprintf(generator->output,
+        "\n"
         "    section .data\n"
         "true:          dq 1                    ; Represents boolean true\n"
         "false:         dq 0                    ; Represents boolean false\n"
         "true_str:      db 'true', 0            ; String representation for true\n"
-        "false_str:     db 'false', 0           ; String representation for false\n");
-
+        "false_str:     db 'false', 0           ; String representation for false\n",
+            generator->asm_file);
+    
+    // Generate the global variables from the symbol table
     for (int i = 0; i < generator->global->symbols->capacity; i++)
     {
         Symbol* symbol = generator->global->symbols->entries[i].value;
@@ -712,7 +710,7 @@ void code_generate(Code_Generator* generator)
                 "%s:    dq %d\n", symbol->identifier, symbol->value.integer);
     }
 
-    // Start the code itself
+    // Start generating the code itself
     fprintf(generator->output,
         "\n"
         "    section .text\n");
@@ -725,10 +723,11 @@ void code_generate(Code_Generator* generator)
     // Should the main function has its own beginning and end operations?
     // We should probably have some way to declare builtin functions etc.
 
-    // Template end
+    // Generate the end of the main function and end of the program as a whole.
+    // The end is generated based on the return type of the program. Since it
+    // is possible to return booleans as well, the booleans will be represented
+    // in their canonical form in the return message and not just by 0 and 1.
     Symbol* main = scope_lookup(generator->global, "main");
-    Symbol* argc = scope_lookup(main->type->function.scope, "argc");
-    Symbol* argv = scope_lookup(main->type->function.scope, "argv");
 
     if (type_is_integer(main->type->function.return_type))
     {
@@ -738,16 +737,9 @@ void code_generate(Code_Generator* generator)
             "    xor    rax, rax                    ; because the varargs printf uses\n"
             "    call   printf                      ; print the return value - printf(format, value)\n"
             "    mov    rax, 0                      ; exit success\n"
-            "    leave                              ; leave the current stack frame without manually setting it\n");
-
-        if (argv != NULL)
-            fprintf(generator->output,
-                "    pop rsi                            ; pop the argv from the stack\n");
-        if (argc != NULL)
-            fprintf(generator->output,
-                "    pop rdi                            ; pop the argc from the stack\n");
-
-        fprintf(generator->output,
+            "    leave                              ; leave the current stack frame without manually setting it\n"
+            "    pop rsi                            ; pop the argv from the stack\n"
+            "    pop rdi                            ; pop the argc from the stack\n"
             "    ret                                ; exit the program\n"
             "\n"
             "return_message_success:\n"
@@ -767,16 +759,9 @@ void code_generate(Code_Generator* generator)
             "    xor    rax, rax                    ; because the varargs printf uses\n"
             "    call   printf                      ; print the return value - printf(format, value)\n"
             "    mov    rax, 0                      ; exit success\n"
-            "    leave                              ; leave the current stack frame without manually setting it\n");
-
-        if (argv != NULL)
-            fprintf(generator->output,
-                "    pop rsi                            ; pop the argv from the stack\n");
-        if (argc != NULL)
-            fprintf(generator->output,
-                "    pop rdi                            ; pop the argc from the stack\n");
-        
-        fprintf(generator->output,
+            "    leave                              ; leave the current stack frame without manually setting it\n"
+            "    pop rsi                            ; pop the argv from the stack\n"
+            "    pop rdi                            ; pop the argc from the stack\n"
             "    ret                                ; exit the program\n"
             "\n"
             "return_message_success:\n"
