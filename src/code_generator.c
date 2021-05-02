@@ -4,6 +4,14 @@
 //
 // TODO(timo): Filedocstring
 //
+// The implementation is really straightforward but it is also pretty error
+// prone and there is no recovery in error situations. I really tried to aim
+// for something that is easy to read and understand. Therefore most of the
+// responsibility of error checking is on the previous stages. We can use this
+// really straightforward style because pretty much everything is saved on a
+// temporary to the symbol table excluding constants. They are being handled
+// differently.
+//
 // Even though there is functionality for using scratch registers, they are
 // not utilized at all. That decision was made to make things simpler in the
 // beginning so everything is just kept in the stack and registers are used
@@ -120,13 +128,14 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
         {
             // TODO(timo): Assignment to global variable
 
-            // NOTE(timo): This result will always be set, since it is temporary
+            // This result will always be set, since it is temporary
             Symbol* result = scope_lookup(generator->local, instruction->result);
             Symbol* arg = scope_lookup(generator->local, instruction->arg1);
 
-            // NOTE(timo): If argument symbol is found, argument is a variable, else it is probably constant
+            // Arg can be NULL, if the operand of the copy is a constant
             if (arg != NULL)
             {
+                // Global values has to be dereferenced before they can be used
                 if (arg->scope == generator->global)
                 {
                     fprintf(generator->output,
@@ -134,9 +143,8 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
                         "    mov    [rbp-%d], rax           ; move global variable from register to stack\n", 
                         arg->identifier, result->offset);
                 }
-                // TODO(timo): For now this is just a super quick hacky solution to get things working
-                // TODO(timo): I should fixt the assigning of the offsets so I can get rid of alot of
-                // these conditions
+                // If the argument is parameter, it will have positive offset
+                // relative to the base pointer of the stack frame
                 else if (arg->kind == SYMBOL_PARAMETER)
                 {
                     fprintf(generator->output,
@@ -152,20 +160,16 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
                         arg->offset, result->offset);
                 }
             }
-            else // This is used when literal constants are being copied
+            else // This is used when constants are being copied
             {
-                // NOTE(timo): Is this actually needed? I mean at this point we save pretty much everything to
-                // stack at this point, so there is probably no need for register allocation here
-                // result->_register = allocate_register(generator);
-                
                 if (result->type->kind == TYPE_INTEGER)
                     fprintf(generator->output,
-                        "    mov    qword [rbp-%d], %s      ; --\n", 
+                        "    mov    qword [rbp-%d], %s      ; move integer constant to stack\n", 
                         result->offset, instruction->arg1);
                 else if (result->type->kind == TYPE_BOOLEAN)
                     fprintf(generator->output,
-                        "    mov    rax, [%s]               ; --\n"
-                        "    mov    qword [rbp-%d], rax     ; --\n",
+                        "    mov    rax, [%s]               ; dereference the boolean value to rax\n"
+                        "    mov    qword [rbp-%d], rax     ; move the integer value of the boolean to the stack\n",
                         instruction->arg1, result->offset);
             }
 
@@ -225,7 +229,6 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
         }
         case OP_DIV: // https://www.felixcloutier.com/x86/div
         {
-            // rax <- (rax / src)
             Symbol* destination = scope_lookup(generator->local, instruction->arg1);
             Symbol* source = scope_lookup(generator->local, instruction->arg2);
             Symbol* result = scope_lookup(generator->local, instruction->result);
@@ -399,7 +402,8 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
 
             break;
         }
-        case OP_GOTO_IF_FALSE: {
+        case OP_GOTO_IF_FALSE: 
+        {
             Symbol* arg = scope_lookup(generator->local, instruction->arg1);
             int temp_reg = allocate_register(generator);
 
@@ -428,13 +432,6 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
         {
             // Change the scope to the functions scope
             Symbol* symbol = scope_lookup(generator->local, instruction->label);
-
-            // NOTE(timo): The symbol should never be NULL at this point and 
-            // the symbol should always be function, but, just in case.
-            assert(symbol != NULL);
-            assert(type_is_function(symbol->type));
-
-            // Set the scope as the function scope
             generator->local = symbol->type->function.scope;
             
             // NOTE(timo): Even if the user does not use the command line
@@ -549,6 +546,11 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
         }
         case OP_DEREFERENCE:
         {
+            // NOTE(timo): This operation is specialized to dereferencing
+            // elements from array of integers, since the only place where
+            // we have something to dereference like this, is the argv in
+            // the main program. Later this should of course be changed.
+
             Symbol* variable = scope_lookup(generator->local, instruction->arg1);
             Symbol* result = scope_lookup(generator->local, instruction->result);
 
