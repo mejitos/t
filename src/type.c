@@ -1,3 +1,9 @@
+// Implementations for the factory functions for creating types and freeing
+// the memory allocated for them.
+//
+// Author: Timo Mehto
+// Date: 2021/05/12
+
 #include "t.h"
 
 

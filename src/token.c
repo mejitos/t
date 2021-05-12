@@ -1,6 +1,7 @@
-//
-// TODO(timo): Filedocstring
-//
+// Implementation for creating tokens.
+// 
+// Author: Timo Mehto
+// Date: 2021/05/12
 
 #include "t.h"
 

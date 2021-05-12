@@ -4,6 +4,8 @@
 //
 // TODO(timo): sb_init() could take the initial capacity as argument
 //
+// File(s): stringbuilder.c
+//
 // Author: Timo Mehto
 // Date: 2021/05/12
 

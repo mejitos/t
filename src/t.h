@@ -1,5 +1,5 @@
-//
-// TODO(timo): Filedocstring
+// The main header file of the compiler which has definitions for all of the
+// used interfaces in the compiler.
 //
 // File(s):
 //      ast.c
@@ -17,6 +17,9 @@
 //      token.c
 //      type.c
 //      value.c
+//
+// Author: Timo Mehto
+// Date: 2021/05/12
 
 #ifndef t_header
 #define t_header
@@ -51,7 +54,7 @@ typedef struct AST_Expression AST_Expression;
 // Since for now we will only support compiling of single file, there is no 
 // need to add the file attribute for the position at this stage. Maybe later.
 //
-// Fields
+// Members
 //      line_start: Starting line of the thing.
 //      column_start: Starting column of the thing.
 //      line_end: Ending line of the thing.
@@ -69,13 +72,13 @@ typedef struct Position
 typedef enum Diagnostic_Kind
 {
     DIAGNOSTIC_ERROR,
-    DIAGNOSTIC_WARGNING,
+    DIAGNOSTIC_WARNING,
 } Diagnostic_Kind;
 
 
 // Errors and warnings collected during compilation process.
 //
-// Fields
+// Members
 //      kind: Kind of the diagnostic (ERROR/WARNING).
 //      position: Where the diagnostic was spotted in the source.
 //      message: Message describing the diagnostic.
@@ -122,7 +125,7 @@ void print_diagnostic(const Diagnostic* diagnostic);
 // Struture for compiler options which are parsed at the beginning of the
 // program and will be passed to the compilation functions.
 //
-// Fields
+// Members
 //      program: Pointer to the name of the program.
 //      source_file: Pointer to the source file path.
 //      interpret: If the source file will be interpreted instead of being 
@@ -222,7 +225,7 @@ typedef enum Token_Kind
 
 // Represents the analyzed lexeme and its attributes from the source.
 //
-// Fields
+// Members
 //      kind: Classification of the lexeme.
 //      position: Position of the lexeme in the source file.
 //      lexeme: The lexeme itself.
@@ -253,7 +256,7 @@ Token* token(Token_Kind kind, const char* lexeme, const int lexeme_length, Posit
 // Lexer scans through the source (file or string), analyzes the scanned
 // lexemes and creates a stream of tokens from the lexemes.
 //
-// Fields
+// Members
 //      stream: Source stream of characters.
 //      diagnostics: Array of collected diagnostics.
 //      tokens: Array of collected tokens.
@@ -323,7 +326,7 @@ const char* value_str(const Value_Type type);
 // structure is used for easier evaluation of the values and passing them 
 // around.
 //
-// Fields
+// Members
 //      type: Type of the value.
 //      integer: The actual integer value if the value is type of integer.
 //      boolean: The actual boolean value if the value is type of boolean.
@@ -402,9 +405,9 @@ typedef enum Declaration_Kind
 const char* declaration_str(const Declaration_Kind kind);
 
 
-// TODO(timo): 
+// General structure for all declarations.
 //
-// Fields
+// Members
 //      kind: Classification of the declaration.
 //      position: Position of the declaration.
 //      specifier: Type of the declaration.
@@ -468,9 +471,9 @@ typedef enum Statement_Kind
 const char* statement_str(const Statement_Kind kind);
 
 
-// TODO(timo):
+// General structure for all statements.
 //
-// Fields
+// Members
 //      kind: Classification of the statement.
 //      position: Position of the statement.
 //
@@ -549,7 +552,7 @@ void statement_free(AST_Statement* statement);
 
 // Function parameter.
 //
-// Fields
+// Members
 //      position: Position of the parameter.
 //      identifier: Name of the parameter.
 //      specifier: Type of the parameter.
@@ -597,9 +600,9 @@ typedef enum Expression_Kind
 const char* expression_str(const Expression_Kind kind);
 
 
-// TODO(timo):
+// General structure for expressions.
 //
-// Fields
+// Members
 //      kind: Classification of the expression.
 //      position: Position of the expression. 
 //      type: Type of the expression.
@@ -712,9 +715,9 @@ void expression_free(AST_Expression* expression);
 const char* expression_to_string(const AST_Expression* expression);
 
 
-// TODO(timo):
+// Structure for keeping track of the parser data.
 // 
-// Fields
+// Members
 //      diagnostics: Array of collected diagnostics.
 //      position: TODO(timo): Is this needed to anything?
 //      index: Index of the current token.
@@ -757,8 +760,6 @@ void parser_free(Parser* parser);
 // The stream of tokens will be parsed into an array of declarations which
 // can be accessed through the field 'declarations' after parsing.
 //
-// TODO(timo): Top part of the grammar
-//
 // File(s): parser.c
 //
 // Arguments
@@ -766,10 +767,7 @@ void parser_free(Parser* parser);
 void parse(Parser* parser);
 
 
-// Main interface for parsing type specifiers. TODO(timo):
-//
-// EBNF grammar:
-//      type_specifier  = 'int' | 'bool' | '[int]' ;
+// Main interface for parsing type specifiers. 
 //
 // File(s): parser.c
 //
@@ -780,31 +778,7 @@ void parse(Parser* parser);
 Type_Specifier parse_type_specifier(Parser* parser);
 
 
-// Main interface for parsing expressions. TODO(timo):
-//
-// EBNF grammar:
-//      expression      = assignment ;
-//      assignment      = IDENTIFIER ':=' assignment
-//                      | or ;
-//      or              = and ( 'or' and )* ;
-//      and             = equality ( 'and' equality )* ;
-//      equality        = relation ( ( '==' | '!=' ) relation )* ;
-//      relation        = term ( ( '<' | '<=' | '>' | '>=' ) term )* ;
-//      term            = factor ( ( '+' | '-' ) factor )* ;
-//      factor          = unary ( ( '/' | '*' ) unary )* ;
-//      unary           = ( 'not' | '-' | '+' ) unary
-//                      | call ;
-//      call            = primary '(' arguments? ')' ;
-//      index           = primary '[' expression ']' ;
-//      arguments       = expression ( ',' expression )* ;
-//      primary         = '(' expression ')'
-//                      | '(' parameter_list? ')' '=>' statement ';'
-//                      | literal ;
-//      parameter_list  = IDENTIFIER ':' type_specifier ( ',' IDENTIFIER ':' type_specifier )* ;
-//      type_specifier  = 'int' | 'bool' ;
-//      literal         = IDENTIFIER
-//                      | INTEGER
-//                      | BOOLEAN ;
+// Main interface for parsing expressions.
 //
 // File(s): parser.c
 //
@@ -815,25 +789,7 @@ Type_Specifier parse_type_specifier(Parser* parser);
 AST_Expression* parse_expression(Parser* parser);
 
 
-// Main interface for parsing statements. TODO(timo):
-//
-// EBNF frammar:
-//      statement                = expression_statement
-//                              | block_statement
-//                              | while_statement
-//                              | if_statement
-//                              | break_statement
-//                              | continue_statement
-//                              | return_statement ;
-//
-//      expression_statement     = expression ';' ;
-//      declaration_statement    = declaration ;
-//      block_statement          = '{' statement* '}' ;
-//      while_statement          = 'while' expression 'do' statement ;
-//      if_statement             = 'if' expression 'then' statement ('else' statement)? ;
-//      break_statement          = 'break' ';' ;
-//      continue_statement       = 'continue' ';' ;
-//      return_statement         = 'return' expression ';' ;
+// Main interface for parsing statements.
 //
 // File(s): parser.c
 //
@@ -844,12 +800,9 @@ AST_Expression* parse_expression(Parser* parser);
 AST_Statement* parse_statement(Parser* parser);
 
 
-// Main interface for parsing declarations. TODO(timo):
+// Main interface for parsing declarations.
 //
 // File(s): parser.c
-//
-// EBNF grammar:
-//      declaration = IDENTIFIER ':' type_specifier '=' expression ';' ;
 //
 // Arguments
 //      parser: Pointer to a already initialized Parser.
@@ -882,7 +835,7 @@ const char* type_as_string(const Type_Kind kind);
 // info used later for type checking and for allocating and aligning the 
 // memory correctly.
 //
-// Fields
+// Members
 //      kind: Kind of the type
 //      size: Size of the type. At this point every type is 8 bytes to make
 //            things more simple.
@@ -989,7 +942,7 @@ void type_table_free(hashtable* table);
 //  
 // HOX! NOT IN USE AT THE MOMENT.
 //
-// Fields
+// Members
 //      type: Type of the operand.
 //      value: Value of the operand.
 typedef struct Operand
@@ -1026,7 +979,7 @@ typedef enum Symbol_State
 
 // Represents symbols in the symbol table.
 //
-// Fields
+// Members
 //      kind: Symbol kind.
 //      state: Resolving state of the symbol. NOT USED AT THE MOMENT.
 //      scope: Scope which the symbols belongs to.
@@ -1086,7 +1039,7 @@ void symbol_free(Symbol* symbol);
 //
 // File(s): scope.c
 //
-// Fields
+// Members
 //      name: Name of the scope.
 //      offset: Total offset for the scope. Used to reserve memory from the
 //              stack for all the local variables.
@@ -1199,7 +1152,7 @@ void dump_scope(const Scope* scope, int indentation);
 //  
 // File(s): resolver.c
 //
-// Fields
+// Members
 //      diagnostics: Array of collected diagnostics.
 //      type_table: Type table with languages primitive data types.
 //      global: Global scope of the program.
@@ -1393,7 +1346,7 @@ const Value interpret(const char* source);
 const Value interpret_from_file(const char* path);
 
 
-//
+// Enumeration of different kind of operations.
 typedef enum Operation
 {
     OP_NOOP,
@@ -1432,7 +1385,6 @@ typedef enum Operation
 } Operation;
 
 
-//
 // Returns a string representation of Operation
 // 
 // File(s): instruction.c
@@ -1447,7 +1399,7 @@ const char* operation_str(Operation operation);
 //
 // TODO(timo): Addresses are not used in Instructions for now
 //
-// Fields
+// Members
 //      name:       program name, pointer to the names symbol table entry where 
 //                  all the information of the name is kept
 //      constant:   constant value but seems like it can be a variable too?
@@ -1466,7 +1418,7 @@ typedef struct Address
 // instructions are quads, so they have the operations and maximum of three
 // operands.
 //
-// Fields
+// Members
 //      operation: Operation of the instruction.
 //      arg1: Address of the first operand of the instruction.
 //      arg2: Address of the second operand of the instruction.
@@ -1558,9 +1510,6 @@ void dump_instructions(array* instructions);
 //  can start executing next block
 //
 //  TODO(timo): Basic blocks are not implemented for now.
-// 
-// Fields
-//      instructions:
 typedef struct Basic_Block
 {
     // start, end?
@@ -1578,14 +1527,16 @@ typedef enum IR_Context_Kind
 } IR_Context_Kind;
 
 
-// TODO(timo):
+// Context item used to keep track of the correct jump labels in different
+// kind of contexts.
 //
-// Fields
-//      kind:
+// Members
+//      kind: Classification of the context.
 //      while:
-//          exit_label:
+//          start_label: Start label of the while loop.
+//          exit_label: Exit label of the while loop.
 //      if:
-//          exit_label:
+//          exit_label: Exit label of the if statement.
 //          exit_not_generated: If the exit label is generated or not.
 //          new_context: If the new context if allowed or not.
 typedef struct IR_Context
@@ -1606,21 +1557,21 @@ typedef struct IR_Context
 } IR_Context;
 
 
-// TODO(timo):
+// IR Generator is responsible for generating intermediate representation from
+// the resolved and annotated abstract syntax tree. The generated instructions
+// are quads.
 //
-// Fields
-//      output_file:
-//      instructions:
-//      diagnostics:
-//      label:
-//      temp:
-//      gloal:
-//      local:
-//      contexts:
-//      current_context:
+// Members
+//      instructions: Array of generated instructions.
+//      diagnostics: Array of collected diagnostics.
+//      label: Running number for general labels.
+//      temp: Running number for labels of the temporary variables.
+//      gloal: Global scope.
+//      local: Current local scope.
+//      contexts: Stack of IR Contexts.
+//      current_context: Current context in the IR generation.
 typedef struct IR_Generator
 {
-    FILE* output_file;
     // array* blocks;
     array* instructions;
     array* diagnostics;
@@ -1653,7 +1604,11 @@ void ir_generator_init(IR_Generator* generator, Scope* global);
 void ir_generator_free(IR_Generator* generator);
 
 
-// TODO(timo):
+// Generates intermediate representation of the resolved and annotated abstract
+// syntax tree. The main interface used with IR generator.
+//
+// The instructions will be saved into the 'instructions' member of the
+// Code_Generator strcture.
 //
 // File(s): ir_generator.c
 //
@@ -1664,7 +1619,7 @@ void ir_generator_free(IR_Generator* generator);
 void ir_generate(IR_Generator* generator, array* declarations);
 
 
-// TODO(timo):
+// Generates intermediate representation the expression.
 //
 // File(s): ir_generator.c
 //
@@ -1674,7 +1629,7 @@ void ir_generate(IR_Generator* generator, array* declarations);
 char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression);
 
 
-// TODO(timo):
+// Generates intermediate representation of the statement.
 //
 // File(s): ir_generator.c
 //
@@ -1684,7 +1639,7 @@ char* ir_generate_expression(IR_Generator* generator, AST_Expression* expression
 void ir_generate_statement(IR_Generator* generator, AST_Statement* statement);
 
 
-// TODO(timo):
+// Generates intermediate representation of the declaration.
 //
 // File(s): ir_generator.c
 //
@@ -1701,19 +1656,19 @@ void ir_generate_declaration(IR_Generator* generator, AST_Declaration* declarati
 void dump_instructions(array* instructions);
 
 
-// TODO(timo):
+// Code generator is responsible of generating target machine instructions
+// from the intermediate representation. At the moment the created instructions
+// are x86-64 or AMD64 instructions.
 //
-// Fields
-//      output:
-//      instructions:
-//      diagnostics:
-//      global:
-//      local:
-//
-//      asm_file:
-//
-//      destination:
-//      source:
+// Members
+//      output: Handle to the output file.
+//      instructions: Array of instructions generated by the IR generator.
+//      diagnostics: Array of collected diagnostics.
+//      global: Global scope.
+//      local: Current local scope.
+//      asm_file: Name of the output file.
+//      destination: Current destination register.
+//      source: Current source register.
 typedef struct Code_Generator
 {
     FILE* output;
@@ -1727,6 +1682,7 @@ typedef struct Code_Generator
     const char* asm_file;
 
     // Used for register allocation stuff
+    // NOTE(timo): These are not used for anything at the moment.
     int destination;
     int source;
 } Code_Generator;
@@ -1743,7 +1699,8 @@ typedef struct Code_Generator
 void code_generator_init(Code_Generator* generator, Scope* global, array* instructions);
 
 
-// TODO(timo):
+// Generates the target machine instructions from the intermediate 
+// representation. Main interface used with the code generator.
 //
 // File(s): code_generator.c
 //

@@ -1,3 +1,8 @@
+// Implementations of functions for doing comparisons and checks of the value(s).
+//
+// Author: Timo Mehto
+// Date: 2021/05/12
+
 #include "t.h"
 
 

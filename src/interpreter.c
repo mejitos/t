@@ -303,7 +303,7 @@ void evaluate_declaration(Interpreter* interpreter, AST_Declaration* declaration
 
 // TODO(timo): Take arguments and options
 // void interpret(const char* source)
-Value interpret(const char* source)
+const Value interpret(const char* source)
 {
     // Setup
     Lexer lexer;
@@ -382,7 +382,7 @@ teardown_lexer:
 
 // TODO(timo): Take arguments and options
 // void interpret_from_file(const char* path)
-Value interpret_from_file(const char* path)
+const Value interpret_from_file(const char* path)
 {
     const char* source = read_file(path);
     Value return_value = interpret(source);
