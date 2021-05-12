@@ -1,4 +1,5 @@
-# Checks if two lines intersect with each other
+# Program which calculates x-coordinate of the intersection of lines if
+# the lines intersect. 0 will be returned in case of no intersection.
 #
 # Author: Timo Mehto
 # Date: 2020/05/12
@@ -27,8 +28,34 @@ same_axis_intersections: bool = (line1_coef_a: int, line1_coef_b: int, line1_coe
 };
 
 
-main: bool = (argc: int, argv: [int]) => {
-    result: bool = false;
+# Computes the y-coordinate of the intersection of two lines.
+#
+# Returns
+#       The y-coordinate of the intersection of two lines.
+y_intersect: int = (line1_coef_a: int, line1_coef_b: int, line1_coef_c: int, line2_coef_a: int, line2_coef_b: int, line2_coef_c: int) => {
+    return (line1_coef_a * line2_coef_c - line2_coef_a * line1_coef_c) / (line1_coef_b * line2_coef_a - line2_coef_b * line1_coef_a);
+};
+
+
+# Computes the x-coordinate of the intersection of two lines.
+#
+# Returns
+#       The x-coordinate of the intersection of two lines.
+x_intersect: int = (line1_coef_a: int, line1_coef_b: int, line1_coef_c: int, line2_coef_a: int, line2_coef_b: int, line2_coef_c: int) => {
+    _x_intersect: int = 0;
+    _y_intersect: int = y_intersect(line1_coef_a, line1_coef_b, line1_coef_c, line2_coef_a, line2_coef_b, line2_coef_c);
+
+    if line1_coef_a == 0 then
+        _x_intersect := (-line2_coef_b * _y_intersect - line2_coef_c) / line2_coef_a;
+    else
+        _x_intersect := (-line1_coef_b * _y_intersect - line1_coef_c) / line1_coef_a;
+
+    return _x_intersect;
+};
+
+
+main: int = (argc: int, argv: [int]) => {
+    result: int = 0;
 
     if argc == 8 then {
         # Line 1 (argv[0], argv[1]), (argv[2], argv[3])
@@ -40,13 +67,13 @@ main: bool = (argc: int, argv: [int]) => {
         line2_coef_b: int = argv[6] - argv[4];
         line2_coef_c: int = argv[4] * argv[7] - argv[6] * argv[5];
         
-        if _same_slopes(line1_coef_a, line1_coef_b, line2_coef_a, line2_coef_b) and 
+        if same_slopes(line1_coef_a, line1_coef_b, line2_coef_a, line2_coef_b) and 
            same_axis_intersections(line1_coef_a, line1_coef_b, line1_coef_c, line2_coef_a, line2_coef_b, line2_coef_c) then 
-                result := false;
+                result := 0;
         else if same_slopes(line1_coef_a, line1_coef_b, line2_coef_a, line2_coef_b) then
-            result := false;
+            result := 0;
         else
-            result := true;
+            result := x_intersect(line1_coef_a, line1_coef_b, line1_coef_c, line2_coef_a, line2_coef_b, line2_coef_c);
     }
 
     return result;

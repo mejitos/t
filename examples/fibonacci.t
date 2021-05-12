@@ -1,7 +1,8 @@
 # Program that iteratively computes fibonacci numbers based on user passed argument
 #
 # Author: Timo Mehto
-# Date: 2020/03/07
+# Date: 2020/05/12
+
 
 # Returns the nth term of the fibonacci sequence
 #
@@ -21,7 +22,7 @@ fibonacci: int = (n: int) => {
     return a;
 };
 
-# Main program
+
 main: int = (argc: int, argv: [int]) => {
     result: int = 0;
     
