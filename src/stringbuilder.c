@@ -1,6 +1,7 @@
+// Implemetantion for the stringbuilder.
 //
-// TODO(timo): Filedocstring
-//
+// Author: Timo Mehto
+// Date: 2021/05/12
 
 #include "stringbuilder.h"
 #include "memory.h"     // for x-allocators

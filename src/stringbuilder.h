@@ -1,15 +1,17 @@
+// Stringbuilder to build strings Java/C# style.
 //
-// TODO(timo): Filedocstring
+// As of now, only functionality is concatenating the strings.
+//
 // TODO(timo): sb_init() could take the initial capacity as argument
 //
+// Author: Timo Mehto
+// Date: 2021/05/12
 
 #ifndef t_stringbuilder_h
 #define t_stringbuilder_h
 
 
-// Stringbuilder to build strings Java/C# style.
-//
-// As of now, only functionality is concatenating the strings.
+// Structure for stringbuilder and it's data.
 //
 // Fields
 //      string: Pointer to the start of the current string.

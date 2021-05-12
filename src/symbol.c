@@ -1,6 +1,8 @@
+// Implementations for the factory functiosn for creating symbols and freeing
+// the memory allocated for them.
 //
-// TODO(timo): Filedocstring
-//
+// Author: Timo Mehto
+// Date: 2021/05/12
 
 #include "t.h"
 

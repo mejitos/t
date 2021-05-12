@@ -1,5 +1,9 @@
 // Implementations for AST related things.
 //
+// TODO(timo): The positions for all of the AST nodes should be set properly
+// because now error messages are faulty when it comes to positions of some
+// statements.
+//
 // Author: Timo Mehto
 // Date: 2021/05/12
 

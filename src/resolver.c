@@ -1,6 +1,8 @@
+// Implementation for the resolver which does type checking and semantic
+// checking for the abstract syntax tree.
 //
-// TODO(timo): Filedocstring
-//
+// Author: Timo Mehto
+// Date: 2021/05/12
 
 #include "t.h"
 
@@ -724,20 +726,9 @@ static Type* resolve_index_expression(Resolver* resolver, AST_Expression* expres
         goto end;
     }
     
-
-    // TODO(timo): The array size should be gotten from initializing the array but since
-    // we have the arrays only for the argv, they are resolved at runtime
-    /*
-    if (index_value.integer > "array capacity - 1")
-    {
-        // TODO(timo): Error
-        printf("Array subscript greater than array length\n");
-        exit(1);
-    }
-    */
-    
     // TODO(timo): We probably should make sure that the elements of the array are integers
     // or the element types but that is not needed for now since we only have arrays for argv
+    // which is handled at runtime only.
 
     // Return the type of the element in the array which the subscript accesses
     type = variable_type->array.element_type;
@@ -750,7 +741,6 @@ end:
 
 // Resolves type of a function expression. The type will be the type of the
 // value returned by the function.
-//
 // 
 // NOTE(timo): We don't check the return type here, it is the callers responsibility.
 // Expression just returns the value, or in this case, the type.
@@ -912,7 +902,7 @@ static Type* resolve_call_expression(Resolver* resolver, AST_Expression* express
             ":RESOLVER - TypeError: '%s' is not callable.",
             expression->call.variable->identifier->lexeme);
         array_push(resolver->diagnostics, _diagnostic);
-        // TODO(timo): return type none?
+
         return hashtable_get(resolver->type_table, "none");
     }
 }
