@@ -71,8 +71,7 @@ case $COMMAND in
         exit 0;;
     run )
         build "$BUILD_DIR" "$SRC_DIR/main.c" "$BUILD_DIR/$EXECUTABLE" "$SRC_DIR/*.c"
-        $BUILD_DIR/$EXECUTABLE "$2"
-        ./main "${@:3}"
+        $BUILD_DIR/$EXECUTABLE "${@:2}"
         exit 0;;
     test )
         build "$TEST_BUILD_DIR" "tests/main.c" "$TEST_BUILD_DIR/$TEST_EXECUTABLE" "tests/*.c 
@@ -100,8 +99,7 @@ case $COMMAND in
         exit 0;;
     vgrun )
         build "$BUILD_DIR" "$SRC_DIR/main.c" "$BUILD_DIR/$EXECUTABLE" "$SRC_DIR/*.c"
-        valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --log-file="vglog" --verbose $BUILD_DIR/$EXECUTABLE "$2"
-        ./main "${@:3}"
+        valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --log-file="vglog" --verbose $BUILD_DIR/$EXECUTABLE "${@:2}"
         exit 0;;
     vgtest )
         build "$TEST_BUILD_DIR" "tests/main.c" "$TEST_BUILD_DIR/$TEST_EXECUTABLE" "tests/*.c 
