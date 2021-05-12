@@ -86,8 +86,14 @@ There is two different boolean literals and therefore two different values:
 ### 2.1. Types
 
 ```
-type_specifier          = 'int' | 'bool' ;
+type_specifier          = 'int' | 'bool'  | '[int]' ;
 ```
+
+There is only three different types, from which two is freely usable. The array
+of ints is only usable through argument vector of the main program. There is
+also a "none" type, but it is only used for error handling during resolving.
+Integers are signed 32-bit integers. Booleans have only two possible values:
+true and false.
 
 
 ### 2.2. Declarations
@@ -95,6 +101,10 @@ type_specifier          = 'int' | 'bool' ;
 ```
 declaration             = IDENTIFIER ':' type_specifier '=' expression ';' ;
 ```
+
+Programs are created with declarations and can be used only at the top level.
+Both function and variable delcarations has the same structure and only thing
+separating them, is different kind of initializer.
 
 
 ### 2.3. Statements
@@ -117,6 +127,10 @@ break_statement         = 'break' ';' ;
 continue_statement      = 'continue' ';' ;
 return_statement        = 'return' expression ';' ;
 ```
+
+Statements add structure and functionality to the program and they don't
+evaluate to any value. Statements cannot be used in global scope or top 
+level of the program.
 
 
 ### 2.4. Expressions
@@ -146,3 +160,24 @@ literal                 = IDENTIFIER
                         | INTEGER
                         | BOOLEAN ;
 ```
+
+Expressions consists of terms and other expressions and always evaluate
+to value. Expressions are parsed based on the precedence of the operators
+used with expressions. Expressions cannot be used in global scope or top 
+level of the  program.
+
+#### Precedence
+
+Precedence table from lowest precedence to the highest.
+
+| Precedence | Name | Operator | Associativity |
+| ---------- | ---- | -------- | ------------- |
+| 1 | Assignment | := | Right |
+| 2 | Logical or | or | Left |
+| 3 | Logical and | and | Left |
+| 4 | Equality | == != | Left |
+| 5 | Relation | < <= > >= | Left |
+| 6 | Addition / subtraction | + - | Left |
+| 7 | Multiplication / division | * / | Left |
+| 8 | Unary | + - not | Right |
+| 9 | Parenthesized | ( ... ) | None |
