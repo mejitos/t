@@ -1,6 +1,7 @@
+// Entry point for running tests.
 //
-// TODO(timo): Filedocstring
-//
+// Author: Timo Mehto
+// Date: 2021/05/12
 
 #include <time.h>
 #include <stdio.h>

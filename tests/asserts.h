@@ -1,6 +1,12 @@
+// Different kind of custom assertions to be used in tests.
 //
-// TODO(timo): Filedocstring
+// Assertions will be made according to the assertion function and the test
+// runner will collect the information from accordingly.
 //
+// File(s): asserts.c
+//
+// Author: Timo Mehto
+// Date: 2021/05/12
 
 #ifndef t_asserts_h
 #define t_asserts_h

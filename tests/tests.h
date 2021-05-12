@@ -1,6 +1,9 @@
+// Definitions for datatypes and interfaces used with the test runner.
 //
-// TODO(timo): Filedocstring
+// Test runner will collect and run tests while collecting infromation of them.
 //
+// Author: Timo Mehto
+// Date: 2021/05/12
 
 #ifndef t_tests_h
 #define t_tests_h

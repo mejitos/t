@@ -2658,13 +2658,6 @@ Test_Set* resolver_test_set()
 
     // Type specifiers
     array_push(set->tests, test_case("Type specifier", test_resolve_type_specifier));
-    
-    // MISC / TODO
-
-    // ---
-    
-
-    // ----
 
     // Scoping
     // TODO(timo): test_resolve_local_scopes();

@@ -1,6 +1,7 @@
+// Implementations for the assertions used in tests.
 //
-// TODO(timo): Filedocstring
-//
+// Author: Timo Mehto
+// Date: 2021/05/12
 
 #include "asserts.h"
 
@@ -10,6 +11,7 @@ void assert_base(Test_Runner* runner, const bool assertion, const char* message,
     if (! assertion)
     {
         char* buffer; size_t buffer_length;
+        // TODO(timo): apparently open_memstream is not part of C99
         FILE* out = open_memstream(&buffer, &buffer_length);
 
         va_list args;
