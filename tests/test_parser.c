@@ -547,9 +547,270 @@ static void test_function_expression(Test_Runner* runner)
 
     parameters = expression->function.parameters;
 
-    assert_base(runner, parameters == NULL,
+    assert_base(runner, parameters->length == 0,
         "There should be no parameters");
     assert_statement(runner, expression->function.body->kind, STATEMENT_BLOCK);
+
+    expression_free(expression);
+    parser_free(&parser);
+    lexer_free(&lexer);
+}
+
+
+static void test_diagnose_invalid_parameters_missing_type(Test_Runner* runner)
+{
+    Lexer lexer;
+    Parser parser;
+    AST_Expression* expression;
+    array* parameters;
+    Parameter* parameter;
+    char* source;
+    char* message;
+    Diagnostic* diagnostic;
+
+    // missing colon and type specifier
+    source = "(foo, bar: bool) => { do_something; };";
+
+    lexer_init(&lexer, source);
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    expression = parse_expression(&parser);
+
+    print_diagnostics(parser.diagnostics);
+    /*
+    assert_base(runner, parser.diagnostics->length == 1,
+        "Invalid number of parser diagnostics: %d, expected 1", parser.diagnostics->length);
+
+    message = ":PARSER - SyntaxError: Invalid token 'bar', expected ';'";
+    diagnostic = parser.diagnostics->items[0];
+    */
+
+    expression_free(expression);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    // missing just type specifier
+    source = "(foo:, bar: bool) => { do_something; };";
+
+    lexer_init(&lexer, source);
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    expression = parse_expression(&parser);
+
+    print_diagnostics(parser.diagnostics);
+    /*
+    assert_base(runner, parser.diagnostics->length == 1,
+        "Invalid number of parser diagnostics: %d, expected 1", parser.diagnostics->length);
+
+    message = ":PARSER - SyntaxError: Invalid token 'bar', expected ';'";
+    diagnostic = parser.diagnostics->items[0];
+    */
+
+    expression_free(expression);
+    parser_free(&parser);
+    lexer_free(&lexer);
+}
+
+
+static void test_diagnose_invalid_parameters_missing_identifier(Test_Runner* runner)
+{
+    Lexer lexer;
+    Parser parser;
+    AST_Expression* expression;
+    array* parameters;
+    Parameter* parameter;
+    char* source;
+    char* message;
+    Diagnostic* diagnostic;
+
+    // with colon
+    source = "(:int, bar: bool) => { do_something; };";
+
+    lexer_init(&lexer, source);
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    expression = parse_expression(&parser);
+
+    // print_diagnostics(parser.diagnostics);
+
+    assert_base(runner, parser.diagnostics->length == 1,
+        "Invalid number of parser diagnostics: %d, expected 1", parser.diagnostics->length);
+
+    message = ":PARSER - SyntaxError: Missing parameter name.";
+    diagnostic = parser.diagnostics->items[0];
+
+    expression_free(expression);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    // without colon
+    source = "(int, bar: bool) => { do_something; };";
+
+    lexer_init(&lexer, source);
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    expression = parse_expression(&parser);
+
+    // print_diagnostics(parser.diagnostics);
+
+    assert_base(runner, parser.diagnostics->length == 1,
+        "Invalid number of parser diagnostics: %d, expected 1", parser.diagnostics->length);
+
+    message = ":PARSER - SyntaxError: Missing parameter name.";
+    diagnostic = parser.diagnostics->items[0];
+
+    expression_free(expression);
+    parser_free(&parser);
+    lexer_free(&lexer);
+}
+
+
+static void test_diagnose_invalid_parameters_extra_commas(Test_Runner* runner)
+{
+    Lexer lexer;
+    Parser parser;
+    AST_Expression* expression;
+    array* parameters;
+    Parameter* parameter;
+    char* source;
+    char* message;
+    Diagnostic* diagnostic;
+
+    // Extra comma at the beginning
+    source = "(, bar: bool) => { do_something; };";
+
+    lexer_init(&lexer, source);
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    expression = parse_expression(&parser);
+
+    // print_diagnostics(parser.diagnostics);
+
+    assert_base(runner, parser.diagnostics->length == 1,
+        "Invalid number of parser diagnostics: %d, expected 1", parser.diagnostics->length);
+
+    message = ":PARSER - SyntaxError: Invalid syntax.";
+    diagnostic = parser.diagnostics->items[0];
+
+    assert_base(runner, strcmp(diagnostic->message, message) == 0,
+        "Invalid diagnostic '%s', expected '%s'", diagnostic->message, message);
+
+    expression_free(expression);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    // Extra comma at the end
+    source = "(bar: bool, ) => { do_something; };";
+
+    lexer_init(&lexer, source);
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    expression = parse_expression(&parser);
+
+    // print_diagnostics(parser.diagnostics);
+
+    assert_base(runner, parser.diagnostics->length == 1,
+        "Invalid number of parser diagnostics: %d, expected 1", parser.diagnostics->length);
+
+    message = ":PARSER - SyntaxError: Invalid syntax.";
+    diagnostic = parser.diagnostics->items[0];
+
+    assert_base(runner, strcmp(diagnostic->message, message) == 0,
+        "Invalid diagnostic '%s', expected '%s'", diagnostic->message, message);
+
+    expression_free(expression);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    // Extra comma in the middle
+    source = "(bar: bool, , foo: int) => { do_something; };";
+
+    lexer_init(&lexer, source);
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    expression = parse_expression(&parser);
+
+    // print_diagnostics(parser.diagnostics);
+
+    assert_base(runner, parser.diagnostics->length == 1,
+        "Invalid number of parser diagnostics: %d, expected 1", parser.diagnostics->length);
+
+    message = ":PARSER - SyntaxError: Invalid syntax.";
+    diagnostic = parser.diagnostics->items[0];
+
+    assert_base(runner, strcmp(diagnostic->message, message) == 0,
+        "Invalid diagnostic '%s', expected '%s'", diagnostic->message, message);
+
+    expression_free(expression);
+    parser_free(&parser);
+    lexer_free(&lexer);
+}
+
+
+static void test_diagnose_invalid_parameters_commas_only(Test_Runner* runner)
+{
+    Lexer lexer;
+    Parser parser;
+    AST_Expression* expression;
+    array* parameters;
+    Parameter* parameter;
+    char* source;
+    char* message;
+    Diagnostic* diagnostic;
+
+    // Single comma
+    source = "(,) => { do_something; };";
+
+    lexer_init(&lexer, source);
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    expression = parse_expression(&parser);
+
+    // print_diagnostics(parser.diagnostics);
+    
+    assert_base(runner, parser.diagnostics->length == 1,
+        "Invalid number of parser diagnostics: %d, expected 1", parser.diagnostics->length);
+
+    message = ":PARSER - SyntaxError: Invalid syntax.";
+    diagnostic = parser.diagnostics->items[0];
+
+    assert_base(runner, strcmp(diagnostic->message, message) == 0,
+        "Invalid diagnostic '%s', expected '%s'", diagnostic->message, message);
+
+    expression_free(expression);
+    parser_free(&parser);
+    lexer_free(&lexer);
+
+    // Multiple commas
+    source = "(,,,) => { do_something; };";
+
+    lexer_init(&lexer, source);
+    lex(&lexer);
+
+    parser_init(&parser, lexer.tokens);
+    expression = parse_expression(&parser);
+
+    // print_diagnostics(parser.diagnostics);
+
+    assert_base(runner, parser.diagnostics->length == 3,
+        "Invalid number of parser diagnostics: %d, expected 3", parser.diagnostics->length);
+
+    message = ":PARSER - SyntaxError: Invalid syntax.";
+
+    for (int i = 0; i < 3; i++)
+    {
+        diagnostic = parser.diagnostics->items[i];
+        assert_base(runner, strcmp(diagnostic->message, message) == 0,
+            "Invalid diagnostic '%s', expected '%s'", diagnostic->message, message);
+    }
 
     expression_free(expression);
     parser_free(&parser);
@@ -1175,7 +1436,7 @@ static void test_panic_mode_statement(Test_Runner* runner)
     assert_base(runner, parser.diagnostics->length == 1,
         "Invalid number of parser diagnostics: %d, expected 1", parser.diagnostics->length);
 
-    message = ":PARSER - SyntaxError: Invalid token 'bar', expected ';'\n";
+    message = ":PARSER - SyntaxError: Invalid token 'bar', expected ';'";
     diagnostic = parser.diagnostics->items[0];
 
     assert_base(runner, strcmp(diagnostic->message, message) == 0,
@@ -1202,14 +1463,14 @@ static void test_panic_mode_statement(Test_Runner* runner)
     assert_base(runner, parser.diagnostics->length == 2,
         "Invalid number of parser diagnostics: %d, expected 2", parser.diagnostics->length);
 
-    message = ":PARSER - SyntaxError: Invalid token ':' in primary expression\n";
+    message = ":PARSER - SyntaxError: Invalid token ':' in primary expression";
     diagnostic = parser.diagnostics->items[0];
 
     assert_base(runner, strcmp(diagnostic->message, message) == 0,
         "Invalid diagnostic '%s', expected '%s'", diagnostic->message, message);
     
     // NOTE(timo): This is not the correct behaviour
-    // message = ":PARSER - SyntaxError: Invalid token 'int', expected ';'\n";
+    // message = ":PARSER - SyntaxError: Invalid token 'int', expected ';'";
     // diagnostic = parser.diagnostics->items[1];
 
     // assert(strcmp(diagnostic->message, message) == 0);
@@ -1244,7 +1505,7 @@ static void test_panic_mode_declaration(Test_Runner* runner)
     assert_base(runner, parser.diagnostics->length == 1,
         "Invalid number of parser diagnostics: %d, expected 1", parser.diagnostics->length);
 
-    message = ":PARSER - SyntaxError: Invalid token 'bar', expected ';'\n";
+    message = ":PARSER - SyntaxError: Invalid token 'bar', expected ';'";
     diagnostic = parser.diagnostics->items[0];
 
     assert_base(runner, strcmp(diagnostic->message, message) == 0,
@@ -1268,13 +1529,13 @@ static void test_panic_mode_declaration(Test_Runner* runner)
     assert_base(runner, parser.diagnostics->length == 2,
         "Invalid number of parser diagnostics: %d, expected 2", parser.diagnostics->length);
 
-    message = ":PARSER - SyntaxError: Invalid token '42', expected '='\n";
+    message = ":PARSER - SyntaxError: Invalid token '42', expected '='";
     diagnostic = parser.diagnostics->items[0];
 
     assert_base(runner, strcmp(diagnostic->message, message) == 0,
         "Invalid diagnostic '%s', expected '%s'", diagnostic->message, message);
 
-    message = ":PARSER - SyntaxError: Invalid token 'bar', expected ';'\n";
+    message = ":PARSER - SyntaxError: Invalid token 'bar', expected ';'";
     diagnostic = parser.diagnostics->items[1];
 
     assert_base(runner, strcmp(diagnostic->message, message) == 0,
@@ -1298,19 +1559,19 @@ static void test_panic_mode_declaration(Test_Runner* runner)
     assert_base(runner, parser.diagnostics->length == 3,
         "Invalid number of parser diagnostics: %d, expected 3", parser.diagnostics->length);
 
-    message = ":PARSER - SyntaxError: Invalid token ':', expected 'identifier'\n";
+    message = ":PARSER - SyntaxError: Invalid token ':', expected 'identifier'";
     diagnostic = parser.diagnostics->items[0];
 
     assert_base(runner, strcmp(diagnostic->message, message) == 0,
         "Invalid diagnostic '%s', expected '%s'", diagnostic->message, message);
 
-    message = ":PARSER - SyntaxError: Invalid token '42', expected '='\n";
+    message = ":PARSER - SyntaxError: Invalid token '42', expected '='";
     diagnostic = parser.diagnostics->items[1];
 
     assert_base(runner, strcmp(diagnostic->message, message) == 0,
         "Invalid diagnostic '%s', expected '%s'", diagnostic->message, message);
 
-    message = ":PARSER - SyntaxError: Invalid token 'bar', expected ';'\n";
+    message = ":PARSER - SyntaxError: Invalid token 'bar', expected ';'";
     diagnostic = parser.diagnostics->items[2];
 
     assert_base(runner, strcmp(diagnostic->message, message) == 0,
@@ -1342,7 +1603,7 @@ static void test_diagnose_invalid_type_specifier(Test_Runner* runner)
     assert_base(runner, parser.diagnostics->length == 1,
         "Invalid number of parser diagnostics: %d, expected 1", parser.diagnostics->length);
 
-    message = ":PARSER - SyntaxError: Expected type specifier, got 'type'\n";
+    message = ":PARSER - SyntaxError: Expected type specifier, got 'type'";
     diagnostic = parser.diagnostics->items[0];
     
     assert_base(runner, strcmp(diagnostic->message, message) == 0,
@@ -1362,7 +1623,7 @@ static void test_diagnose_invalid_type_specifier(Test_Runner* runner)
     assert_base(runner, parser.diagnostics->length == 1,
         "Invalid number of parser diagnostics: %d, expected 1", parser.diagnostics->length);
 
-    message = ":PARSER - SyntaxError: Expected type specifier, got 'type'\n";
+    message = ":PARSER - SyntaxError: Expected type specifier, got 'type'";
     diagnostic = parser.diagnostics->items[0];
     
     assert_base(runner, strcmp(diagnostic->message, message) == 0,
@@ -1383,7 +1644,7 @@ static void test_diagnose_invalid_type_specifier(Test_Runner* runner)
     assert_base(runner, parser.diagnostics->length == 1,
         "Invalid number of parser diagnostics: %d, expected 1", parser.diagnostics->length);
 
-    message = ":PARSER - SyntaxError: Expected type specifier, got 'type'\n";
+    message = ":PARSER - SyntaxError: Expected type specifier, got 'type'";
     diagnostic = parser.diagnostics->items[0];
     
     assert_base(runner, strcmp(diagnostic->message, message) == 0,
@@ -1413,7 +1674,7 @@ static void test_diagnose_invalid_primary_expression_starter(Test_Runner* runner
     assert_base(runner, parser.diagnostics->length == 1,
         "Invalid number of parser diagnostics: %d, expected 1", parser.diagnostics->length);
 
-    message = ":PARSER - SyntaxError: Invalid token 'while' in primary expression\n";
+    message = ":PARSER - SyntaxError: Invalid token 'while' in primary expression";
     diagnostic = parser.diagnostics->items[0];
 
     assert_base(runner, strcmp(diagnostic->message, message) == 0,
@@ -1442,7 +1703,7 @@ static void test_diagnose_invalid_assignment_target(Test_Runner* runner)
     assert_base(runner, parser.diagnostics->length == 1,
         "Invalid number of parser diagnostics: %d, expected 1", parser.diagnostics->length);
 
-    message = ":PARSER - SyntaxError: Invalid assignment target, expected a variable.\n";
+    message = ":PARSER - SyntaxError: Invalid assignment target, expected a variable.";
     diagnostic = parser.diagnostics->items[0];
 
     assert_base(runner, strcmp(diagnostic->message, message) == 0,
@@ -1463,7 +1724,7 @@ static void test_diagnose_invalid_assignment_target(Test_Runner* runner)
     assert_base(runner, parser.diagnostics->length == 1,
         "Invalid number of parser diagnostics: %d, expected 1", parser.diagnostics->length);
 
-    message = ":PARSER - SyntaxError: Invalid assignment target, expected a variable.\n";
+    message = ":PARSER - SyntaxError: Invalid assignment target, expected a variable.";
     diagnostic = parser.diagnostics->items[0];
 
     assert_base(runner, strcmp(diagnostic->message, message) == 0,
@@ -1493,7 +1754,7 @@ static void test_diagnose_missing_semicolon(Test_Runner* runner)
     assert_base(runner, parser.diagnostics->length == 1,
         "Invalid number of parser diagnostics: %d, expected 1", parser.diagnostics->length);
 
-    message = ":PARSER - SyntaxError: Invalid token '<EoF>', expected ';'\n";
+    message = ":PARSER - SyntaxError: Invalid token '<EoF>', expected ';'";
     diagnostic = parser.diagnostics->items[0];
 
     assert_base(runner, strcmp(diagnostic->message, message) == 0,
@@ -1513,7 +1774,7 @@ static void test_diagnose_missing_semicolon(Test_Runner* runner)
     assert_base(runner, parser.diagnostics->length == 1,
         "Invalid number of parser diagnostics: %d, expected 1", parser.diagnostics->length);
 
-    message = ":PARSER - SyntaxError: Invalid token '<EoF>', expected ';'\n";
+    message = ":PARSER - SyntaxError: Invalid token '<EoF>', expected ';'";
     diagnostic = parser.diagnostics->items[0];
 
     assert_base(runner, strcmp(diagnostic->message, message) == 0,
@@ -1533,7 +1794,7 @@ static void test_diagnose_missing_semicolon(Test_Runner* runner)
     assert_base(runner, parser.diagnostics->length == 1,
         "Invalid number of parser diagnostics: %d, expected 1", parser.diagnostics->length);
 
-    message = ":PARSER - SyntaxError: Invalid token 'foo', expected ';'\n";
+    message = ":PARSER - SyntaxError: Invalid token 'foo', expected ';'";
     diagnostic = parser.diagnostics->items[0];
 
     assert_base(runner, strcmp(diagnostic->message, message) == 0,
@@ -1563,7 +1824,7 @@ static void test_diagnose_missing_closing_curlybrace(Test_Runner* runner)
     assert_base(runner, parser.diagnostics->length == 1,
         "Invalid number of parser diagnostics: %d, expected 1", parser.diagnostics->length);
 
-    message = ":PARSER - SyntaxError: Invalid token '<EoF>', expected '}'\n";
+    message = ":PARSER - SyntaxError: Invalid token '<EoF>', expected '}'";
     diagnostic = parser.diagnostics->items[0];
 
     assert_base(runner, strcmp(diagnostic->message, message) == 0,
@@ -1597,7 +1858,7 @@ static void test_diagnose_missing_closing_parenthesis(Test_Runner* runner)
     assert_base(runner, parser.diagnostics->length == 1,
         "Invalid number of parser diagnostics: %d, expected 1", parser.diagnostics->length);
 
-    message = ":PARSER - SyntaxError: Invalid token ';', expected ')'\n";
+    message = ":PARSER - SyntaxError: Invalid token ';', expected ')'";
     diagnostic = parser.diagnostics->items[0];
 
     assert_base(runner, strcmp(diagnostic->message, message) == 0,
@@ -1629,7 +1890,7 @@ static void test_diagnose_invalid_while_statement(Test_Runner* runner)
     assert_base(runner, parser.diagnostics->length == 1,
         "Invalid number of parser diagnostics: %d, expected 1", parser.diagnostics->length);
 
-    message = ":PARSER - SyntaxError: Invalid token '{', expected 'do'\n";
+    message = ":PARSER - SyntaxError: Invalid token '{', expected 'do'";
     diagnostic = parser.diagnostics->items[0];
 
     assert_base(runner, strcmp(diagnostic->message, message) == 0,
@@ -1659,7 +1920,7 @@ static void test_diagnose_invalid_if_statement(Test_Runner* runner)
     assert_base(runner, parser.diagnostics->length == 1,
         "Invalid number of parser diagnostics: %d, expected 1", parser.diagnostics->length);
 
-    message = ":PARSER - SyntaxError: Invalid token '{', expected 'then'\n";
+    message = ":PARSER - SyntaxError: Invalid token '{', expected 'then'";
     diagnostic = parser.diagnostics->items[0];
 
     assert_base(runner, strcmp(diagnostic->message, message) == 0,
@@ -1747,7 +2008,17 @@ Test_Set* parser_test_set()
     array_push(set->tests, test_case("Variable expression", test_variable_expression));
     array_push(set->tests, test_case("Assignment expression", test_assignment_expression));
     array_push(set->tests, test_case("Index expression", test_index_expression));
+
+    // Function expression
     array_push(set->tests, test_case("Function expression", test_function_expression));
+    // Function parameters
+    // TODO(timo): Testing all of these became a complete disaster which cost
+    // me 3 days without any solution.
+    // array_push(set->tests, test_case("Diagnose invalid parameters (missing type specifier)", test_diagnose_invalid_parameters_missing_type));
+    // array_push(set->tests, test_case("Diagnose invalid parameters (missing identifier)", test_diagnose_invalid_parameters_missing_identifier));
+    // array_push(set->tests, test_case("Diagnose invalid parameters (extra commas)", test_diagnose_invalid_parameters_extra_commas));
+    // array_push(set->tests, test_case("Diagnose invalid parameters (commas only)", test_diagnose_invalid_parameters_commas_only));
+
     array_push(set->tests, test_case("Call expression", test_call_expression));
 
     // Expression parse trees as string
