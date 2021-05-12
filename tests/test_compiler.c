@@ -1105,6 +1105,38 @@ static void test_example_intersection_2(Test_Runner* runner)
 }
 
 
+static void test_example_x_intersect(Test_Runner* runner)
+{
+    const char* program_name = "x_intersect";
+    const char* file_path = "./examples/x_intersect.t";
+    const char* result = "Program exited with the value 2\n";
+    const char* args = "1 1 3 3 1 3 3 1";
+
+    char* buffer = run_example(runner, program_name, file_path, result, args);
+    
+    assert_base(runner, strcmp(result, buffer) == 0,
+        "Invalid exit value '%s', expected '%s'", buffer, result);
+
+    free(buffer);
+}
+
+
+static void test_example_y_intersect(Test_Runner* runner)
+{
+    const char* program_name = "y_intersect";
+    const char* file_path = "./examples/y_intersect.t";
+    const char* result = "Program exited with the value 2\n";
+    const char* args = "1 1 3 3 1 3 3 1";
+
+    char* buffer = run_example(runner, program_name, file_path, result, args);
+    
+    assert_base(runner, strcmp(result, buffer) == 0,
+        "Invalid exit value '%s', expected '%s'", buffer, result);
+
+    free(buffer);
+}
+
+
 Test_Set* compiler_test_set()
 {
     Test_Set* set = test_set("Compiler");
@@ -1201,6 +1233,8 @@ Test_Set* compiler_test_set()
     array_push(set->tests, test_case("Example file: prime_number.t", test_example_prime_number));
     array_push(set->tests, test_case("Example file: intersection.t", test_example_intersection_1));
     array_push(set->tests, test_case("Example file: intersection.t (with negative coordinates)", test_example_intersection_2));
+    array_push(set->tests, test_case("Example file: x_intersect.t", test_example_x_intersect));
+    array_push(set->tests, test_case("Example file: y_intersect.t", test_example_y_intersect));
 
     set->length = set->tests->length;
 
