@@ -236,7 +236,7 @@ void code_generate_instruction(Code_Generator* generator, Instruction* instructi
             fprintf(generator->output,
                 "    mov    rdx, 0                  ; setting rdx to 0 because it represents the top bits of the divident\n"
                 "    mov    rax, [rbp-%d]           ; move the dividend to rax\n"
-                "    div    qword [rbp-%d]          ; divide the rax with the operand (divisor)\n"
+                "    idiv   qword [rbp-%d]          ; divide the rax with the operand (divisor)\n"
                 "    mov    qword [rbp-%d], rax     ; move the result to the stack\n", 
                 destination->offset,
                 source->offset,
