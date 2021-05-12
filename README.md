@@ -19,6 +19,14 @@ a compiler for own source language.
 
 Probably any version from 2000's works though.
 
+Compiler uses GCC as linker to take advantage of existing C-libraries.
+
+### NASM 2.15.05
+
+Older versions should also work though.
+
+Compiler uses NASM as assembler.
+
 ### Linux operating system
 
 Program is not tested on Windows (it's developed on Linux) and I'm pretty sure 
