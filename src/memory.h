@@ -11,6 +11,9 @@
 //  recovery and everything just dies. This doesn't really matter in our use
 //  case (=compiler) because the program is so short lived and all the allocated
 //  memory will be freed back to the operating system anyway.
+//
+//  Author: Timo Mehto
+//  Date: 2021/05/12
 
 #ifndef t_memory_h
 #define t_memory_h

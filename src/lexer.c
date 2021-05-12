@@ -1,12 +1,21 @@
+// Lexer is responsible for creating stream of tokens from the source file.
 //
-// TODO(timo): Filedocstring
+// At the moment the operators doesn't really implement the maximal munching
+// rule and therefore they should probably be separated as their own group
+// in the same way numbers and names are separated. Then it is actually 
+// possible to scan the maximum length operators.
 //
-
-#include "t.h"
-
-
+// This has to be done because we really can't check characters after the 
+// operators e.g. '+ ', because '1+2' is valid syntax. Therefore the operators
+// has to be scanned as their own group.
+//
 // TODO(timo): Are the scanned lexemes last characters inclusive of exclusive?
 // This is decision we have to make, to make better scanning.
+//
+// Author: Timo Mehto
+// Date: 2021/05/12
+
+#include "t.h"
 
 
 void lexer_init(Lexer* lexer, const char* source)

@@ -1,6 +1,12 @@
+// Entry point for the compiler where the passed compiler options will be
+// parsed. The options will be passed to compiler for compilation of the
+// program or to interpreter for interpretation of the program.
 //
-// TODO(timo): Filedocstring
-//
+// The hashtable implementation has to be defined here so it can be used
+// throughout the program.
+// 
+// Author: Timo Mehto
+// Date: 2021/05/12
 
 #define T_HASHTABLE_IMPLEMENTATION
 #include "t.h"

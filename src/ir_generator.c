@@ -2,8 +2,6 @@
 // of the source code. Generator will generate array of three address code
 // instructions from the abstract syntax tree, annotated by the resolver.
 //
-// TODO(timo): Filedocstring
-//
 // The instructions could save the operands of the instruction as straight
 // pointers to the symbol table instead of type char*. That way we can minimize
 // the lookups to the symbol table and make the code more straightforward
@@ -16,8 +14,12 @@
 // one starting and one ending point without that unecessarily difficult and
 // ugly context selection.
 //
+// TODO(timo): Create basic blocks to simplify things, especially jumps
+// between different conditional parts. Also pre-requisite for any kind of
+// optimizations
+//
 // Author: Timo Mehto
-// Date: 2020/05/02
+// Date: 2021/05/12
 
 #include "t.h"
 

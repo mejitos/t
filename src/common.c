@@ -1,6 +1,7 @@
-//
-// TODO(timo): File docstring
-//
+// Implementations for some common/general functions
+// 
+// Author: Timo Mehto
+// Date: 2021/05/12
 
 #include "common.h"
 #include "memory.h"     // for x-allocators

@@ -1,6 +1,7 @@
+// Implementations for the x-allocators.
 //
-// TODO(timo): Filedocstring
-//
+// Author: Timo Mehto
+// Date: 2021/05/12
 
 #include "memory.h"
 #include <stdlib.h>     // for allocs, exit

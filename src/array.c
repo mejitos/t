@@ -1,6 +1,13 @@
+// Implementation of dynamic array.
 //
-// TODO(timo): Filedocstring
-//
+// TODO(timo): Create a single header file library of this
+// TODO(timo): More functions for the interface:
+//      - pop
+//      - get (get_item)
+//      - set (set_item)
+// 
+// Author: Timo Mehto
+// Date: 2021/05/12
 
 #include "array.h"
 #include "memory.h"     // for x-allocators

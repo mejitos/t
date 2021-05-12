@@ -1,6 +1,9 @@
+// Implementations for creating Diagnostic items and printing them.
+// 
+// TODO(timo): Add the name of the file to be part of the message
 //
-// TODO(timo): Filedocstring
-//
+// Author: Timo Mehto
+// Date: 2021/05/12
 
 #include "t.h"
 
@@ -9,6 +12,7 @@ Diagnostic* diagnostic(const Diagnostic_Kind kind, const Position position, cons
 {
     char* buffer;
     size_t buffer_length;
+    // TODO(timo): apparently open_memstream is not part of C99
     FILE* out = open_memstream(&buffer, &buffer_length);
 
     va_list args;
@@ -29,7 +33,7 @@ Diagnostic* diagnostic(const Diagnostic_Kind kind, const Position position, cons
 
 void print_diagnostic(const Diagnostic* diagnostic)
 {
-    printf("file.t:%d:%d%s\n", diagnostic->position.line_start, diagnostic->position.column_start, diagnostic->message);
+    printf(":%d:%d%s\n", diagnostic->position.line_start, diagnostic->position.column_start, diagnostic->message);
 }
 
 

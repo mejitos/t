@@ -1,6 +1,7 @@
-//
-// TODO(timo): File docstring
-//
+// Miscellanious quality-of-life functions
+// 
+// Author: Timo Mehto
+// Date: 2021/05/12
 
 #ifndef t_common_h
 #define t_common_h

@@ -1,6 +1,8 @@
+// Implementation for simple hashtable with key-value pairs. All keys are
+// strings and values can be arbitrary pointers.
 //
-// TODO(timo): Filedocstring
-//
+// Author: Timo Mehto
+// Date: 2021/05/12
 
 #ifndef T_HASHTABLE_H 
 #define T_HASHTABLE_H 

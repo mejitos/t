@@ -1,6 +1,7 @@
+// Implementations for AST related things.
 //
-// TODO(timo): Filedocstring
-//
+// Author: Timo Mehto
+// Date: 2021/05/12
 
 #include "t.h"
 

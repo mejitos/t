@@ -1,11 +1,13 @@
-//
-// TODO(timo): Filedocstring
+// Definitions for dynamic array.
 //
 // TODO(timo): Create a single header file library of this
 // TODO(timo): More functions for the interface:
 //      - pop
 //      - get (get_item)
 //      - set (set_item)
+//
+// Author: Timo Mehto
+// Date: 2021/05/12
 
 #ifndef t_array_h
 #define t_array_h

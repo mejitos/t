@@ -1,3 +1,9 @@
+// Implementations for factorcy functions to create new instructions,
+// freeing the memory allocated for them and to print the instructions.
+//
+// Author: Timo Mehto
+// Date: 2021/05/12
+
 #include "t.h"
 
 
