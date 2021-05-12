@@ -410,17 +410,14 @@ void expression_free(AST_Expression* expression)
             expression_free(expression->index.value);
             break;
         case EXPRESSION_FUNCTION:
-            if (expression->function.arity > 0)
+            for (int i = 0; i < expression->function.parameters->length; i++)
             {
-                for (int i = 0; i < expression->function.parameters->length; i++)
-                {
-                    // NOTE(timo): These are the unresolved parameters which 
-                    // have no types etc. so this free is enough
-                    free(expression->function.parameters->items[i]);
-                    expression->function.parameters->items[i] = NULL;
-                }
-                array_free(expression->function.parameters);
+                // NOTE(timo): These are the unresolved parameters which 
+                // have no types etc. so this free is enough
+                free(expression->function.parameters->items[i]);
+                expression->function.parameters->items[i] = NULL;
             }
+            array_free(expression->function.parameters);
             statement_free(expression->function.body);
             break; 
         case EXPRESSION_CALL:
