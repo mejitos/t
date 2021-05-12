@@ -1,6 +1,7 @@
+// Implementations of the main interfaces of the program.
 //
-// TODO(timo): Filedocstring
-//
+// Author: Timo Mehto
+// Date: 2021/05/12
 
 #include "t.h"
 #include <time.h>
@@ -104,7 +105,7 @@ void compile(const char* source, struct Options options)
     Lexer lexer;
     clock_t lexing_start;
     clock_t lexing_end;
-    double lexing_time;
+    double lexing_time = 0.0;
 
     if (options.show_summary)
     {
@@ -138,7 +139,7 @@ void compile(const char* source, struct Options options)
     Parser parser;
     clock_t parsing_start;
     clock_t parsing_end;
-    double parsing_time;
+    double parsing_time = 0.0;
 
     if (options.show_summary)
     {
@@ -173,7 +174,7 @@ void compile(const char* source, struct Options options)
     Resolver resolver;
     clock_t resolving_start;
     clock_t resolving_end;
-    double resolving_time;
+    double resolving_time = 0.0;
 
     if (options.show_summary)
     {
@@ -215,7 +216,7 @@ void compile(const char* source, struct Options options)
     IR_Generator ir_generator;
     clock_t ir_generating_start;
     clock_t ir_generating_end;
-    double ir_generating_time;
+    double ir_generating_time = 0.0;
 
     if (options.show_summary)
     {
@@ -251,7 +252,7 @@ void compile(const char* source, struct Options options)
     // Code generation
     clock_t code_generating_start;
     clock_t code_generating_end;
-    double code_generating_time;
+    double code_generating_time = 0.0;
 
     if (options.show_summary)
     {
@@ -307,7 +308,7 @@ void compile(const char* source, struct Options options)
     // Assembling
     clock_t assembly_start;
     clock_t assembly_end;
-    double assembly_time;
+    double assembly_time = 0.0;
 
     char assemble[128];
     snprintf(assemble, 128, "nasm -f elf64 -o %s.o %s.asm", options.program, options.program);
@@ -339,7 +340,7 @@ void compile(const char* source, struct Options options)
     // Linking
     clock_t linker_start;
     clock_t linker_end;
-    double linker_time;
+    double linker_time = 0.0;
 
     char link[128];
     snprintf(link, 128, "gcc -no-pie -o %s %s.o", options.program, options.program);
@@ -372,6 +373,14 @@ void compile(const char* source, struct Options options)
 teardown:
 teardown_code_generator:
     code_generator_free(&code_generator);
+
+    // Remove created files
+    char rm_files[128];
+    snprintf(rm_files, 128, "rm %s.asm %s.o", options.program, options.program);
+    int rm_files_error;
+    
+    if ((rm_files_error = system(rm_files)) != 0 )
+        printf("Error code on command '%s': %d\n", rm_files, rm_files_error);
 teardown_ir_generator:
     ir_generator_free(&ir_generator);
 teardown_resolver:
@@ -381,14 +390,6 @@ teardown_parser:
     parser_free(&parser);
 teardown_lexer:
     lexer_free(&lexer);
-
-    // Remove created files
-    char rm_files[128];
-    snprintf(rm_files, 128, "rm %s.asm %s.o", options.program, options.program);
-    int rm_files_error;
-    
-    if ((rm_files_error = system(rm_files)) != 0 )
-        printf("Error code on command '%s': %d\n", rm_files, rm_files_error);
 
     if (options.show_summary)
     {
