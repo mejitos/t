@@ -1,6 +1,12 @@
 // Implementation for the resolver which does type checking and semantic
 // checking for the abstract syntax tree.
 //
+// At the moment, there is incomplete implementation for constant folding.
+// Resolver does the folding with number literals, but the folded values
+// are not actually used for anything. This decision has to be made in the
+// end, because some of the IR generator code and tests would've needed
+// big rewrite. So no constant folding for the time being.
+//
 // Author: Timo Mehto
 // Date: 2021/05/12
 
