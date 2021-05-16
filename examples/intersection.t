@@ -40,7 +40,7 @@ main: bool = (argc: int, argv: [int]) => {
         line2_coef_b: int = argv[6] - argv[4];
         line2_coef_c: int = argv[4] * argv[7] - argv[6] * argv[5];
         
-        if _same_slopes(line1_coef_a, line1_coef_b, line2_coef_a, line2_coef_b) and 
+        if same_slopes(line1_coef_a, line1_coef_b, line2_coef_a, line2_coef_b) and 
            same_axis_intersections(line1_coef_a, line1_coef_b, line1_coef_c, line2_coef_a, line2_coef_b, line2_coef_c) then 
                 result := false;
         else if same_slopes(line1_coef_a, line1_coef_b, line2_coef_a, line2_coef_b) then
