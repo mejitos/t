@@ -65,7 +65,11 @@ void parse_options(struct Options* options, int* argc, char*** argv)
             arg = (char*)**argv;
 
             if (arg && str_equals(arg, "ast"))
+            {
                 options->interpret_ast = true;
+                printf("Error: AST interpretation is not implemented at the moment\n");
+                exit(1);
+            }
             else if (arg && str_equals(arg, "ir"))
             {
                 options->interpret_ir = true;
